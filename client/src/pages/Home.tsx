@@ -461,7 +461,11 @@ export default function Home() {
               </div>
               <div className="rounded-2xl bg-white/5 p-3">
                 <p className="text-sm text-slate-400">상세 지표</p>
-                <p className="break-keep text-2xl font-black leading-tight sm:text-3xl xl:text-2xl 2xl:text-3xl">PER·PBR·RSI</p>
+                <div className="mt-2 flex flex-wrap gap-2 text-sm font-black text-white">
+                  <span className="rounded-full bg-white/10 px-3 py-1">PER</span>
+                  <span className="rounded-full bg-white/10 px-3 py-1">PBR</span>
+                  <span className="rounded-full bg-white/10 px-3 py-1">RSI</span>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -498,7 +502,7 @@ export default function Home() {
               <CardTitle className="flex items-center gap-2 text-2xl font-black tracking-tight">
                 <BarChart3 className="h-6 w-6 text-blue-500" /> 페이지 내 시가총액·밸류에이션 차트
               </CardTitle>
-              <CardDescription>현재 표에 보이는 25개 종목의 실제 시가총액을 우선 표시하고, 툴팁에서 PER·PBR·최근 영업이익을 함께 확인합니다.</CardDescription>
+              <CardDescription>현재 표에 보이는 25개 종목의 실제 시가총액을 우선 표시하고, 툴팁에서 PER, PBR, 최근 영업이익을 각각 확인합니다.</CardDescription>
             </CardHeader>
             <CardContent className="h-[420px]">
               {stocksQuery.isLoading ? (
@@ -538,7 +542,7 @@ export default function Home() {
               <CardTitle className="flex items-center gap-2 text-xl font-black">
                 <Database className="h-5 w-5 text-rose-400" /> 오너 편집 패널
               </CardTitle>
-              <CardDescription>KOSPI 200 기본 데이터는 자동 시드되며, 현재가는 오너가 수동 보정할 수 있습니다. PER·PBR·분기 실적은 종목 클릭 시 네이버 금융에서 조회합니다.</CardDescription>
+              <CardDescription>KOSPI 200 기본 데이터는 자동 시드되며, 현재가는 오너가 수동 보정할 수 있습니다. PER, PBR, 분기 실적은 종목 클릭 시 각각 네이버 금융에서 조회합니다.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
@@ -603,9 +607,9 @@ export default function Home() {
           </CardHeader>
           <CardContent className="max-w-full overflow-x-auto">
             <div className="mb-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500">
-              현재 정렬: <span className="font-black text-slate-900">{currentSortLabel}</span> · 최신 화면 표식: KOSPI 200 테마·PER/PBR·RSI. 폭이 좁은 화면과 크롬 확대 상태에서는 표 영역만 좌우로 밀어 보세요. 공개 사이트가 이전 EPS 화면으로 보이면 Ctrl+Shift+R로 강력 새로고침하세요.
+              현재 정렬: <span className="font-black text-slate-900">{currentSortLabel}</span> · 최신 화면 표식: KOSPI 200 테마, PER 별도, PBR 별도, RSI. 폭이 좁은 화면과 크롬 확대 상태에서는 표 영역만 좌우로 밀어 보세요. 공개 사이트가 이전 EPS 화면으로 보이면 Ctrl+Shift+R로 강력 새로고침하세요.
             </div>
-            <table className="w-full min-w-[1320px] border-separate border-spacing-y-2 text-left text-sm">
+            <table className="w-full min-w-[1380px] border-separate border-spacing-y-2 text-left text-sm">
               <thead>
                 <tr className="text-slate-500">
                   <th className="px-2 py-2">{sortableHeader("순위", "marketRank")}</th>
@@ -616,7 +620,8 @@ export default function Home() {
                   <th className="px-2 py-2">{sortableHeader("현재 주가", "currentPrice", "right")}</th>
                   <th className="px-2 py-2">{sortableHeader("EPS", "annualEps", "right")}</th>
                   <th className="px-2 py-2">{sortableHeader("EPS/주가", "earningsYield", "right")}</th>
-                  <th className="px-4 py-2 text-right font-medium">PER/PBR</th>
+                  <th className="px-3 py-2 text-right font-medium">PER</th>
+                  <th className="px-3 py-2 text-right font-medium">PBR</th>
                   <th className="px-4 py-2 text-right font-medium">시가총액·실적</th>
                   <th className="px-4 py-2 font-medium">연동 상태</th>
                   <th className="px-2 py-2">{sortableHeader("마지막 갱신", "lastPriceFetchedAt")}</th>
@@ -639,13 +644,11 @@ export default function Home() {
                     <td className="px-4 py-3 text-right">
                       <Badge className="rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-50">{formatPercent(row.earningsYield)}</Badge>
                     </td>
-                    <td className="px-4 py-3 text-right text-xs text-slate-700" title={summary && !summary.success ? summary.error : undefined}>
-                      {summary?.success ? (
-                        <div className="space-y-1 whitespace-nowrap">
-                          <p className="font-black text-slate-950">PER {formatMultiple(summary.per)}</p>
-                          <p>PBR {formatMultiple(summary.pbr)}</p>
-                        </div>
-                      ) : summaryLoading ? <span className="text-slate-400">요약 수집 중</span> : summary && !summary.success ? <button type="button" className="rounded-full bg-slate-100 px-2 py-1 text-slate-600 transition hover:bg-blue-50 hover:text-blue-700" onClick={(event) => { event.stopPropagation(); setSelectedStock(row); }} aria-label={`${row.name} 상세 재무지표 다시 조회`}>상세 조회</button> : <span className="text-slate-400">대기</span>}
+                    <td className="px-3 py-3 text-right text-xs text-slate-700" title={summary && !summary.success ? summary.error : undefined}>
+                      {summary?.success ? <span className="font-black text-slate-950">{formatMultiple(summary.per)}</span> : summaryLoading ? <span className="text-slate-400">조회 중</span> : summary && !summary.success ? <button type="button" className="rounded-full bg-slate-100 px-2 py-1 text-slate-600 transition hover:bg-blue-50 hover:text-blue-700" onClick={(event) => { event.stopPropagation(); setSelectedStock(row); }} aria-label={`${row.name} PER 상세 재무지표 다시 조회`}>상세 조회</button> : <span className="text-slate-400">대기</span>}
+                    </td>
+                    <td className="px-3 py-3 text-right text-xs text-slate-700" title={summary && !summary.success ? summary.error : undefined}>
+                      {summary?.success ? <span className="font-black text-slate-950">{formatMultiple(summary.pbr)}</span> : summaryLoading ? <span className="text-slate-400">조회 중</span> : summary && !summary.success ? <button type="button" className="rounded-full bg-slate-100 px-2 py-1 text-slate-600 transition hover:bg-blue-50 hover:text-blue-700" onClick={(event) => { event.stopPropagation(); setSelectedStock(row); }} aria-label={`${row.name} PBR 상세 재무지표 다시 조회`}>상세 조회</button> : <span className="text-slate-400">대기</span>}
                     </td>
                     <td className="px-4 py-3 text-right text-xs text-slate-700" title={summary && !summary.success ? summary.error : undefined}>
                       {summary?.success ? (
