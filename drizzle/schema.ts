@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { double, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -22,7 +22,31 @@ export const users = mysqlTable("users", {
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
+export const stockSectors = [
+  "power",
+  "defense",
+  "semiconductor",
+  "semiconductor_equipment",
+  "display_equipment",
+  "investment_securities",
+] as const;
+
+export const stocks = mysqlTable("stocks", {
+  id: int("id").autoincrement().primaryKey(),
+  sector: mysqlEnum("sector", stockSectors).notNull(),
+  name: varchar("name", { length: 120 }).notNull(),
+  code: varchar("code", { length: 12 }).notNull().unique(),
+  marketSuffix: varchar("marketSuffix", { length: 4 }).default("KS").notNull(),
+  currentPrice: double("currentPrice").default(0).notNull(),
+  annualEps: double("annualEps").default(0).notNull(),
+  dataSource: varchar("dataSource", { length: 80 }).default("manual").notNull(),
+  lastPriceFetchedAt: timestamp("lastPriceFetchedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
-
-// TODO: Add your tables here
+export type Stock = typeof stocks.$inferSelect;
+export type InsertStock = typeof stocks.$inferInsert;
+export type StockSector = (typeof stockSectors)[number];
