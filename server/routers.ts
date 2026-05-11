@@ -5,6 +5,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { deleteStock, listStocks, updateStockPrice, upsertStock } from "./db";
+import { fetchNaverFinancialDetail, fetchNaverFinancialSummaries } from "./financials";
 import { fetchKoreanStockPrice, refreshAllStoredStockPrices } from "./stockPrice";
 
 const sectorSchema = z.enum(stockSectors);
@@ -56,6 +57,20 @@ export const appRouter = router({
       }),
 
     refreshAllPrices: adminProcedure.mutation(() => refreshAllStoredStockPrices()),
+
+    financialDetail: protectedProcedure
+      .input(z.object({ code: z.string().min(5).max(12), name: z.string().max(120).optional(), marketSuffix: z.enum(["KS", "KQ"]).default("KS") }))
+      .query(({ input }) => fetchNaverFinancialDetail(input)),
+
+    financialSummaries: protectedProcedure
+      .input(z.object({
+        stocks: z.array(z.object({
+          code: z.string().min(5).max(12),
+          name: z.string().max(120).optional(),
+          marketSuffix: z.enum(["KS", "KQ"]).default("KS"),
+        })).min(1).max(25),
+      }))
+      .query(({ input }) => fetchNaverFinancialSummaries(input.stocks)),
   }),
 });
 

@@ -2,12 +2,13 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, Database, Loader2, RefreshCcw, Save, Search, ShieldCheck, Sparkles, Trash2 } from "lucide-react";
+import { BarChart3, Database, Eye, Loader2, RefreshCcw, Save, Search, ShieldCheck, Sparkles, Trash2, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
@@ -28,6 +29,8 @@ type SectorKey =
 type ActiveSector = SectorKey | "all";
 
 type SortMode = "desc" | "asc";
+
+const TABLE_PAGE_SIZE = 25;
 
 type StockForm = {
   id?: number;
@@ -84,6 +87,18 @@ const formatNumber = (value: number | null | undefined) =>
 const formatPercent = (value: number | null | undefined) =>
   typeof value === "number" && Number.isFinite(value) ? `${value.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}%` : "-";
 
+const formatMultiple = (value: number | null | undefined) =>
+  typeof value === "number" && Number.isFinite(value) ? `${value.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}배` : "-";
+
+const formatHundredMillionKrw = (value: number | null | undefined) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "-";
+  if (Math.abs(value) >= 10000) {
+    const trillion = value / 10000;
+    return `${trillion.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}조원`;
+  }
+  return `${value.toLocaleString("ko-KR", { maximumFractionDigits: 0 })}억원`;
+};
+
 const formatDateTime = (value: Date | string | null | undefined) => {
   if (!value) return "미갱신";
   const date = value instanceof Date ? value : new Date(value);
@@ -105,14 +120,24 @@ export default function Home() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [selectedSector, setSelectedSector] = useState<ActiveSector>("all");
-  const [sortMode, setSortMode] = useState<SortMode>("desc");
+  const [sortMode, setSortMode] = useState<SortMode>("asc");
   const [searchText, setSearchText] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [refreshFailures, setRefreshFailures] = useState<BulkRefreshFailure[]>([]);
   const [form, setForm] = useState<StockForm>(() => emptyForm(DEFAULT_SECTOR));
 
   const queryInput = useMemo(() => (selectedSector === "all" ? {} : { sector: selectedSector }), [selectedSector]);
   const utils = trpc.useUtils();
   const stocksQuery = trpc.stocks.list.useQuery(queryInput);
+  const [selectedStock, setSelectedStock] = useState<NonNullable<typeof stocksQuery.data>[number] | null>(null);
+  const financialDetail = trpc.stocks.financialDetail.useQuery(
+    {
+      code: selectedStock?.code ?? "000000",
+      name: selectedStock?.name,
+      marketSuffix: (selectedStock?.marketSuffix as "KS" | "KQ" | undefined) ?? "KS",
+    },
+    { enabled: Boolean(selectedStock), retry: 1 }
+  );
   const saveStock = trpc.stocks.save.useMutation({
     onSuccess: async () => {
       toast.success("종목 데이터가 저장되었습니다.");
@@ -160,27 +185,64 @@ export default function Home() {
       ? scopedRows.filter(row => `${row.name} ${row.code} ${getMarketLabel(row.marketSuffix)} ${getSectorLabel(row.sector)} ${row.dataSource}`.toLowerCase().includes(keyword))
       : scopedRows;
     return [...list].sort((a, b) => {
-      const aYield = a.earningsYield ?? Number.NEGATIVE_INFINITY;
-      const bYield = b.earningsYield ?? Number.NEGATIVE_INFINITY;
-      return sortMode === "desc" ? bYield - aYield : aYield - bYield;
+      const aRank = a.marketRank ?? Number.POSITIVE_INFINITY;
+      const bRank = b.marketRank ?? Number.POSITIVE_INFINITY;
+      return sortMode === "asc" ? aRank - bRank : bRank - aRank;
     });
   }, [stocksQuery.data, searchText, selectedSector, sortMode]);
 
-  const chartData = useMemo(
-    () =>
-      rows.slice(0, 40).map(row => ({
-        name: row.name,
-        code: row.code,
-        earningsYield: Number((row.earningsYield ?? 0).toFixed(2)),
-      })),
-    [rows]
-  );
+  const totalPages = Math.max(1, Math.ceil(rows.length / TABLE_PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const pagedRows = useMemo(() => {
+    const startIndex = (safePage - 1) * TABLE_PAGE_SIZE;
+    return rows.slice(startIndex, startIndex + TABLE_PAGE_SIZE);
+  }, [rows, safePage]);
+  const summaryInput = useMemo(() => ({
+    stocks: pagedRows.map(row => ({
+      code: row.code,
+      name: row.name,
+      marketSuffix: row.marketSuffix as "KS" | "KQ",
+    })),
+  }), [pagedRows]);
+  const financialSummaries = trpc.stocks.financialSummaries.useQuery(summaryInput, {
+    enabled: pagedRows.length > 0,
+    retry: 0,
+    staleTime: 1000 * 60 * 10,
+  });
+  const summaryByCode = useMemo(() => new Map((financialSummaries.data ?? []).map(summary => [summary.code, summary])), [financialSummaries.data]);
 
-  const averageYield = useMemo(() => {
-    const valid = rows.map(row => row.earningsYield).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
-    if (!valid.length) return null;
-    return valid.reduce((sum, value) => sum + value, 0) / valid.length;
-  }, [rows]);
+  const chartData = useMemo(() => {
+    const successfulSummaries = (financialSummaries.data ?? [])
+      .filter(summary => summary.success && "marketCapHundredMillionKrw" in summary && typeof summary.marketCapHundredMillionKrw === "number")
+      .map(summary => {
+        const matchedRow = pagedRows.find(row => row.code.padStart(6, "0") === summary.code);
+        const marketCap = "marketCapHundredMillionKrw" in summary ? summary.marketCapHundredMillionKrw : null;
+        const per = "per" in summary ? summary.per : null;
+        const pbr = "pbr" in summary ? summary.pbr : null;
+        const operatingProfit = "latestOperatingProfitHundredMillionKrw" in summary ? summary.latestOperatingProfitHundredMillionKrw : null;
+        return {
+          name: matchedRow?.name ?? summary.name ?? summary.code,
+          value: marketCap ?? 0,
+          per,
+          pbr,
+          operatingProfit,
+          metricLabel: "시가총액",
+        };
+      })
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10);
+
+    if (successfulSummaries.length) return successfulSummaries;
+
+    return sectors.map(sector => ({
+      name: sector.shortLabel,
+      value: rows.filter(row => row.sector === sector.key).length,
+      per: null,
+      pbr: null,
+      operatingProfit: null,
+      metricLabel: "종목 수",
+    })).filter(item => item.value > 0);
+  }, [financialSummaries.data, pagedRows, rows]);
 
   const linkedCount = rows.filter(row => row.dataSource !== "manual" && row.currentPrice > 0).length;
 
@@ -190,6 +252,7 @@ export default function Home() {
 
   const handleSectorChange = (sector: ActiveSector) => {
     setSelectedSector(sector);
+    setCurrentPage(1);
     setForm(emptyForm(sector === "all" ? DEFAULT_SECTOR : sector));
   };
 
@@ -222,21 +285,21 @@ export default function Home() {
       <div className="pointer-events-none absolute right-[-5rem] top-[-5rem] h-64 w-64 rounded-[4rem] bg-blue-200/60 blur-3xl" />
       <div className="pointer-events-none absolute bottom-[-6rem] left-[18%] h-72 w-72 rounded-full bg-rose-200/70 blur-3xl" />
 
-      <section className="relative z-10 mb-8 grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
-        <div className="rounded-[2rem] bg-white/80 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.08)] ring-1 ring-white">
+      <section className="relative z-10 mb-8 grid gap-6 xl:grid-cols-[1.45fr_0.55fr]">
+        <div className="rounded-[2rem] bg-white/80 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] ring-1 ring-white sm:p-8">
           <Badge className="mb-5 bg-slate-950 text-white hover:bg-slate-950">KOSPI Top 200 Theme Dashboard</Badge>
-          <h1 className="max-w-4xl text-4xl font-black tracking-[-0.05em] text-slate-950 md:text-6xl">
-            KOSPI 상위 200개 테마별 EPS/주가 분석
+          <h1 className="max-w-5xl break-keep text-3xl font-black leading-[1.12] tracking-[-0.03em] text-slate-950 sm:text-4xl lg:text-5xl">
+            KOSPI 200 밸류에이션·실적 테마 분석
           </h1>
-          <p className="mt-5 max-w-2xl text-base font-light leading-7 text-slate-500 md:text-lg">
-            사용자가 처음 제안한 6개 섹터 대신, KOSPI 시가총액 상위 200개 종목을 산업·비즈니스 모델 중심의 11개 자체 테마로 재분류했습니다. 현재가, EPS 추정값, 데이터 출처, 마지막 갱신 시각을 함께 보여줍니다.
+          <p className="mt-5 max-w-3xl text-base font-light leading-7 text-slate-500 md:text-lg">
+            KOSPI 시가총액 상위 200개 종목을 자체 산업·비즈니스 테마로 재분류하고, 종목 클릭 시 PER, PBR, 시가총액, 영업이익, 최근 분기별 매출·영업이익·순이익을 별도 상세 패널에서 확인하도록 정리했습니다.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button
-              onClick={() => setSortMode(sortMode === "desc" ? "asc" : "desc")}
+              onClick={() => { setSortMode(sortMode === "asc" ? "desc" : "asc"); setCurrentPage(1); }}
               className="rounded-full bg-slate-950 px-5 text-white hover:bg-slate-800"
             >
-              EPS/주가 {sortMode === "desc" ? "내림차순" : "오름차순"}
+              시총순위 {sortMode === "asc" ? "상위순" : "하위순"}
             </Button>
             <Button
               variant="outline"
@@ -251,7 +314,7 @@ export default function Home() {
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
                 value={searchText}
-                onChange={event => setSearchText(event.target.value)}
+                onChange={event => { setSearchText(event.target.value); setCurrentPage(1); }}
                 placeholder="종목명·코드·출처 검색"
                 className="rounded-full border-slate-200 bg-white/80 pl-10"
               />
@@ -268,18 +331,18 @@ export default function Home() {
               </CardTitle>
               <CardDescription className="text-slate-300">{selectedSectorMeta.description}</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-3 gap-4">
+            <CardContent className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
               <div>
                 <p className="text-sm text-slate-400">종목 수</p>
-                <p className="text-3xl font-black">{rows.length}</p>
+                <p className="text-2xl font-black leading-tight sm:text-3xl">{rows.length}</p>
               </div>
               <div>
                 <p className="text-sm text-slate-400">연동 종목</p>
-                <p className="text-3xl font-black">{linkedCount}</p>
+                <p className="text-2xl font-black leading-tight sm:text-3xl">{linkedCount}</p>
               </div>
               <div>
-                <p className="text-sm text-slate-400">평균 EPS/주가</p>
-                <p className="text-3xl font-black">{formatPercent(averageYield)}</p>
+                <p className="text-sm text-slate-400">상세 지표</p>
+                <p className="break-keep text-2xl font-black leading-tight sm:text-3xl xl:text-2xl 2xl:text-3xl">PER·PBR</p>
               </div>
             </CardContent>
           </Card>
@@ -314,23 +377,33 @@ export default function Home() {
           <Card className="rounded-[2rem] border-0 bg-white/90 shadow-[0_24px_80px_rgba(15,23,42,0.06)]">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-2xl font-black tracking-tight">
-                <BarChart3 className="h-6 w-6 text-blue-500" /> 테마 내 종목 비교 차트
+                <BarChart3 className="h-6 w-6 text-blue-500" /> 페이지 내 시가총액·밸류에이션 차트
               </CardTitle>
-              <CardDescription>막대 차트는 Recharts 기반입니다. 종목 수가 많은 테마는 정렬 기준 상위 40개만 차트에 표시합니다.</CardDescription>
+              <CardDescription>현재 표에 보이는 25개 종목의 실제 시가총액을 우선 표시하고, 툴팁에서 PER·PBR·최근 영업이익을 함께 확인합니다.</CardDescription>
             </CardHeader>
-            <CardContent className="h-[360px]">
+            <CardContent className="h-[420px]">
               {stocksQuery.isLoading ? (
                 <div className="flex h-full items-center justify-center text-slate-500"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> 데이터를 불러오는 중입니다.</div>
               ) : chartData.length ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 20, right: 12, left: 0, bottom: 24 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="name" tick={{ fill: "#64748b", fontSize: 12 }} interval={0} angle={-18} textAnchor="end" height={70} />
-                    <YAxis tick={{ fill: "#64748b", fontSize: 12 }} tickFormatter={value => `${value}%`} />
-                    <Tooltip formatter={(value: number) => [`${value}%`, "EPS/주가"]} labelFormatter={label => `${label}`} />
-                    <Bar dataKey="earningsYield" radius={[12, 12, 0, 0]}>
+                  <BarChart data={chartData} layout="vertical" margin={{ top: 8, right: 32, left: 8, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+                    <XAxis type="number" hide />
+                    <YAxis type="category" dataKey="name" tick={{ fill: "#475569", fontSize: 12 }} width={132} interval={0} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      formatter={(value: number, _name, item) => {
+                        const payload = item.payload as { metricLabel?: string; per?: number | null; pbr?: number | null; operatingProfit?: number | null };
+                        const mainValue = payload.metricLabel === "시가총액" ? formatHundredMillionKrw(value) : `${value}개`;
+                        return [
+                          `${mainValue} · PER ${formatMultiple(payload.per)} · PBR ${formatMultiple(payload.pbr)} · 영업이익 ${formatHundredMillionKrw(payload.operatingProfit)}`,
+                          payload.metricLabel ?? "지표",
+                        ];
+                      }}
+                      labelFormatter={label => `${label}`}
+                    />
+                    <Bar dataKey="value" radius={[0, 12, 12, 0]}>
                       {chartData.map((entry, index) => (
-                        <Cell key={`${entry.code}-${index}`} fill={index % 2 === 0 ? "#93c5fd" : "#f9a8d4"} />
+                        <Cell key={`${entry.name}-${index}`} fill={index % 2 === 0 ? "#93c5fd" : "#f9a8d4"} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -346,7 +419,7 @@ export default function Home() {
               <CardTitle className="flex items-center gap-2 text-xl font-black">
                 <Database className="h-5 w-5 text-rose-400" /> 오너 편집 패널
               </CardTitle>
-              <CardDescription>KOSPI 200 기본 데이터는 자동 시드되며, EPS와 현재가는 오너가 수동 보정할 수 있습니다.</CardDescription>
+              <CardDescription>KOSPI 200 기본 데이터는 자동 시드되며, 현재가는 오너가 수동 보정할 수 있습니다. PER·PBR·분기 실적은 종목 클릭 시 네이버 금융에서 조회합니다.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
@@ -372,7 +445,7 @@ export default function Home() {
               <div className="space-y-2"><Label>종목코드</Label><Input disabled={!isAdmin} value={form.code} onChange={event => updateForm("code", event.target.value)} placeholder="예: 005930" /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2"><Label>현재 주가</Label><Input disabled={!isAdmin} type="number" value={form.currentPrice} onChange={event => updateForm("currentPrice", event.target.value)} /></div>
-                <div className="space-y-2"><Label>EPS(연간)</Label><Input disabled={!isAdmin} type="number" value={form.annualEps} onChange={event => updateForm("annualEps", event.target.value)} /></div>
+                <div className="space-y-2"><Label>EPS(참고)</Label><Input disabled={!isAdmin} type="number" value={form.annualEps} onChange={event => updateForm("annualEps", event.target.value)} /></div>
               </div>
               <div className="flex gap-2">
                 <Button disabled={!isAdmin || saveStock.isPending} onClick={handleSave} className="flex-1 bg-slate-950 hover:bg-slate-800">
@@ -407,10 +480,10 @@ export default function Home() {
         <Card className="overflow-hidden rounded-[2rem] border-0 bg-white/95 shadow-[0_24px_80px_rgba(15,23,42,0.06)]">
           <CardHeader>
             <CardTitle className="text-2xl font-black tracking-tight">KOSPI 200 종목 테이블</CardTitle>
-            <CardDescription>전체 보기에서는 KOSPI 상위 200개가 모두 표시되고, 테마 탭에서는 해당 테마로 분류된 종목만 표시됩니다. 출처가 NaverFinance 또는 YahooFinance이면 외부 데이터 연동 항목으로 간주합니다.</CardDescription>
+            <CardDescription>현재 페이지 25개 종목은 PER, PBR, 시가총액, 최근 영업이익 요약값을 먼저 불러오며, 행을 클릭하면 최근 분기별 매출·영업이익·순이익 상세가 열립니다.</CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto">
-            <table className="w-full min-w-[1320px] border-separate border-spacing-y-2 text-left text-sm">
+            <table className="w-full min-w-[1180px] border-separate border-spacing-y-2 text-left text-sm">
               <thead>
                 <tr className="text-slate-500">
                   <th className="px-4 py-2 font-medium">순위</th>
@@ -419,46 +492,144 @@ export default function Home() {
                   <th className="px-4 py-2 font-medium">자체 테마</th>
                   <th className="px-4 py-2 font-medium">시장</th>
                   <th className="px-4 py-2 text-right font-medium">현재 주가</th>
-                  <th className="px-4 py-2 text-right font-medium">EPS(연간)</th>
-                  <th className="px-4 py-2 text-right font-medium">EPS/주가(%)</th>
+                  <th className="px-4 py-2 text-right font-medium">PER/PBR</th>
+                  <th className="px-4 py-2 text-right font-medium">시가총액·실적</th>
                   <th className="px-4 py-2 font-medium">연동 상태</th>
-                  <th className="px-4 py-2 font-medium">데이터 출처</th>
                   <th className="px-4 py-2 font-medium">마지막 갱신</th>
                   <th className="px-4 py-2 text-right font-medium">관리</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map(row => (
-                  <tr key={row.id} className="rounded-2xl bg-slate-50/80 shadow-sm">
+                {pagedRows.map(row => {
+                  const summary = summaryByCode.get(row.code.padStart(6, "0"));
+                  const summaryLoading = financialSummaries.isLoading || financialSummaries.isFetching;
+                  return (
+                  <tr key={row.id} className="cursor-pointer rounded-2xl bg-slate-50/80 shadow-sm transition hover:bg-blue-50/80" onClick={() => setSelectedStock(row)}>
                     <td className="rounded-l-2xl px-4 py-3 text-slate-500">{row.marketRank ?? "-"}</td>
                     <td className="px-4 py-3 font-bold text-slate-950">{row.name}</td>
                     <td className="px-4 py-3 text-slate-500">{row.code}.{row.marketSuffix}</td>
                     <td className="px-4 py-3"><Badge variant="secondary" className="rounded-full bg-blue-50 text-blue-700">{getSectorLabel(row.sector)}</Badge></td>
                     <td className="px-4 py-3 text-slate-500">{getMarketLabel(row.marketSuffix)}</td>
                     <td className="px-4 py-3 text-right">{formatNumber(row.currentPrice)}원</td>
-                    <td className="px-4 py-3 text-right">{formatNumber(row.annualEps)}원</td>
-                    <td className="px-4 py-3 text-right font-black text-slate-950">{formatPercent(row.earningsYield)}</td>
+                    <td className="px-4 py-3 text-right text-xs text-slate-700">
+                      {summary?.success ? (
+                        <div className="space-y-1 whitespace-nowrap">
+                          <p className="font-black text-slate-950">PER {formatMultiple(summary.per)}</p>
+                          <p>PBR {formatMultiple(summary.pbr)}</p>
+                        </div>
+                      ) : summaryLoading ? <span className="text-slate-400">요약 수집 중</span> : summary && !summary.success ? <span className="text-amber-700">요약 실패</span> : <span className="text-slate-400">대기</span>}
+                    </td>
+                    <td className="px-4 py-3 text-right text-xs text-slate-700">
+                      {summary?.success ? (
+                        <div className="space-y-1 whitespace-nowrap">
+                          <p className="font-black text-slate-950">{formatHundredMillionKrw(summary.marketCapHundredMillionKrw)}</p>
+                          <p>영업이익 {formatHundredMillionKrw(summary.latestOperatingProfitHundredMillionKrw)}</p>
+                        </div>
+                      ) : summaryLoading ? <span className="text-slate-400">조회 중</span> : summary && !summary.success ? <span className="text-amber-700">상세에서 재시도</span> : <span className="text-slate-400">대기</span>}
+                    </td>
                     <td className="px-4 py-3"><Badge variant="outline" className="rounded-full bg-white">{getConnectionLabel(row.dataSource, row.currentPrice, row.annualEps)}</Badge></td>
-                    <td className="px-4 py-3 text-xs text-slate-500">{row.dataSource}</td>
                     <td className="px-4 py-3 text-xs text-slate-500">{formatDateTime(row.lastPriceFetchedAt)}</td>
                     <td className="rounded-r-2xl px-4 py-3">
                       <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="outline" disabled={!isAdmin || refreshPrice.isPending} onClick={() => refreshPrice.mutate({ id: row.id, code: row.code, marketSuffix: row.marketSuffix as "KS" | "KQ" })}>
+                        <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); setSelectedStock(row); }}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={!isAdmin || refreshPrice.isPending} onClick={(event) => { event.stopPropagation(); refreshPrice.mutate({ id: row.id, code: row.code, marketSuffix: row.marketSuffix as "KS" | "KQ" }); }}>
                           <RefreshCcw className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="outline" disabled={!isAdmin} onClick={() => handleEdit(row)}>수정</Button>
-                        <Button size="sm" variant="destructive" disabled={!isAdmin} onClick={() => deleteStock.mutate({ id: row.id })}>
+                        <Button size="sm" variant="outline" disabled={!isAdmin} onClick={(event) => { event.stopPropagation(); handleEdit(row); }}>수정</Button>
+                        <Button size="sm" variant="destructive" disabled={!isAdmin} onClick={(event) => { event.stopPropagation(); deleteStock.mutate({ id: row.id }); }}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
+            <div className="mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+              <p>표시 범위: {rows.length ? `${(safePage - 1) * TABLE_PAGE_SIZE + 1}-${Math.min(safePage * TABLE_PAGE_SIZE, rows.length)}` : "0"} / {rows.length}개 · 재무 요약은 현재 페이지 단위로 수집됩니다.</p>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" disabled={safePage <= 1} onClick={() => setCurrentPage(page => Math.max(1, page - 1))}>이전</Button>
+                <span className="min-w-20 text-center font-semibold text-slate-900">{safePage} / {totalPages}</span>
+                <Button variant="outline" size="sm" disabled={safePage >= totalPages} onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))}>다음</Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </section>
+
+      <Dialog open={Boolean(selectedStock)} onOpenChange={(open) => { if (!open) setSelectedStock(null); }}>
+        <DialogContent className="max-h-[88vh] overflow-y-auto border-0 bg-white text-slate-950 sm:max-w-5xl">
+          <DialogHeader>
+            <DialogTitle className="flex flex-wrap items-center gap-3 text-2xl font-black">
+              <TrendingUp className="h-6 w-6 text-blue-500" />
+              {selectedStock?.name ?? "종목"} 재무 상세
+            </DialogTitle>
+            <DialogDescription>
+              네이버 금융 기준 PER, PBR, 시가총액과 최근 분기별 매출·영업이익·순이익을 조회합니다. 단위는 네이버 금융 표기 기준의 억원입니다.
+            </DialogDescription>
+          </DialogHeader>
+
+          {!selectedStock ? null : financialDetail.isLoading ? (
+            <div className="flex min-h-56 items-center justify-center rounded-3xl bg-slate-50 text-slate-500">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 재무 상세 정보를 불러오는 중입니다.
+            </div>
+          ) : financialDetail.error ? (
+            <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
+              <p className="font-semibold">재무지표 자동 수집에 실패했습니다.</p>
+              <p className="mt-2">{financialDetail.error.message} 네이버 금융 페이지 구조 변경, 일시적 차단, 외부 응답 지연이 원인일 수 있습니다.</p>
+              <p className="mt-2">수동 확인이 필요하면 네이버 금융에서 종목코드 <span className="font-black">{selectedStock.code}</span>를 검색한 뒤, 종목분석의 주요재무정보 표에서 PER, PBR, 시가총액, 분기별 매출·영업이익·순이익을 확인하세요.</p>
+              <a className="mt-3 inline-flex rounded-full bg-white px-4 py-2 text-sm font-bold text-amber-900 underline" href={`https://finance.naver.com/item/main.naver?code=${selectedStock.code}`} target="_blank" rel="noreferrer">네이버 금융 원문 열기</a>
+            </div>
+          ) : financialDetail.data ? (
+            <div className="space-y-5">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                {[
+                  ["PER", formatMultiple(financialDetail.data.per)],
+                  ["PBR", formatMultiple(financialDetail.data.pbr)],
+                  ["시가총액", formatHundredMillionKrw(financialDetail.data.marketCapHundredMillionKrw)],
+                  ["최근 영업이익", formatHundredMillionKrw(financialDetail.data.latestOperatingProfitHundredMillionKrw)],
+                  ["최근 순이익", formatHundredMillionKrw(financialDetail.data.latestNetIncomeHundredMillionKrw)],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-3xl bg-slate-50 p-4">
+                    <p className="text-xs font-semibold text-slate-500">{label}</p>
+                    <p className="mt-2 break-keep text-xl font-black text-slate-950">{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="overflow-x-auto rounded-3xl border border-slate-100">
+                <table className="w-full min-w-[720px] text-left text-sm">
+                  <thead className="bg-slate-50 text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold">분기</th>
+                      <th className="px-4 py-3 text-right font-semibold">매출</th>
+                      <th className="px-4 py-3 text-right font-semibold">영업이익</th>
+                      <th className="px-4 py-3 text-right font-semibold">순이익</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {financialDetail.data.quarterly.length ? financialDetail.data.quarterly.map(row => (
+                      <tr key={row.period} className="border-t border-slate-100">
+                        <td className="px-4 py-3 font-bold text-slate-900">{row.period}</td>
+                        <td className="px-4 py-3 text-right">{formatHundredMillionKrw(row.revenue)}</td>
+                        <td className="px-4 py-3 text-right">{formatHundredMillionKrw(row.operatingProfit)}</td>
+                        <td className="px-4 py-3 text-right">{formatHundredMillionKrw(row.netIncome)}</td>
+                      </tr>
+                    )) : (
+                      <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-500">최근 분기 실적 표를 찾지 못했습니다.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <p className="text-xs leading-5 text-slate-500">출처: {financialDetail.data.source} · 조회 시각: {formatDateTime(financialDetail.data.fetchedAt)}{financialDetail.data.note ? ` · ${financialDetail.data.note}` : ""}</p>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
