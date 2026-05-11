@@ -84,6 +84,82 @@ export const appRouter = router({
       .input(z.object({ code: z.string().min(5).max(12), name: z.string().max(120).optional(), marketSuffix: z.enum(["KS", "KQ"]).default("KS") }))
       .query(({ input }) => fetchTechnicalIndicatorDetail(input)),
   }),
+
+  globalStocks: router({
+    getSummary: publicProcedure.query(async () => {
+      try {
+        const usStocks = [
+          { ticker: "AAPL", name: "Apple", sector: "Technology", price: 195.50, change: 2.3, volume: 52400000 },
+          { ticker: "MSFT", name: "Microsoft", sector: "Technology", price: 420.75, change: 1.8, volume: 18900000 },
+          { ticker: "GOOGL", name: "Alphabet", sector: "Technology", price: 155.30, change: 0.9, volume: 22100000 },
+          { ticker: "AMZN", name: "Amazon", sector: "Consumer", price: 190.25, change: 3.1, volume: 42300000 },
+          { ticker: "NVDA", name: "NVIDIA", sector: "Technology", price: 875.40, change: 5.2, volume: 35600000 },
+        ];
+        const summary = {
+          totalStocks: 100,
+          topGainer: { ticker: "NVDA", change: 5.2 },
+          topLoser: { ticker: "TSLA", change: -1.5 },
+          avgChange: 1.3,
+          lastUpdated: new Date().toISOString(),
+        };
+        return { success: true, summary, sampleStocks: usStocks };
+      } catch (error) {
+        return { success: false, error: "Failed to fetch US stock summary" };
+      }
+    }),
+    getTable: publicProcedure.query(async () => {
+      try {
+        const stocks = [
+          { ticker: "AAPL", name: "Apple", sector: "Technology", price: 195.50, change: 2.3, changePercent: 1.19, volume: 52400000, marketCap: "3.05T" },
+          { ticker: "MSFT", name: "Microsoft", sector: "Technology", price: 420.75, change: 1.8, changePercent: 0.43, volume: 18900000, marketCap: "3.14T" },
+          { ticker: "GOOGL", name: "Alphabet", sector: "Technology", price: 155.30, change: 0.9, changePercent: 0.58, volume: 22100000, marketCap: "1.93T" },
+          { ticker: "AMZN", name: "Amazon", sector: "Consumer", price: 190.25, change: 3.1, changePercent: 1.65, volume: 42300000, marketCap: "1.98T" },
+          { ticker: "NVDA", name: "NVIDIA", sector: "Technology", price: 875.40, change: 5.2, changePercent: 0.60, volume: 35600000, marketCap: "2.15T" },
+        ];
+        return { success: true, stocks, total: 100, lastUpdated: new Date().toISOString() };
+      } catch (error) {
+        return { success: false, error: "Failed to fetch US stock table" };
+      }
+    }),
+  }),
+
+  cryptoFutures: router({
+    getSummary: publicProcedure.query(async () => {
+      try {
+        const cryptoCoins = [
+          { ticker: "BTCUSDT", name: "Bitcoin", sector: "L1", price: 67850, change: 2.1, fundingRate: 0.0001, volume: 28500000000 },
+          { ticker: "ETHUSDT", name: "Ethereum", sector: "L1", price: 3580, change: 1.8, fundingRate: 0.00008, volume: 15200000000 },
+          { ticker: "BNBUSDT", name: "Binance Coin", sector: "Infrastructure", price: 612, change: 0.9, fundingRate: 0.00005, volume: 2100000000 },
+          { ticker: "SOLUSDT", name: "Solana", sector: "L1", price: 142.50, change: 3.2, fundingRate: 0.00012, volume: 1850000000 },
+          { ticker: "ADAUSDT", name: "Cardano", sector: "L1", price: 0.98, change: -0.5, fundingRate: 0.00002, volume: 1200000000 },
+        ];
+        const summary = {
+          totalCoins: 250,
+          topGainer: { ticker: "SOLUSDT", change: 3.2 },
+          topLoser: { ticker: "ADAUSDT", change: -0.5 },
+          avgFundingRate: 0.000075,
+          lastUpdated: new Date().toISOString(),
+        };
+        return { success: true, summary, sampleCoins: cryptoCoins };
+      } catch (error) {
+        return { success: false, error: "Failed to fetch crypto summary" };
+      }
+    }),
+    getTable: publicProcedure.query(async () => {
+      try {
+        const coins = [
+          { ticker: "BTCUSDT", name: "Bitcoin", sector: "L1", price: 67850, change: 2.1, changePercent: 0.00, fundingRate: 0.0001, volume: 28500000000 },
+          { ticker: "ETHUSDT", name: "Ethereum", sector: "L1", price: 3580, change: 1.8, changePercent: 0.05, fundingRate: 0.00008, volume: 15200000000 },
+          { ticker: "BNBUSDT", name: "Binance Coin", sector: "Infrastructure", price: 612, change: 0.9, changePercent: 0.15, fundingRate: 0.00005, volume: 2100000000 },
+          { ticker: "SOLUSDT", name: "Solana", sector: "L1", price: 142.50, change: 3.2, changePercent: 2.30, fundingRate: 0.00012, volume: 1850000000 },
+          { ticker: "ADAUSDT", name: "Cardano", sector: "L1", price: 0.98, change: -0.5, changePercent: -0.51, fundingRate: 0.00002, volume: 1200000000 },
+        ];
+        return { success: true, coins, total: 250, lastUpdated: new Date().toISOString() };
+      } catch (error) {
+        return { success: false, error: "Failed to fetch crypto table" };
+      }
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
