@@ -599,13 +599,13 @@ export default function Home() {
         <Card className="overflow-hidden rounded-[2rem] border-0 bg-white/95 shadow-[0_24px_80px_rgba(15,23,42,0.06)]">
           <CardHeader>
             <CardTitle className="text-2xl font-black tracking-tight">KOSPI 200 종목 테이블</CardTitle>
-            <CardDescription>헤더를 클릭하면 내림차순 → 오름차순 → 정렬취소 순서로 전환됩니다. 현재 페이지 25개 종목은 PER, PBR, 시가총액, 최근 영업이익 요약값을 먼저 불러오며, 행을 클릭하면 분기 실적과 보조지표 10개가 열립니다.</CardDescription>
+            <CardDescription>헤더를 클릭하면 내림차순 → 오름차순 → 정렬취소 순서로 전환됩니다. 현재 페이지 25개 종목은 PER, PBR, 시가총액, 최근 영업이익 요약값을 먼저 불러오며, 외부 자료가 일시적으로 지연되면 행 클릭 상세조회에서 다시 확인할 수 있습니다.</CardDescription>
           </CardHeader>
-          <CardContent className="overflow-x-auto">
+          <CardContent className="max-w-full overflow-x-auto">
             <div className="mb-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500">
-              현재 정렬: <span className="font-black text-slate-900">{currentSortLabel}</span> · 모바일에서는 표를 좌우로 밀어 EPS, PER/PBR, 시가총액, 보조지표 상세 진입 컬럼까지 확인하세요.
+              현재 정렬: <span className="font-black text-slate-900">{currentSortLabel}</span> · 최신 화면 표식: KOSPI 200 테마·PER/PBR·RSI. 폭이 좁은 화면과 크롬 확대 상태에서는 표 영역만 좌우로 밀어 보세요. 공개 사이트가 이전 EPS 화면으로 보이면 Ctrl+Shift+R로 강력 새로고침하세요.
             </div>
-            <table className="w-full min-w-[1480px] border-separate border-spacing-y-2 text-left text-sm">
+            <table className="w-full min-w-[1320px] border-separate border-spacing-y-2 text-left text-sm">
               <thead>
                 <tr className="text-slate-500">
                   <th className="px-2 py-2">{sortableHeader("순위", "marketRank")}</th>
@@ -639,21 +639,21 @@ export default function Home() {
                     <td className="px-4 py-3 text-right">
                       <Badge className="rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-50">{formatPercent(row.earningsYield)}</Badge>
                     </td>
-                    <td className="px-4 py-3 text-right text-xs text-slate-700">
+                    <td className="px-4 py-3 text-right text-xs text-slate-700" title={summary && !summary.success ? summary.error : undefined}>
                       {summary?.success ? (
                         <div className="space-y-1 whitespace-nowrap">
                           <p className="font-black text-slate-950">PER {formatMultiple(summary.per)}</p>
                           <p>PBR {formatMultiple(summary.pbr)}</p>
                         </div>
-                      ) : summaryLoading ? <span className="text-slate-400">요약 수집 중</span> : summary && !summary.success ? <span className="text-amber-700">요약 실패</span> : <span className="text-slate-400">대기</span>}
+                      ) : summaryLoading ? <span className="text-slate-400">요약 수집 중</span> : summary && !summary.success ? <button type="button" className="rounded-full bg-slate-100 px-2 py-1 text-slate-600 transition hover:bg-blue-50 hover:text-blue-700" onClick={(event) => { event.stopPropagation(); setSelectedStock(row); }} aria-label={`${row.name} 상세 재무지표 다시 조회`}>상세 조회</button> : <span className="text-slate-400">대기</span>}
                     </td>
-                    <td className="px-4 py-3 text-right text-xs text-slate-700">
+                    <td className="px-4 py-3 text-right text-xs text-slate-700" title={summary && !summary.success ? summary.error : undefined}>
                       {summary?.success ? (
                         <div className="space-y-1 whitespace-nowrap">
                           <p className="font-black text-slate-950">{formatHundredMillionKrw(summary.marketCapHundredMillionKrw)}</p>
                           <p>영업이익 {formatHundredMillionKrw(summary.latestOperatingProfitHundredMillionKrw)}</p>
                         </div>
-                      ) : summaryLoading ? <span className="text-slate-400">조회 중</span> : summary && !summary.success ? <span className="text-amber-700">상세에서 재시도</span> : <span className="text-slate-400">대기</span>}
+                      ) : summaryLoading ? <span className="text-slate-400">조회 중</span> : summary && !summary.success ? <button type="button" className="rounded-full bg-slate-100 px-2 py-1 text-slate-600 transition hover:bg-blue-50 hover:text-blue-700" onClick={(event) => { event.stopPropagation(); setSelectedStock(row); }} aria-label={`${row.name} 상세 실적 다시 조회`}>상세 조회</button> : <span className="text-slate-400">대기</span>}
                     </td>
                     <td className="px-4 py-3"><Badge variant="outline" className="rounded-full bg-white">{getConnectionLabel(row.dataSource, row.currentPrice, row.annualEps)}</Badge></td>
                     <td className="px-4 py-3 text-xs text-slate-500">{formatDateTime(row.lastPriceFetchedAt)}</td>
