@@ -1,8 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("./_core/dataApi", () => ({
+  callDataApi: vi.fn(),
+}));
 import { appRouter } from "./routers";
 import { calculateEarningsYield } from "./db";
 import { extractLatestPrice } from "./stockPrice";
-import { calculateRsi, calculateTechnicalIndicators, type PriceCandle } from "./technicalIndicators";
+import { callDataApi } from "./_core/dataApi";
+import { calculateRsi, calculateTechnicalIndicators, fetchTechnicalIndicatorDetail, type PriceCandle } from "./technicalIndicators";
 import type { TrpcContext } from "./_core/context";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
@@ -46,6 +51,10 @@ describe("calculateEarningsYield", () => {
 });
 
 describe("technical indicators", () => {
+  beforeEach(() => {
+    vi.mocked(callDataApi).mockReset();
+  });
+
   const candles: PriceCandle[] = Array.from({ length: 60 }, (_, index) => {
     const close = 10000 + index * 120;
     return {
@@ -77,6 +86,46 @@ describe("technical indicators", () => {
     ]);
     expect(detail.high52Week).toBe(candles[candles.length - 1].high);
     expect(detail.low52Week).toBe(candles[0].low);
+  });
+
+  it("requests Yahoo chart history with string query parameters and returns price history", async () => {
+    const timestamps = candles.map((_, index) => Date.UTC(2026, 0, index + 1) / 1000);
+    vi.mocked(callDataApi).mockResolvedValueOnce({
+      chart: {
+        result: [
+          {
+            timestamp: timestamps,
+            meta: { symbol: "005930.KS" },
+            indicators: {
+              quote: [
+                {
+                  open: candles.map(candle => candle.open),
+                  high: candles.map(candle => candle.high),
+                  low: candles.map(candle => candle.low),
+                  close: candles.map(candle => candle.close),
+                  volume: candles.map(candle => candle.volume),
+                },
+              ],
+            },
+          },
+        ],
+      },
+    });
+
+    const detail = await fetchTechnicalIndicatorDetail({ code: "005930", name: "삼성전자", marketSuffix: "KS" });
+
+    expect(callDataApi).toHaveBeenCalledWith("YahooFinance/get_stock_chart", {
+      query: expect.objectContaining({
+        symbol: "005930.KS",
+        region: "KR",
+        interval: "1d",
+        range: "1y",
+        includeAdjustedClose: "true",
+      }),
+    });
+    expect(detail.symbol).toBe("005930.KS");
+    expect(detail.priceHistory).toHaveLength(candles.length);
+    expect(detail.priceHistory[0]).toMatchObject({ date: "2026-01-01", close: candles[0].close });
   });
 });
 

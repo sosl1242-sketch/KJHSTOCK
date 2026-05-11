@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { Activity, ArrowDown, ArrowUp, ArrowUpDown, BarChart3, Database, Eye, Loader2, RefreshCcw, Save, Search, ShieldCheck, Sparkles, Trash2, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 
 type SectorKey =
@@ -30,6 +30,7 @@ type ActiveSector = SectorKey | "all";
 
 type SortDirection = "desc" | "asc";
 type SortKey = "marketRank" | "name" | "code" | "sector" | "marketSuffix" | "currentPrice" | "annualEps" | "earningsYield" | "lastPriceFetchedAt";
+type PriceChartFrame = "daily" | "weekly" | "monthly";
 
 const TABLE_PAGE_SIZE = 25;
 
@@ -131,6 +132,7 @@ export default function Home() {
   const utils = trpc.useUtils();
   const stocksQuery = trpc.stocks.list.useQuery(queryInput);
   const [selectedStock, setSelectedStock] = useState<NonNullable<typeof stocksQuery.data>[number] | null>(null);
+  const [priceChartFrame, setPriceChartFrame] = useState<PriceChartFrame>("daily");
   const financialDetail = trpc.stocks.financialDetail.useQuery(
     {
       code: selectedStock?.code ?? "000000",
@@ -241,39 +243,86 @@ export default function Home() {
     staleTime: 1000 * 60 * 10,
   });
   const summaryByCode = useMemo(() => new Map((financialSummaries.data ?? []).map(summary => [summary.code, summary])), [financialSummaries.data]);
+  const priceChartFrameLabels: Record<PriceChartFrame, string> = { daily: "일봉", weekly: "주봉", monthly: "월봉" };
+  const priceChartData = useMemo(() => {
+    const history = technicalIndicators.data?.priceHistory ?? [];
+    if (priceChartFrame === "daily") {
+      return history.map(candle => ({
+        date: candle.date.slice(5),
+        fullDate: candle.date,
+        close: candle.close,
+        high: candle.high,
+        low: candle.low,
+        volume: candle.volume,
+      }));
+    }
+
+    const grouped = new Map<string, { date: string; fullDate: string; close: number; high: number; low: number; volume: number }>();
+    history.forEach(candle => {
+      const date = new Date(`${candle.date}T00:00:00Z`);
+      const key = priceChartFrame === "weekly"
+        ? new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - ((date.getUTCDay() + 6) % 7))).toISOString().slice(0, 10)
+        : candle.date.slice(0, 7);
+      const existing = grouped.get(key);
+      grouped.set(key, {
+        date: priceChartFrame === "weekly" ? key.slice(5) : key,
+        fullDate: candle.date,
+        close: candle.close,
+        high: existing ? Math.max(existing.high, candle.high) : candle.high,
+        low: existing ? Math.min(existing.low, candle.low) : candle.low,
+        volume: (existing?.volume ?? 0) + candle.volume,
+      });
+    });
+    return Array.from(grouped.values()).sort((a, b) => a.fullDate.localeCompare(b.fullDate));
+  }, [technicalIndicators.data?.priceHistory, priceChartFrame]);
 
   const chartData = useMemo(() => {
-    const successfulSummaries = (financialSummaries.data ?? [])
-      .filter(summary => summary.success && "marketCapHundredMillionKrw" in summary && typeof summary.marketCapHundredMillionKrw === "number")
-      .map(summary => {
-        const matchedRow = pagedRows.find(row => row.code.padStart(6, "0") === summary.code);
-        const marketCap = "marketCapHundredMillionKrw" in summary ? summary.marketCapHundredMillionKrw : null;
-        const per = "per" in summary ? summary.per : null;
-        const pbr = "pbr" in summary ? summary.pbr : null;
-        const operatingProfit = "latestOperatingProfitHundredMillionKrw" in summary ? summary.latestOperatingProfitHundredMillionKrw : null;
+    if (selectedSector === "all") {
+      return sectors.map(sector => ({
+        name: sector.shortLabel,
+        value: rows.filter(row => row.sector === sector.key).length,
+        per: null,
+        pbr: null,
+        operatingProfit: null,
+        metricLabel: "종목 수",
+        marketRank: null as number | null,
+        code: sector.key,
+      })).filter(item => item.value > 0);
+    }
+
+    const successfulSummaryByCode = new Map(
+      (financialSummaries.data ?? [])
+        .filter(summary => summary.success)
+        .map(summary => [summary.code, summary])
+    );
+
+    return pagedRows
+      .slice(0, 20)
+      .map(row => {
+        const summary = successfulSummaryByCode.get(row.code.padStart(6, "0"));
+        const marketCap = summary && "marketCapHundredMillionKrw" in summary && typeof summary.marketCapHundredMillionKrw === "number"
+          ? summary.marketCapHundredMillionKrw
+          : null;
+        const per = summary && "per" in summary ? summary.per : null;
+        const pbr = summary && "pbr" in summary ? summary.pbr : null;
+        const operatingProfit = summary && "latestOperatingProfitHundredMillionKrw" in summary ? summary.latestOperatingProfitHundredMillionKrw : null;
         return {
-          name: matchedRow?.name ?? summary.name ?? summary.code,
-          value: marketCap ?? 0,
+          name: row.name,
+          value: marketCap ?? row.currentPrice,
           per,
           pbr,
           operatingProfit,
-          metricLabel: "시가총액",
+          metricLabel: marketCap ? "시가총액" : "현재가",
+          marketRank: row.marketRank ?? null,
+          code: row.code,
         };
       })
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 10);
-
-    if (successfulSummaries.length) return successfulSummaries;
-
-    return sectors.map(sector => ({
-      name: sector.shortLabel,
-      value: rows.filter(row => row.sector === sector.key).length,
-      per: null,
-      pbr: null,
-      operatingProfit: null,
-      metricLabel: "종목 수",
-    })).filter(item => item.value > 0);
-  }, [financialSummaries.data, pagedRows, rows]);
+      .filter(item => item.value > 0)
+      .sort((a, b) => {
+        if (a.metricLabel === "시가총액" && b.metricLabel === "시가총액") return b.value - a.value;
+        return (a.marketRank ?? Number.POSITIVE_INFINITY) - (b.marketRank ?? Number.POSITIVE_INFINITY);
+      });
+  }, [financialSummaries.data, pagedRows, rows, selectedSector]);
 
    const linkedCount = rows.filter(row => row.dataSource !== "manual" && row.currentPrice > 0).length;
   const validEarningsYields = rows
@@ -355,6 +404,56 @@ export default function Home() {
     if (status === "oversold" || status === "watch_low") return "border-blue-200 bg-blue-50 text-blue-800";
     return "border-slate-200 bg-slate-50 text-slate-700";
   };
+  const priceChartPanel = !selectedStock ? null : (
+    <div className="rounded-[2rem] border border-slate-100 bg-white p-4 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h3 className="flex items-center gap-2 text-lg font-black text-slate-950"><BarChart3 className="h-5 w-5 text-blue-500" /> 가격 차트</h3>
+          <p className="mt-1 text-sm text-slate-500">야후 가격 이력 기준으로 일봉·주봉·월봉 종가 흐름을 전환해 확인합니다.</p>
+        </div>
+        <Tabs value={priceChartFrame} onValueChange={(value) => setPriceChartFrame(value as PriceChartFrame)}>
+          <TabsList className="rounded-full bg-slate-100 p-1">
+            <TabsTrigger value="daily" className="rounded-full px-4">일</TabsTrigger>
+            <TabsTrigger value="weekly" className="rounded-full px-4">주</TabsTrigger>
+            <TabsTrigger value="monthly" className="rounded-full px-4">월</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+      {technicalIndicators.isLoading ? (
+        <div className="mt-4 flex min-h-64 items-center justify-center rounded-3xl bg-slate-50 text-slate-500">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 가격 차트를 불러오는 중입니다.
+        </div>
+      ) : technicalIndicators.error ? (
+        <div className="mt-4 rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          가격 차트 데이터를 가져오지 못했습니다. {technicalIndicators.error.message}
+        </div>
+      ) : priceChartData.length ? (
+        <div className="mt-4 h-72 rounded-3xl bg-slate-50 p-3">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={priceChartData} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="stockPriceGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#2563eb" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#2563eb" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} minTickGap={20} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: "#64748b" }} tickFormatter={(value) => `${Number(value).toLocaleString("ko-KR")}`} width={74} tickLine={false} axisLine={false} />
+              <Tooltip
+                formatter={(value, name) => [typeof value === "number" ? `${value.toLocaleString("ko-KR")}원` : value, name === "close" ? "종가" : name]}
+                labelFormatter={(_, payload) => payload?.[0]?.payload?.fullDate ? `${payload[0].payload.fullDate} · ${priceChartFrameLabels[priceChartFrame]}` : priceChartFrameLabels[priceChartFrame]}
+                contentStyle={{ borderRadius: 18, border: "1px solid #e2e8f0", boxShadow: "0 20px 60px rgba(15, 23, 42, 0.12)" }}
+              />
+              <Area type="monotone" dataKey="close" stroke="#2563eb" strokeWidth={3} fill="url(#stockPriceGradient)" dot={false} activeDot={{ r: 4 }} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <div className="mt-4 rounded-3xl bg-slate-50 p-6 text-sm text-slate-500">표시할 가격 이력이 없습니다.</div>
+      )}
+    </div>
+  );
   const technicalPanel = !selectedStock ? null : (
     <div className="rounded-[2rem] border border-slate-100 bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -500,11 +599,11 @@ export default function Home() {
           <Card className="rounded-[2rem] border-0 bg-white/90 shadow-[0_24px_80px_rgba(15,23,42,0.06)]">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-2xl font-black tracking-tight">
-                <BarChart3 className="h-6 w-6 text-blue-500" /> 페이지 내 시가총액·밸류에이션 차트
+                <BarChart3 className="h-6 w-6 text-blue-500" /> {selectedSector === "all" ? "테마별 구성 차트" : `${selectedSectorMeta.shortLabel} 대표 종목 20개 차트`}
               </CardTitle>
-              <CardDescription>현재 표에 보이는 25개 종목의 실제 시가총액을 우선 표시하고, 툴팁에서 PER, PBR, 최근 영업이익을 각각 확인합니다.</CardDescription>
+              <CardDescription>{selectedSector === "all" ? "전체 200개 종목을 자체 테마별 종목 수로 비교합니다." : "선택한 세부 테마 안에서 시가총액을 우선 사용하고, 아직 수집 전이면 현재가 기준으로 대표 종목을 최대 20개까지 비교합니다."}</CardDescription>
             </CardHeader>
-            <CardContent className="h-[420px]">
+            <CardContent className={selectedSector === "all" ? "h-[420px]" : "h-[620px]"}>
               {stocksQuery.isLoading ? (
                 <div className="flex h-full items-center justify-center text-slate-500"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> 데이터를 불러오는 중입니다.</div>
               ) : chartData.length ? (
@@ -515,12 +614,17 @@ export default function Home() {
                     <YAxis type="category" dataKey="name" tick={{ fill: "#475569", fontSize: 12 }} width={132} interval={0} tickLine={false} axisLine={false} />
                     <Tooltip
                       formatter={(value: number, _name, item) => {
-                        const payload = item.payload as { metricLabel?: string; per?: number | null; pbr?: number | null; operatingProfit?: number | null };
-                        const mainValue = payload.metricLabel === "시가총액" ? formatHundredMillionKrw(value) : `${value}개`;
-                        return [
-                          `${mainValue} · PER ${formatMultiple(payload.per)} · PBR ${formatMultiple(payload.pbr)} · 영업이익 ${formatHundredMillionKrw(payload.operatingProfit)}`,
-                          payload.metricLabel ?? "지표",
-                        ];
+                        const payload = item.payload as { metricLabel?: string; per?: number | null; pbr?: number | null; operatingProfit?: number | null; marketRank?: number | null; code?: string };
+                        const metricLabel = payload.metricLabel ?? "지표";
+                        const mainValue = metricLabel === "시가총액"
+                          ? formatHundredMillionKrw(value)
+                          : metricLabel === "현재가"
+                            ? `${formatNumber(value)}원`
+                            : `${value}개`;
+                        const detail = metricLabel === "종목 수"
+                          ? `${mainValue}`
+                          : `${mainValue} · 순위 ${payload.marketRank ?? "-"} · PER ${formatMultiple(payload.per)} · PBR ${formatMultiple(payload.pbr)} · 영업이익 ${formatHundredMillionKrw(payload.operatingProfit)}`;
+                        return [detail, metricLabel];
                       }}
                       labelFormatter={label => `${label}`}
                     />
@@ -532,7 +636,7 @@ export default function Home() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex h-full items-center justify-center text-slate-500">표시할 종목 데이터가 없습니다.</div>
+                <div className="flex h-full items-center justify-center text-slate-500">{selectedSector === "all" ? "표시할 테마 데이터가 없습니다." : "표시할 대표 종목 데이터가 없습니다."}</div>
               )}
             </CardContent>
           </Card>
@@ -633,7 +737,7 @@ export default function Home() {
                   const summary = summaryByCode.get(row.code.padStart(6, "0"));
                   const summaryLoading = financialSummaries.isLoading || financialSummaries.isFetching;
                   return (
-                  <tr key={row.id} className="cursor-pointer rounded-2xl bg-slate-50/80 shadow-sm transition hover:bg-blue-50/80" onClick={() => setSelectedStock(row)}>
+                    <tr key={row.id} className="cursor-pointer rounded-2xl bg-slate-50/80 shadow-sm transition hover:bg-blue-50/80" onClick={() => setSelectedStock(row)}>
                     <td className="rounded-l-2xl px-4 py-3 text-slate-500">{row.marketRank ?? "-"}</td>
                     <td className="px-4 py-3 font-bold text-slate-950">{row.name}</td>
                     <td className="px-4 py-3 text-slate-500">{row.code}.{row.marketSuffix}</td>
@@ -674,7 +778,7 @@ export default function Home() {
                         </Button>
                       </div>
                     </td>
-                  </tr>
+                    </tr>
                   );
                 })}
               </tbody>
@@ -715,6 +819,7 @@ export default function Home() {
                 <p className="mt-2">수동 확인이 필요하면 네이버 금융에서 종목코드 <span className="font-black">{selectedStock.code}</span>를 검색한 뒤, 종목분석의 주요재무정보 표에서 PER, PBR, 시가총액, 분기별 매출·영업이익·순이익을 확인하세요.</p>
                 <a className="mt-3 inline-flex rounded-full bg-white px-4 py-2 text-sm font-bold text-amber-900 underline" href={`https://finance.naver.com/item/main.naver?code=${selectedStock.code}`} target="_blank" rel="noreferrer">네이버 금융 원문 열기</a>
               </div>
+              {priceChartPanel}
               {technicalPanel}
             </div>
           ) : financialDetail.data ? (
@@ -761,6 +866,7 @@ export default function Home() {
                 </table>
               </div>
 
+              {priceChartPanel}
               {technicalPanel}
               <p className="text-xs leading-5 text-slate-500">출처: {financialDetail.data.source} · 조회 시각: {formatDateTime(financialDetail.data.fetchedAt)}{financialDetail.data.note ? ` · ${financialDetail.data.note}` : ""}</p>
             </div>

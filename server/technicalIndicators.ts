@@ -54,6 +54,7 @@ export type TechnicalIndicatorDetail = {
   high52Week: number | null;
   low52Week: number | null;
   indicators: TechnicalIndicator[];
+  priceHistory: PriceCandle[];
   source: "YahooFinance";
   fetchedAt: string;
   note?: string;
@@ -304,7 +305,7 @@ export async function fetchTechnicalIndicatorDetail(input: { code: string; name?
           region: "KR",
           interval: "1d",
           range: "1y",
-          includeAdjustedClose: true,
+          includeAdjustedClose: "true",
         },
       });
       const parsed = parseCandles(payload);
@@ -319,6 +320,7 @@ export async function fetchTechnicalIndicatorDetail(input: { code: string; name?
           high52Week: round(calculated.high52Week, 0),
           low52Week: round(calculated.low52Week, 0),
           indicators: calculated.indicators,
+          priceHistory: parsed.candles,
           source: "YahooFinance",
           fetchedAt: new Date().toISOString(),
           note: parsed.candles.length < 220 ? "거래 이력이 1년보다 짧아 52주 지표는 조회 가능한 기간 기준입니다." : undefined,
