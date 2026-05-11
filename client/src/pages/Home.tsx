@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, Database, Eye, Loader2, RefreshCcw, Save, Search, ShieldCheck, Sparkles, Trash2, TrendingUp } from "lucide-react";
+import { Activity, ArrowDown, ArrowUp, ArrowUpDown, BarChart3, Database, Eye, Loader2, RefreshCcw, Save, Search, ShieldCheck, Sparkles, Trash2, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
@@ -28,7 +28,8 @@ type SectorKey =
 
 type ActiveSector = SectorKey | "all";
 
-type SortMode = "desc" | "asc";
+type SortDirection = "desc" | "asc";
+type SortKey = "marketRank" | "name" | "code" | "sector" | "marketSuffix" | "currentPrice" | "annualEps" | "earningsYield" | "lastPriceFetchedAt";
 
 const TABLE_PAGE_SIZE = 25;
 
@@ -120,7 +121,7 @@ export default function Home() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [selectedSector, setSelectedSector] = useState<ActiveSector>("all");
-  const [sortMode, setSortMode] = useState<SortMode>("asc");
+  const [sortState, setSortState] = useState<{ key: SortKey; direction: SortDirection } | null>({ key: "marketRank", direction: "asc" });
   const [searchText, setSearchText] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [refreshFailures, setRefreshFailures] = useState<BulkRefreshFailure[]>([]);
@@ -137,6 +138,14 @@ export default function Home() {
       marketSuffix: (selectedStock?.marketSuffix as "KS" | "KQ" | undefined) ?? "KS",
     },
     { enabled: Boolean(selectedStock), retry: 1 }
+  );
+  const technicalIndicators = trpc.stocks.technicalIndicators.useQuery(
+    {
+      code: selectedStock?.code ?? "000000",
+      name: selectedStock?.name,
+      marketSuffix: (selectedStock?.marketSuffix as "KS" | "KQ" | undefined) ?? "KS",
+    },
+    { enabled: Boolean(selectedStock), retry: 1, staleTime: 1000 * 60 * 5 }
   );
   const saveStock = trpc.stocks.save.useMutation({
     onSuccess: async () => {
@@ -184,12 +193,34 @@ export default function Home() {
     const list = keyword
       ? scopedRows.filter(row => `${row.name} ${row.code} ${getMarketLabel(row.marketSuffix)} ${getSectorLabel(row.sector)} ${row.dataSource}`.toLowerCase().includes(keyword))
       : scopedRows;
+    if (!sortState) return list;
+
+    const getSortValue = (row: (typeof list)[number]) => {
+      switch (sortState.key) {
+        case "name": return row.name;
+        case "code": return row.code;
+        case "sector": return getSectorLabel(row.sector);
+        case "marketSuffix": return getMarketLabel(row.marketSuffix);
+        case "currentPrice": return row.currentPrice;
+        case "annualEps": return row.annualEps;
+        case "earningsYield": return row.earningsYield ?? Number.NEGATIVE_INFINITY;
+        case "lastPriceFetchedAt": return row.lastPriceFetchedAt ? new Date(row.lastPriceFetchedAt).getTime() : Number.NEGATIVE_INFINITY;
+        case "marketRank":
+        default: return row.marketRank ?? Number.POSITIVE_INFINITY;
+      }
+    };
+
     return [...list].sort((a, b) => {
-      const aRank = a.marketRank ?? Number.POSITIVE_INFINITY;
-      const bRank = b.marketRank ?? Number.POSITIVE_INFINITY;
-      return sortMode === "asc" ? aRank - bRank : bRank - aRank;
+      const aValue = getSortValue(a);
+      const bValue = getSortValue(b);
+      if (typeof aValue === "string" || typeof bValue === "string") {
+        const compared = String(aValue ?? "").localeCompare(String(bValue ?? ""), "ko-KR");
+        return sortState.direction === "asc" ? compared : -compared;
+      }
+      const compared = Number(aValue) - Number(bValue);
+      return sortState.direction === "asc" ? compared : -compared;
     });
-  }, [stocksQuery.data, searchText, selectedSector, sortMode]);
+  }, [stocksQuery.data, searchText, selectedSector, sortState]);
 
   const totalPages = Math.max(1, Math.ceil(rows.length / TABLE_PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -244,8 +275,13 @@ export default function Home() {
     })).filter(item => item.value > 0);
   }, [financialSummaries.data, pagedRows, rows]);
 
-  const linkedCount = rows.filter(row => row.dataSource !== "manual" && row.currentPrice > 0).length;
-
+   const linkedCount = rows.filter(row => row.dataSource !== "manual" && row.currentPrice > 0).length;
+  const validEarningsYields = rows
+    .map(row => row.earningsYield)
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  const averageEarningsYield = validEarningsYields.length
+    ? validEarningsYields.reduce((sum, value) => sum + value, 0) / validEarningsYields.length
+    : null;
   const updateForm = (key: keyof StockForm, value: string) => {
     setForm(current => ({ ...current, [key]: value }));
   };
@@ -268,7 +304,7 @@ export default function Home() {
     });
   };
 
-  const handleSave = () => {
+   const handleSave = () => {
     saveStock.mutate({
       id: form.id,
       sector: form.sector,
@@ -279,7 +315,84 @@ export default function Home() {
       annualEps: Number(form.annualEps),
     });
   };
-
+  const cycleSort = (key: SortKey) => {
+    setSortState(current => {
+      if (!current || current.key !== key) return { key, direction: "desc" };
+      if (current.direction === "desc") return { key, direction: "asc" };
+      return null;
+    });
+    setCurrentPage(1);
+  };
+  const sortLabels: Record<SortKey, string> = {
+    marketRank: "순위",
+    name: "종목명",
+    code: "종목코드",
+    sector: "테마",
+    marketSuffix: "시장",
+    currentPrice: "현재가",
+    annualEps: "EPS",
+    earningsYield: "EPS/주가",
+    lastPriceFetchedAt: "갱신시각",
+  };
+  const renderSortIcon = (key: SortKey) => {
+    if (sortState?.key !== key) return <ArrowUpDown className="h-3.5 w-3.5 text-slate-300" />;
+    return sortState.direction === "desc" ? <ArrowDown className="h-3.5 w-3.5 text-slate-950" /> : <ArrowUp className="h-3.5 w-3.5 text-slate-950" />;
+  };
+  const sortableHeader = (label: string, key: SortKey, align: "left" | "right" = "left") => (
+    <button
+      type="button"
+      onClick={() => cycleSort(key)}
+      className={`inline-flex w-full items-center gap-1.5 rounded-xl px-2 py-1 text-xs font-black text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 ${align === "right" ? "justify-end" : "justify-start"}`}
+      title={`${label} 기준 내림차순 → 오름차순 → 정렬취소`}
+    >
+      <span>{label}</span>
+      {renderSortIcon(key)}
+    </button>
+  );
+  const currentSortLabel = sortState ? `${sortLabels[sortState.key]} ${sortState.direction === "desc" ? "내림차순" : "오름차순"}` : "정렬취소: 기본 표시순";
+  const indicatorStatusClass = (status: string) => {
+    if (status === "overheated" || status === "watch_high") return "border-rose-200 bg-rose-50 text-rose-800";
+    if (status === "oversold" || status === "watch_low") return "border-blue-200 bg-blue-50 text-blue-800";
+    return "border-slate-200 bg-slate-50 text-slate-700";
+  };
+  const technicalPanel = !selectedStock ? null : (
+    <div className="rounded-[2rem] border border-slate-100 bg-white p-4 shadow-sm">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h3 className="flex items-center gap-2 text-lg font-black text-slate-950"><Activity className="h-5 w-5 text-blue-500" /> 고점·저점 판단 보조지표 10개</h3>
+          <p className="mt-1 text-sm text-slate-500">최근 가격 이력 기반의 참고 지표입니다. 투자 판단은 재무·수급·뉴스를 함께 확인하세요.</p>
+        </div>
+        {technicalIndicators.data ? <Badge variant="outline" className="rounded-full bg-slate-50">{technicalIndicators.data.indicators.length}개 지표 · 종가 {formatNumber(technicalIndicators.data.latestClose ?? 0)}원</Badge> : null}
+      </div>
+      {technicalIndicators.isLoading ? (
+        <div className="mt-4 flex min-h-32 items-center justify-center rounded-3xl bg-slate-50 text-slate-500">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 보조지표를 계산하는 중입니다.
+        </div>
+      ) : technicalIndicators.error ? (
+        <div className="mt-4 rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          보조지표 계산에 실패했습니다. {technicalIndicators.error.message} 외부 가격 이력이 부족하거나 일시적으로 응답하지 않을 수 있습니다.
+        </div>
+      ) : technicalIndicators.data ? (
+        <>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {technicalIndicators.data.indicators.map(indicator => (
+              <div key={indicator.key} className={`rounded-3xl border p-4 ${indicatorStatusClass(indicator.status)}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black">{indicator.label}</p>
+                    <p className="mt-1 text-xs opacity-80">{indicator.statusLabel}</p>
+                  </div>
+                  <p className="whitespace-nowrap text-lg font-black">{indicator.displayValue}</p>
+                </div>
+                <p className="mt-3 text-xs font-semibold leading-5">{indicator.interpretation}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-slate-500">출처: {technicalIndicators.data.source} · 조회 시각: {formatDateTime(technicalIndicators.data.fetchedAt)}</p>
+        </>
+      ) : null}
+    </div>
+  );
   return (
     <div className="relative min-h-[calc(100vh-3rem)] overflow-hidden rounded-[2rem] bg-[#f7f9fb] p-4 text-slate-950 md:p-8">
       <div className="pointer-events-none absolute right-[-5rem] top-[-5rem] h-64 w-64 rounded-[4rem] bg-blue-200/60 blur-3xl" />
@@ -292,14 +405,16 @@ export default function Home() {
             KOSPI 200 밸류에이션·실적 테마 분석
           </h1>
           <p className="mt-5 max-w-3xl text-base font-light leading-7 text-slate-500 md:text-lg">
-            KOSPI 시가총액 상위 200개 종목을 자체 산업·비즈니스 테마로 재분류하고, 종목 클릭 시 PER, PBR, 시가총액, 영업이익, 최근 분기별 매출·영업이익·순이익을 별도 상세 패널에서 확인하도록 정리했습니다.
+            KOSPI 시가총액 상위 200개 종목을 자체 산업·비즈니스 테마로 재분류하고, 종목 클릭 시 PER, PBR, 시가총액, 영업이익, EPS, EPS/주가(%), 최근 분기별 실적과 RSI 등 대표 보조지표 10개를 한 화면에서 확인하도록 정리했습니다.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button
-              onClick={() => { setSortMode(sortMode === "asc" ? "desc" : "asc"); setCurrentPage(1); }}
-              className="rounded-full bg-slate-950 px-5 text-white hover:bg-slate-800"
+              onClick={() => { setSortState(null); setCurrentPage(1); }}
+              variant="outline"
+              className="rounded-full border-slate-200 bg-white/80 px-5"
             >
-              시총순위 {sortMode === "asc" ? "상위순" : "하위순"}
+              <ArrowUpDown className="mr-2 h-4 w-4" />
+              정렬 초기화 · {currentSortLabel}
             </Button>
             <Button
               variant="outline"
@@ -315,7 +430,7 @@ export default function Home() {
               <Input
                 value={searchText}
                 onChange={event => { setSearchText(event.target.value); setCurrentPage(1); }}
-                placeholder="종목명·코드·출처 검색"
+                placeholder="종목명·코드·테마·출처 검색"
                 className="rounded-full border-slate-200 bg-white/80 pl-10"
               />
             </div>
@@ -331,18 +446,22 @@ export default function Home() {
               </CardTitle>
               <CardDescription className="text-slate-300">{selectedSectorMeta.description}</CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
-              <div>
+            <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+              <div className="rounded-2xl bg-white/5 p-3">
                 <p className="text-sm text-slate-400">종목 수</p>
                 <p className="text-2xl font-black leading-tight sm:text-3xl">{rows.length}</p>
               </div>
-              <div>
+              <div className="rounded-2xl bg-white/5 p-3">
                 <p className="text-sm text-slate-400">연동 종목</p>
                 <p className="text-2xl font-black leading-tight sm:text-3xl">{linkedCount}</p>
               </div>
-              <div>
+              <div className="rounded-2xl bg-white/5 p-3">
+                <p className="text-sm text-slate-400">평균 EPS/주가</p>
+                <p className="text-2xl font-black leading-tight sm:text-3xl">{Number.isFinite(averageEarningsYield ?? Number.NaN) ? formatPercent(averageEarningsYield) : "-"}</p>
+              </div>
+              <div className="rounded-2xl bg-white/5 p-3">
                 <p className="text-sm text-slate-400">상세 지표</p>
-                <p className="break-keep text-2xl font-black leading-tight sm:text-3xl xl:text-2xl 2xl:text-3xl">PER·PBR</p>
+                <p className="break-keep text-2xl font-black leading-tight sm:text-3xl xl:text-2xl 2xl:text-3xl">PER·PBR·RSI</p>
               </div>
             </CardContent>
           </Card>
@@ -480,22 +599,27 @@ export default function Home() {
         <Card className="overflow-hidden rounded-[2rem] border-0 bg-white/95 shadow-[0_24px_80px_rgba(15,23,42,0.06)]">
           <CardHeader>
             <CardTitle className="text-2xl font-black tracking-tight">KOSPI 200 종목 테이블</CardTitle>
-            <CardDescription>현재 페이지 25개 종목은 PER, PBR, 시가총액, 최근 영업이익 요약값을 먼저 불러오며, 행을 클릭하면 최근 분기별 매출·영업이익·순이익 상세가 열립니다.</CardDescription>
+            <CardDescription>헤더를 클릭하면 내림차순 → 오름차순 → 정렬취소 순서로 전환됩니다. 현재 페이지 25개 종목은 PER, PBR, 시가총액, 최근 영업이익 요약값을 먼저 불러오며, 행을 클릭하면 분기 실적과 보조지표 10개가 열립니다.</CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto">
-            <table className="w-full min-w-[1180px] border-separate border-spacing-y-2 text-left text-sm">
+            <div className="mb-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500">
+              현재 정렬: <span className="font-black text-slate-900">{currentSortLabel}</span> · 모바일에서는 표를 좌우로 밀어 EPS, PER/PBR, 시가총액, 보조지표 상세 진입 컬럼까지 확인하세요.
+            </div>
+            <table className="w-full min-w-[1480px] border-separate border-spacing-y-2 text-left text-sm">
               <thead>
                 <tr className="text-slate-500">
-                  <th className="px-4 py-2 font-medium">순위</th>
-                  <th className="px-4 py-2 font-medium">종목명</th>
-                  <th className="px-4 py-2 font-medium">종목코드</th>
-                  <th className="px-4 py-2 font-medium">자체 테마</th>
-                  <th className="px-4 py-2 font-medium">시장</th>
-                  <th className="px-4 py-2 text-right font-medium">현재 주가</th>
+                  <th className="px-2 py-2">{sortableHeader("순위", "marketRank")}</th>
+                  <th className="px-2 py-2">{sortableHeader("종목명", "name")}</th>
+                  <th className="px-2 py-2">{sortableHeader("종목코드", "code")}</th>
+                  <th className="px-2 py-2">{sortableHeader("자체 테마", "sector")}</th>
+                  <th className="px-2 py-2">{sortableHeader("시장", "marketSuffix")}</th>
+                  <th className="px-2 py-2">{sortableHeader("현재 주가", "currentPrice", "right")}</th>
+                  <th className="px-2 py-2">{sortableHeader("EPS", "annualEps", "right")}</th>
+                  <th className="px-2 py-2">{sortableHeader("EPS/주가", "earningsYield", "right")}</th>
                   <th className="px-4 py-2 text-right font-medium">PER/PBR</th>
                   <th className="px-4 py-2 text-right font-medium">시가총액·실적</th>
                   <th className="px-4 py-2 font-medium">연동 상태</th>
-                  <th className="px-4 py-2 font-medium">마지막 갱신</th>
+                  <th className="px-2 py-2">{sortableHeader("마지막 갱신", "lastPriceFetchedAt")}</th>
                   <th className="px-4 py-2 text-right font-medium">관리</th>
                 </tr>
               </thead>
@@ -511,6 +635,10 @@ export default function Home() {
                     <td className="px-4 py-3"><Badge variant="secondary" className="rounded-full bg-blue-50 text-blue-700">{getSectorLabel(row.sector)}</Badge></td>
                     <td className="px-4 py-3 text-slate-500">{getMarketLabel(row.marketSuffix)}</td>
                     <td className="px-4 py-3 text-right">{formatNumber(row.currentPrice)}원</td>
+                    <td className="px-4 py-3 text-right font-semibold text-slate-800">{formatNumber(row.annualEps)}원</td>
+                    <td className="px-4 py-3 text-right">
+                      <Badge className="rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-50">{formatPercent(row.earningsYield)}</Badge>
+                    </td>
                     <td className="px-4 py-3 text-right text-xs text-slate-700">
                       {summary?.success ? (
                         <div className="space-y-1 whitespace-nowrap">
@@ -549,7 +677,7 @@ export default function Home() {
               </tbody>
             </table>
             <div className="mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
-              <p>표시 범위: {rows.length ? `${(safePage - 1) * TABLE_PAGE_SIZE + 1}-${Math.min(safePage * TABLE_PAGE_SIZE, rows.length)}` : "0"} / {rows.length}개 · 재무 요약은 현재 페이지 단위로 수집됩니다.</p>
+              <p>표시 범위: {rows.length ? `${(safePage - 1) * TABLE_PAGE_SIZE + 1}-${Math.min(safePage * TABLE_PAGE_SIZE, rows.length)}` : "0"} / {rows.length}개 · EPS/주가(%)는 EPS ÷ 1주 가격 × 100으로 계산합니다.</p>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" disabled={safePage <= 1} onClick={() => setCurrentPage(page => Math.max(1, page - 1))}>이전</Button>
                 <span className="min-w-20 text-center font-semibold text-slate-900">{safePage} / {totalPages}</span>
@@ -568,7 +696,7 @@ export default function Home() {
               {selectedStock?.name ?? "종목"} 재무 상세
             </DialogTitle>
             <DialogDescription>
-              네이버 금융 기준 PER, PBR, 시가총액과 최근 분기별 매출·영업이익·순이익을 조회합니다. 단위는 네이버 금융 표기 기준의 억원입니다.
+              네이버 금융 기준 PER, PBR, 시가총액과 최근 분기별 실적을 확인하고, 야후 가격 이력 기반 RSI·스토캐스틱·52주 고저점 이격도 등 10개 보조지표를 함께 봅니다.
             </DialogDescription>
           </DialogHeader>
 
@@ -577,11 +705,14 @@ export default function Home() {
               <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 재무 상세 정보를 불러오는 중입니다.
             </div>
           ) : financialDetail.error ? (
-            <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
-              <p className="font-semibold">재무지표 자동 수집에 실패했습니다.</p>
-              <p className="mt-2">{financialDetail.error.message} 네이버 금융 페이지 구조 변경, 일시적 차단, 외부 응답 지연이 원인일 수 있습니다.</p>
-              <p className="mt-2">수동 확인이 필요하면 네이버 금융에서 종목코드 <span className="font-black">{selectedStock.code}</span>를 검색한 뒤, 종목분석의 주요재무정보 표에서 PER, PBR, 시가총액, 분기별 매출·영업이익·순이익을 확인하세요.</p>
-              <a className="mt-3 inline-flex rounded-full bg-white px-4 py-2 text-sm font-bold text-amber-900 underline" href={`https://finance.naver.com/item/main.naver?code=${selectedStock.code}`} target="_blank" rel="noreferrer">네이버 금융 원문 열기</a>
+            <div className="space-y-5">
+              <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
+                <p className="font-semibold">재무지표 자동 수집에 실패했습니다.</p>
+                <p className="mt-2">{financialDetail.error.message} 네이버 금융 페이지 구조 변경, 일시적 차단, 외부 응답 지연이 원인일 수 있습니다.</p>
+                <p className="mt-2">수동 확인이 필요하면 네이버 금융에서 종목코드 <span className="font-black">{selectedStock.code}</span>를 검색한 뒤, 종목분석의 주요재무정보 표에서 PER, PBR, 시가총액, 분기별 매출·영업이익·순이익을 확인하세요.</p>
+                <a className="mt-3 inline-flex rounded-full bg-white px-4 py-2 text-sm font-bold text-amber-900 underline" href={`https://finance.naver.com/item/main.naver?code=${selectedStock.code}`} target="_blank" rel="noreferrer">네이버 금융 원문 열기</a>
+              </div>
+              {technicalPanel}
             </div>
           ) : financialDetail.data ? (
             <div className="space-y-5">
@@ -589,6 +720,8 @@ export default function Home() {
                 {[
                   ["PER", formatMultiple(financialDetail.data.per)],
                   ["PBR", formatMultiple(financialDetail.data.pbr)],
+                  ["EPS", selectedStock ? `${formatNumber(selectedStock.annualEps)}원` : "-"],
+                  ["EPS/주가", selectedStock ? formatPercent(selectedStock.earningsYield) : "-"],
                   ["시가총액", formatHundredMillionKrw(financialDetail.data.marketCapHundredMillionKrw)],
                   ["최근 영업이익", formatHundredMillionKrw(financialDetail.data.latestOperatingProfitHundredMillionKrw)],
                   ["최근 순이익", formatHundredMillionKrw(financialDetail.data.latestNetIncomeHundredMillionKrw)],
@@ -625,6 +758,7 @@ export default function Home() {
                 </table>
               </div>
 
+              {technicalPanel}
               <p className="text-xs leading-5 text-slate-500">출처: {financialDetail.data.source} · 조회 시각: {formatDateTime(financialDetail.data.fetchedAt)}{financialDetail.data.note ? ` · ${financialDetail.data.note}` : ""}</p>
             </div>
           ) : null}

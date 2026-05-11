@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { appRouter } from "./routers";
 import { calculateEarningsYield } from "./db";
 import { extractLatestPrice } from "./stockPrice";
+import { calculateRsi, calculateTechnicalIndicators, type PriceCandle } from "./technicalIndicators";
 import type { TrpcContext } from "./_core/context";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
@@ -41,6 +42,41 @@ describe("calculateEarningsYield", () => {
   it("returns null when price is not positive or inputs are invalid", () => {
     expect(calculateEarningsYield(5000, 0)).toBeNull();
     expect(calculateEarningsYield(Number.NaN, 100000)).toBeNull();
+  });
+});
+
+describe("technical indicators", () => {
+  const candles: PriceCandle[] = Array.from({ length: 60 }, (_, index) => {
+    const close = 10000 + index * 120;
+    return {
+      date: `2026-01-${String((index % 28) + 1).padStart(2, "0")}`,
+      open: close - 40,
+      high: close + 120,
+      low: close - 160,
+      close,
+      volume: 100000 + index * 1000,
+    };
+  });
+
+  it("calculates RSI and returns ten high-low indicators", () => {
+    const detail = calculateTechnicalIndicators(candles);
+
+    expect(calculateRsi(candles.map(candle => candle.close))).toBe(100);
+    expect(detail.indicators).toHaveLength(10);
+    expect(detail.indicators.map(indicator => indicator.key)).toEqual([
+      "rsi14",
+      "stochastic14",
+      "williams14",
+      "cci20",
+      "mfi14",
+      "bollinger20",
+      "macdHistogram",
+      "sma20Gap",
+      "high52Distance",
+      "low52Distance",
+    ]);
+    expect(detail.high52Week).toBe(candles[candles.length - 1].high);
+    expect(detail.low52Week).toBe(candles[0].low);
   });
 });
 

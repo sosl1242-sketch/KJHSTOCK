@@ -7,6 +7,7 @@ import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_
 import { deleteStock, listStocks, updateStockPrice, upsertStock } from "./db";
 import { fetchNaverFinancialDetail, fetchNaverFinancialSummaries } from "./financials";
 import { fetchKoreanStockPrice, refreshAllStoredStockPrices } from "./stockPrice";
+import { fetchTechnicalIndicatorDetail } from "./technicalIndicators";
 
 const sectorSchema = z.enum(stockSectors);
 
@@ -71,6 +72,10 @@ export const appRouter = router({
         })).min(1).max(25),
       }))
       .query(({ input }) => fetchNaverFinancialSummaries(input.stocks)),
+
+    technicalIndicators: protectedProcedure
+      .input(z.object({ code: z.string().min(5).max(12), name: z.string().max(120).optional(), marketSuffix: z.enum(["KS", "KQ"]).default("KS") }))
+      .query(({ input }) => fetchTechnicalIndicatorDetail(input)),
   }),
 });
 
