@@ -23,20 +23,26 @@ export const users = mysqlTable("users", {
 });
 
 export const stockSectors = [
-  "power",
-  "defense",
-  "semiconductor",
-  "semiconductor_equipment",
-  "display_equipment",
-  "investment_securities",
+  "ai_semiconductor_value_chain",
+  "power_infra_machinery",
+  "battery_mobility",
+  "shipbuilding_defense_aerospace",
+  "finance_brokerage_insurance",
+  "platform_telecom_content",
+  "bio_healthcare",
+  "consumer_retail_travel",
+  "chemicals_materials_steel",
+  "holding_multi_industry",
+  "industrial_business_services",
 ] as const;
 
 export const stocks = mysqlTable("stocks", {
   id: int("id").autoincrement().primaryKey(),
-  sector: mysqlEnum("sector", stockSectors).notNull(),
+  sector: varchar("sector", { length: 80 }).notNull(),
   name: varchar("name", { length: 120 }).notNull(),
   code: varchar("code", { length: 12 }).notNull().unique(),
   marketSuffix: varchar("marketSuffix", { length: 4 }).default("KS").notNull(),
+  marketRank: int("marketRank"),
   currentPrice: double("currentPrice").default(0).notNull(),
   annualEps: double("annualEps").default(0).notNull(),
   dataSource: varchar("dataSource", { length: 80 }).default("manual").notNull(),

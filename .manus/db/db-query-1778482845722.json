@@ -1,0 +1,21 @@
+{
+  "query": "SELECT COUNT(*) AS total_count, SUM(CASE WHEN marketRank BETWEEN 1 AND 200 THEN 1 ELSE 0 END) AS ranked_top200_count, SUM(CASE WHEN marketRank IS NULL OR marketRank > 200 THEN 1 ELSE 0 END) AS extra_count FROM stocks; SELECT id, name, code, sector, marketSuffix, marketRank, dataSource FROM stocks WHERE marketRank IS NULL OR marketRank > 200 ORDER BY id LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3vS2t8utY5QeBcy.root --database 9iNPejDfPAnP7qVSQTzGS8 --execute SELECT COUNT(*) AS total_count, SUM(CASE WHEN marketRank BETWEEN 1 AND 200 THEN 1 ELSE 0 END) AS ranked_top200_count, SUM(CASE WHEN marketRank IS NULL OR marketRank > 200 THEN 1 ELSE 0 END) AS extra_count FROM stocks; SELECT id, name, code, sector, marketSuffix, marketRank, dataSource FROM stocks WHERE marketRank IS NULL OR marketRank > 200 ORDER BY id LIMIT 20;",
+  "rows": [
+    {
+      "total_count": "204",
+      "ranked_top200_count": "200",
+      "extra_count": "4"
+    }
+  ],
+  "messages": [
+    "id\tname\tcode\tsector\tmarketSuffix\tmarketRank\tdataSource",
+    "11\t원익IPS\t240810\tsemiconductor_equipment\tKQ\tNULL\tmanual",
+    "12\t주성엔지니어링\t036930\tsemiconductor_equipment\tKQ\tNULL\tmanual",
+    "14\tAP시스템\t265520\tdisplay_equipment\tKQ\tNULL\tmanual",
+    "15\t덕산네오룩스\t213420\tdisplay_equipment\tKQ\tNULL\tmanual"
+  ],
+  "stdout": "total_count\tranked_top200_count\textra_count\n204\t200\t4\nid\tname\tcode\tsector\tmarketSuffix\tmarketRank\tdataSource\n11\t원익IPS\t240810\tsemiconductor_equipment\tKQ\tNULL\tmanual\n12\t주성엔지니어링\t036930\tsemiconductor_equipment\tKQ\tNULL\tmanual\n14\tAP시스템\t265520\tdisplay_equipment\tKQ\tNULL\tmanual\n15\t덕산네오룩스\t213420\tdisplay_equipment\tKQ\tNULL\tmanual\n",
+  "stderr": "",
+  "execution_time_ms": 2222
+}

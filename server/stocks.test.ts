@@ -82,7 +82,7 @@ describe("stocks admin permissions", () => {
 
     await expect(
       caller.stocks.save({
-        sector: "semiconductor",
+        sector: "ai_semiconductor_value_chain",
         name: "삼성전자",
         code: "005930",
         marketSuffix: "KS",

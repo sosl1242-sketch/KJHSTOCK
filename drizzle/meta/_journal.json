@@ -15,6 +15,13 @@
       "when": 1778481096546,
       "tag": "0001_tricky_ultron",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1778482321842,
+      "tag": "0002_wakeful_inertia",
+      "breakpoints": true
     }
   ]
 }
