@@ -126,7 +126,7 @@ export default function CryptoSectors() {
   const summary = trpc.cryptoFutures.getSummary.useQuery();
   const table = trpc.cryptoFutures.getTable.useQuery();
 
-  const coins = useMemo<CryptoRow[]>(() => (table.data?.success ? table.data.coins : []), [table.data]);
+  const coins = useMemo<CryptoRow[]>(() => (table.data?.success && table.data?.coins ? table.data.coins : []), [table.data]);
   const sectors = useMemo(() => Array.from(new Set(coins.map(coin => coin.sector))), [coins]);
 
   const filteredRows = useMemo(() => {
@@ -150,7 +150,7 @@ export default function CryptoSectors() {
   }, [coins, searchText, selectedSector, sortState]);
 
   const chartData = useMemo(() => {
-    const sectorRows = summary.data?.success ? summary.data.summary.sectors : [];
+    const sectorRows = summary.data?.success && summary.data?.summary ? summary.data.summary.sectors : [];
     return sectorRows.map(sector => ({
       name: sectorLabels[sector.sector as CryptoSector] ?? sector.sector,
       value: sector.marketCapUsd,
@@ -211,32 +211,32 @@ export default function CryptoSectors() {
             <Card className="rounded-[1.5rem] border-0 bg-white/95 shadow-sm">
               <CardContent className="p-5">
                 <p className="text-xs font-semibold text-slate-500">분석 코인</p>
-                <p className="mt-2 text-3xl font-black">{summary.data.summary.totalCoins}</p>
+                <p className="mt-2 text-3xl font-black">{summary.data?.summary?.totalCoins ?? 0}</p>
               </CardContent>
             </Card>
             <Card className="rounded-[1.5rem] border-0 bg-white/95 shadow-sm">
               <CardContent className="p-5">
                 <p className="text-xs font-semibold text-slate-500">총 시가총액</p>
-                <p className="mt-2 text-2xl font-black">{formatUsd(summary.data.summary.totalMarketCapUsd)}</p>
+                <p className="mt-2 text-2xl font-black">{formatUsd(summary.data?.summary?.totalMarketCapUsd ?? 0)}</p>
               </CardContent>
             </Card>
             <Card className="rounded-[1.5rem] border-0 bg-white/95 shadow-sm">
               <CardContent className="p-5">
                 <p className="text-xs font-semibold text-slate-500">24h 거래대금</p>
-                <p className="mt-2 text-2xl font-black">{formatUsd(summary.data.summary.totalVolume24hUsd)}</p>
+                <p className="mt-2 text-2xl font-black">{formatUsd(summary.data?.summary?.totalVolume24hUsd ?? 0)}</p>
               </CardContent>
             </Card>
             <Card className="rounded-[1.5rem] border-0 bg-white/95 shadow-sm">
               <CardContent className="p-5">
                 <p className="text-xs font-semibold text-slate-500">평균 펀딩비</p>
-                <p className="mt-2 text-2xl font-black text-amber-600">{formatFundingRate(summary.data.summary.avgFundingRate)}</p>
+                <p className="mt-2 text-2xl font-black text-amber-600">{formatFundingRate(summary.data?.summary?.avgFundingRate ?? 0)}</p>
               </CardContent>
             </Card>
             <Card className="rounded-[1.5rem] border-0 bg-white/95 shadow-sm">
               <CardContent className="p-5">
                 <p className="text-xs font-semibold text-slate-500">24h 평균 등락률</p>
-                <p className={`mt-2 text-2xl font-black ${summary.data.summary.avgChange24hPercent >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-                  {formatPercent(summary.data.summary.avgChange24hPercent)}
+                <p className={`mt-2 text-2xl font-black ${(summary.data?.summary?.avgChange24hPercent ?? 0) >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                  {formatPercent(summary.data?.summary?.avgChange24hPercent ?? 0)}
                 </p>
               </CardContent>
             </Card>
@@ -287,7 +287,7 @@ export default function CryptoSectors() {
               <CardDescription>주식 수익성 지표 대신 토큰 경제와 선물 수급 지표를 봅니다.</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-3">
-              {(summary.data?.success ? summary.data.summary.indicators : []).map(indicator => (
+              {(summary.data?.success && summary.data?.summary ? summary.data.summary.indicators : []).map(indicator => (
                 <div key={indicator.key} className="rounded-2xl bg-slate-50 p-3">
                   <p className="text-sm font-black text-slate-950">{indicator.label}</p>
                   <p className="mt-1 text-xs leading-5 text-slate-500">{indicator.description}</p>
@@ -313,7 +313,7 @@ export default function CryptoSectors() {
           </CardHeader>
           <CardContent className="max-w-full overflow-x-auto">
             <div className="mb-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500">
-              현재 정렬: <span className="font-black text-slate-900">{currentSortLabel}</span> · 표시 코인 {filteredRows.length}개 · 마지막 갱신 {formatDateTime(summary.data?.success ? summary.data.summary.lastUpdated : undefined)}
+              현재 정렬: <span className="font-black text-slate-900">{currentSortLabel}</span> · 표시 코인 {filteredRows.length}개 · 마지막 갱신 {formatDateTime(summary.data?.success && summary.data?.summary ? summary.data.summary.lastUpdated : undefined)}
             </div>
             <table className="w-full min-w-[1660px] border-separate border-spacing-y-2 text-left text-sm">
               <thead>
