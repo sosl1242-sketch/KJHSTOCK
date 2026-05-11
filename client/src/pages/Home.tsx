@@ -498,10 +498,14 @@ export default function Home() {
     <div className="rounded-[2rem] border border-slate-100 bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h3 className="flex items-center gap-2 text-lg font-black text-slate-950"><Activity className="h-5 w-5 text-blue-500" /> 고점·저점 판단 보조지표 10개</h3>
+          <h3 className="flex items-center gap-2 text-lg font-black text-slate-950"><Activity className="h-5 w-5 text-blue-500" /> 고점·저점 판단 보조지표 12개</h3>
           <p className="mt-1 text-sm text-slate-500">최근 가격 이력 기반의 참고 지표입니다. 투자 판단은 재무·수급·뉴스를 함께 확인하세요.</p>
         </div>
-        {technicalIndicators.data ? <Badge variant="outline" className="rounded-full bg-slate-50">{technicalIndicators.data.indicators.length}개 지표 · 종가 {formatNumber(technicalIndicators.data.latestClose ?? 0)}원</Badge> : null}
+        {technicalIndicators.data ? (
+          <Badge variant="outline" className="rounded-full bg-slate-50">
+            {technicalIndicators.data.indicators.length}개 지표 · 종가 {formatNumber(technicalIndicators.data.latestClose ?? 0)}원 · 적정주가 중간값 {technicalIndicators.data.fairPriceMedian ? `${formatNumber(technicalIndicators.data.fairPriceMedian)}원` : "자료 없음"}
+          </Badge>
+        ) : null}
       </div>
       {technicalIndicators.isLoading ? (
         <div className="mt-4 flex min-h-32 items-center justify-center rounded-3xl bg-slate-50 text-slate-500">
@@ -524,6 +528,13 @@ export default function Home() {
                   <p className="whitespace-nowrap text-lg font-black">{indicator.displayValue}</p>
                 </div>
                 <p className="mt-3 text-xs font-semibold leading-5">{indicator.interpretation}</p>
+                <div className="mt-3 rounded-2xl bg-white/55 p-3 text-xs leading-5 text-slate-700">
+                  <div className="flex items-center justify-between gap-2 font-black">
+                    <span>예상 적정주가</span>
+                    <span>{indicator.fairPriceDisplay}</span>
+                  </div>
+                  <p className="mt-1 opacity-80">{indicator.fairPriceBasis}</p>
+                </div>
               </div>
             ))}
           </div>

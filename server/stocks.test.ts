@@ -67,11 +67,11 @@ describe("technical indicators", () => {
     };
   });
 
-  it("calculates RSI and returns ten high-low indicators", () => {
+  it("calculates RSI and returns twelve high-low indicators with fair price estimates", () => {
     const detail = calculateTechnicalIndicators(candles);
 
     expect(calculateRsi(candles.map(candle => candle.close))).toBe(100);
-    expect(detail.indicators).toHaveLength(10);
+    expect(detail.indicators).toHaveLength(12);
     expect(detail.indicators.map(indicator => indicator.key)).toEqual([
       "rsi14",
       "stochastic14",
@@ -81,11 +81,15 @@ describe("technical indicators", () => {
       "bollinger20",
       "macdHistogram",
       "sma20Gap",
+      "sma60Gap",
+      "volume20Ratio",
       "high52Distance",
       "low52Distance",
     ]);
     expect(detail.high52Week).toBe(candles[candles.length - 1].high);
     expect(detail.low52Week).toBe(candles[0].low);
+    expect(detail.fairPriceMedian).toBeGreaterThan(0);
+    expect(detail.indicators.every(indicator => indicator.fairPriceDisplay.endsWith("원"))).toBe(true);
   });
 
   it("requests Yahoo chart history with string query parameters and returns price history", async () => {
