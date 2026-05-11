@@ -6,6 +6,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { deleteStock, listStocks, updateStockPrice, upsertStock } from "./db";
 import { fetchNaverFinancialDetail, fetchNaverFinancialSummaries } from "./financials";
+import { ensureStockPriceAutoRefreshJob, getStockPriceAutoRefreshStatus, pauseStockPriceAutoRefreshJob } from "./priceAutoRefresh";
 import { fetchKoreanStockPrice, refreshAllStoredStockPrices } from "./stockPrice";
 import { fetchTechnicalIndicatorDetail } from "./technicalIndicators";
 
@@ -58,6 +59,12 @@ export const appRouter = router({
       }),
 
     refreshAllPrices: adminProcedure.mutation(() => refreshAllStoredStockPrices()),
+
+    autoRefreshStatus: adminProcedure.query(() => getStockPriceAutoRefreshStatus()),
+
+    enableAutoRefresh: adminProcedure.mutation(() => ensureStockPriceAutoRefreshJob()),
+
+    pauseAutoRefresh: adminProcedure.mutation(() => pauseStockPriceAutoRefreshJob()),
 
     financialDetail: protectedProcedure
       .input(z.object({ code: z.string().min(5).max(12), name: z.string().max(120).optional(), marketSuffix: z.enum(["KS", "KQ"]).default("KS") }))

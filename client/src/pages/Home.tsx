@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { Activity, ArrowDown, ArrowUp, ArrowUpDown, BarChart3, Database, Eye, Loader2, RefreshCcw, Save, Search, ShieldCheck, Sparkles, Trash2, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 
 type SectorKey =
@@ -34,6 +34,7 @@ type PriceChartFrame = "daily" | "weekly" | "monthly";
 
 const TABLE_PAGE_SIZE = 25;
 const SUMMARY_SORT_KEYS = new Set<SortKey>(["per", "pbr", "marketCapHundredMillionKrw", "latestOperatingProfitHundredMillionKrw"]);
+const PRICE_AUTO_REFETCH_MS = 60_000;
 
 type StockForm = {
   id?: number;
@@ -125,6 +126,309 @@ const getSectorLabel = (sectorKey: string) => sectors.find(sector => sector.key 
 
 const getMarketLabel = (marketSuffix: string) => (marketSuffix === "KQ" ? "KOSDAQ" : "KOSPI");
 
+
+type IndicatorScale = {
+  min: number;
+  max: number;
+  low: number;
+  high: number;
+  unit?: string;
+};
+
+type IndicatorDetailGuide = {
+  meaning: string;
+  thresholds: string;
+  caution: string;
+  chartFocus: string;
+  scale?: IndicatorScale;
+};
+
+type IndicatorMethodGuide = {
+  category: string;
+  calculation: string;
+  dataRequirement: string;
+  currentReadingFocus: string;
+};
+
+type IndicatorEvidenceRow = {
+  date: string;
+  fullDate: string;
+  close: number;
+  high: number;
+  low: number;
+  volume: number;
+  sma20: number | null;
+  sma60: number | null;
+  bollingerUpper: number | null;
+  bollingerLower: number | null;
+  macdHistogram: number | null;
+  volumeRatio: number | null;
+};
+
+const indicatorDetailGuides: Record<string, IndicatorDetailGuide> = {
+  rsi14: {
+    meaning: "최근 상승폭과 하락폭의 균형을 0~100으로 환산해 단기 과열·침체를 보는 대표 모멘텀 지표입니다.",
+    thresholds: "일반적으로 70 이상은 단기 과열, 30 이하는 단기 침체, 50 부근은 중립권으로 해석합니다.",
+    caution: "강한 추세장에서는 RSI가 과열·침체권에 오래 머무를 수 있으므로 이동평균선과 가격 추세를 함께 확인해야 합니다.",
+    chartFocus: "가격이 20일·60일 이동평균선에서 얼마나 떨어져 있는지와 RSI의 중립선 회귀 가능성을 함께 봅니다.",
+    scale: { min: 0, max: 100, low: 30, high: 70 },
+  },
+  stochastic14: {
+    meaning: "최근 14거래일 고저 범위 안에서 현재 종가가 어느 위치에 있는지 보여주는 빠른 오실레이터입니다.",
+    thresholds: "80% 이상은 단기 상단권, 20% 이하는 단기 하단권으로 보는 경우가 많습니다.",
+    caution: "횡보장에서는 유용하지만 강한 추세장에서는 잦은 신호가 발생할 수 있어 볼린저밴드 위치와 같이 확인하는 편이 안전합니다.",
+    chartFocus: "최근 가격이 볼린저밴드 상·하단 중 어디에 가까운지와 스토캐스틱 위치를 비교합니다.",
+    scale: { min: 0, max: 100, low: 20, high: 80, unit: "%" },
+  },
+  williams14: {
+    meaning: "스토캐스틱과 유사하지만 -100~0 범위로 표시되는 역방향 과열·침체 지표입니다.",
+    thresholds: "-20 이상은 고점권, -80 이하는 저점권 가능성을 참고합니다.",
+    caution: "값의 방향이 일반 퍼센트 지표와 반대처럼 보일 수 있으므로 0에 가까울수록 상단권이라는 점에 유의해야 합니다.",
+    chartFocus: "52주 고저 범위와 최근 볼린저밴드 위치를 함께 보며 단기 고점·저점 신호를 검증합니다.",
+    scale: { min: -100, max: 0, low: -80, high: -20, unit: "%" },
+  },
+  cci20: {
+    meaning: "전형가격이 최근 평균에서 얼마나 벗어났는지 표준화해 추세 과열과 평균회귀 가능성을 살핍니다.",
+    thresholds: "+100 이상은 상방 모멘텀 과열, -100 이하는 하방 과매도 가능성을 주로 봅니다.",
+    caution: "CCI는 변동성이 큰 종목에서 급격히 흔들릴 수 있어 거래량 배율과 추세선 방향을 같이 확인해야 합니다.",
+    chartFocus: "20일 이동평균선과 가격 괴리를 확인해 CCI가 평균회귀 신호인지 추세 지속 신호인지 구분합니다.",
+    scale: { min: -200, max: 200, low: -100, high: 100 },
+  },
+  mfi14: {
+    meaning: "가격 변화와 거래량을 함께 반영해 매수·매도 자금흐름의 과열 여부를 추정합니다.",
+    thresholds: "80 이상은 자금 유입 과열, 20 이하는 자금 유출 과도 구간으로 참고합니다.",
+    caution: "거래량 급증 이벤트가 있으면 일시적으로 과장될 수 있어 거래량 20일 배율과 뉴스를 함께 확인해야 합니다.",
+    chartFocus: "거래량 배율과 가격 추세가 같은 방향으로 움직이는지 확인해 자금흐름 신호의 신뢰도를 봅니다.",
+    scale: { min: 0, max: 100, low: 20, high: 80 },
+  },
+  bollinger20: {
+    meaning: "20일 볼린저밴드 안에서 현재가가 하단 0%, 상단 100% 중 어디에 있는지 환산한 위치 지표입니다.",
+    thresholds: "90% 이상은 밴드 상단 접근, 10% 이하는 밴드 하단 접근으로 봅니다.",
+    caution: "밴드 돌파는 과열뿐 아니라 추세 시작일 수도 있으므로 MACD와 이동평균선 기울기를 함께 확인해야 합니다.",
+    chartFocus: "가격, 볼린저밴드 상·하단, 20일 이동평균선을 한 차트에서 비교합니다.",
+    scale: { min: 0, max: 100, low: 10, high: 90, unit: "%" },
+  },
+  macdHistogram: {
+    meaning: "12일·26일 지수이동평균의 차이와 9일 시그널선의 차이를 막대로 나타내 상승·하락 모멘텀 변화를 봅니다.",
+    thresholds: "0선 위는 상승 모멘텀, 0선 아래는 하락 모멘텀으로 해석하며 막대의 확대·축소 방향이 중요합니다.",
+    caution: "MACD는 후행성이 있으므로 단기 급등락 직후에는 RSI·스토캐스틱보다 늦게 반응할 수 있습니다.",
+    chartFocus: "MACD 히스토그램이 0선을 기준으로 확대되는지 축소되는지와 가격 추세를 함께 봅니다.",
+  },
+  sma20Gap: {
+    meaning: "현재가가 20일 이동평균선에서 얼마나 위아래로 떨어져 있는지 보는 단기 이격도입니다.",
+    thresholds: "+12% 이상은 단기 과열, -12% 이하는 단기 과매도 가능성을 참고합니다.",
+    caution: "실적·뉴스에 의한 재평가 구간에서는 이격이 장기간 유지될 수 있으므로 재무지표와 병행해야 합니다.",
+    chartFocus: "가격과 20일 이동평균선의 간격이 확대·축소되는지를 직접 확인합니다.",
+    scale: { min: -30, max: 30, low: -12, high: 12, unit: "%" },
+  },
+  sma60Gap: {
+    meaning: "현재가가 중기 추세선인 60일 이동평균선 대비 얼마나 벌어졌는지 보여줍니다.",
+    thresholds: "+18% 이상은 중기 과열, -18% 이하는 중기 침체 가능성을 참고합니다.",
+    caution: "중기 추세 전환 초기에는 이격도가 크게 보일 수 있어 20일선과 60일선의 배열을 함께 봐야 합니다.",
+    chartFocus: "20일선과 60일선의 배열, 가격의 중기 추세선 회귀 가능성을 확인합니다.",
+    scale: { min: -40, max: 40, low: -18, high: 18, unit: "%" },
+  },
+  volume20Ratio: {
+    meaning: "최근 거래량이 직전 20거래일 평균 대비 얼마나 확대·축소됐는지 보여줍니다.",
+    thresholds: "140% 이상은 거래 증가, 220% 이상은 거래 과열, 60% 이하는 거래 침체로 참고합니다.",
+    caution: "거래량만으로 방향을 판단할 수 없으므로 가격 상승·하락과 동반되는지 반드시 함께 확인해야 합니다.",
+    chartFocus: "거래량 20일 배율이 100% 기준선을 얼마나 벗어났는지와 가격 반응을 함께 봅니다.",
+    scale: { min: 0, max: 250, low: 60, high: 140, unit: "%" },
+  },
+  high52Distance: {
+    meaning: "현재가가 조회 가능 기간의 고점에서 얼마나 떨어져 있는지 보여주는 고점권 점검 지표입니다.",
+    thresholds: "0%에 가까울수록 고점에 접근한 상태이며, -5% 이내는 고점권으로 별도 확인합니다.",
+    caution: "신고가 돌파 종목은 고점 대비 이격만으로 고평가를 단정하기 어렵고 추세·실적 확인이 필요합니다.",
+    chartFocus: "최근 가격이 52주 고점선에 얼마나 가까운지와 이동평균 지지 여부를 함께 확인합니다.",
+    scale: { min: -60, max: 0, low: -35, high: -5, unit: "%" },
+  },
+  low52Distance: {
+    meaning: "현재가가 조회 가능 기간의 저점 대비 얼마나 위에 있는지 보여주는 저점권 점검 지표입니다.",
+    thresholds: "8% 이하이면 저점권에 가까운 상태로 보고, 반등 후보인지 추가 점검합니다.",
+    caution: "저점 근접은 반등 기회일 수도 있지만 구조적 악재의 결과일 수 있어 재무 안정성과 뉴스를 함께 봐야 합니다.",
+    chartFocus: "최근 가격이 52주 저점선에서 얼마나 반등했는지와 거래량 회복 여부를 같이 확인합니다.",
+    scale: { min: 0, max: 120, low: 8, high: 60, unit: "%" },
+  },
+};
+
+
+const indicatorMethodGuides: Record<string, IndicatorMethodGuide> = {
+  rsi14: {
+    category: "모멘텀·과열/침체 오실레이터",
+    calculation: "최근 14거래일의 평균 상승폭과 평균 하락폭을 비교해 RS를 구한 뒤 RSI = 100 - 100 / (1 + RS)로 환산합니다.",
+    dataRequirement: "일별 종가가 필요하며, 이 화면에서는 YahooFinance 가격 이력의 종가 변화폭을 사용합니다.",
+    currentReadingFocus: "현재값이 50 위인지, 70 과열권 또는 30 침체권에 가까운지와 최근 가격이 20일선 위아래 어디에 있는지를 함께 봅니다.",
+  },
+  stochastic14: {
+    category: "가격 위치·단기 추세 오실레이터",
+    calculation: "%K = (현재 종가 - 최근 14거래일 최저가) / (최근 14거래일 최고가 - 최저가) × 100으로 계산합니다.",
+    dataRequirement: "최근 14거래일의 고가, 저가, 종가가 필요하며, 가격 범위 안에서 종가 위치를 측정합니다.",
+    currentReadingFocus: "상단권에 머무르는지, 하단권에서 반등하는지, 볼린저밴드 위치와 같은 방향인지 확인합니다.",
+  },
+  williams14: {
+    category: "가격 위치·역방향 과열/침체 오실레이터",
+    calculation: "%R = (최근 14거래일 최고가 - 현재 종가) / (최근 14거래일 최고가 - 최저가) × -100으로 계산합니다.",
+    dataRequirement: "최근 14거래일의 고가, 저가, 종가가 필요하며, 0에 가까울수록 상단권입니다.",
+    currentReadingFocus: "-20 이상이면 고점권, -80 이하이면 저점권 접근으로 보고 52주 고저점 위치와 같이 해석합니다.",
+  },
+  cci20: {
+    category: "추세 이격·평균회귀 지표",
+    calculation: "전형가격(고가+저가+종가)/3이 20일 평균 전형가격에서 얼마나 벗어났는지를 평균편차로 나눠 표준화합니다.",
+    dataRequirement: "최근 20거래일 이상의 고가, 저가, 종가가 필요하며 변동성이 클수록 값이 크게 움직입니다.",
+    currentReadingFocus: "+100/-100 기준선을 넘어선 상태가 단기 과열인지, 새 추세의 시작인지 거래량과 같이 확인합니다.",
+  },
+  mfi14: {
+    category: "거래량 가중 자금흐름 오실레이터",
+    calculation: "전형가격 × 거래량으로 자금흐름을 계산하고, 14거래일 양의 흐름과 음의 흐름 비율을 0~100으로 환산합니다.",
+    dataRequirement: "고가, 저가, 종가, 거래량이 모두 필요하며, 거래량 급증일의 영향이 크게 반영됩니다.",
+    currentReadingFocus: "RSI와 방향이 같은지, 가격 상승이 실제 거래량 동반 자금 유입인지 확인합니다.",
+  },
+  bollinger20: {
+    category: "변동성 밴드·가격 위치 지표",
+    calculation: "20일 이동평균을 중심선으로 두고 표준편차 2배 상·하단을 만든 뒤, 현재가가 하단 0%와 상단 100% 사이 어디에 있는지 계산합니다.",
+    dataRequirement: "20거래일 이상의 종가가 필요하며, 표준편차가 커지면 밴드 폭도 넓어집니다.",
+    currentReadingFocus: "상단 접근이 과열인지 추세 돌파인지, 하단 접근이 반등 후보인지 하락 추세 지속인지 MACD와 함께 봅니다.",
+  },
+  macdHistogram: {
+    category: "추세 모멘텀·후행 확인 지표",
+    calculation: "12일 EMA와 26일 EMA 차이인 MACD에서 9일 EMA 시그널선을 뺀 값을 히스토그램으로 표시합니다.",
+    dataRequirement: "충분한 종가 이력이 필요하며, EMA 특성상 최신 가격에 더 큰 가중치를 둡니다.",
+    currentReadingFocus: "0선 위아래뿐 아니라 막대가 확대되는지 축소되는지로 상승·하락 모멘텀 변화를 확인합니다.",
+  },
+  sma20Gap: {
+    category: "단기 이동평균 이격도",
+    calculation: "(현재 종가 - 20일 단순이동평균) / 20일 단순이동평균 × 100으로 계산합니다.",
+    dataRequirement: "최근 20거래일 이상의 종가가 필요하며, 단기 가격 과열과 평균회귀 가능성을 봅니다.",
+    currentReadingFocus: "현재가가 단기 추세선에서 지나치게 멀어졌는지, 다시 20일선으로 돌아갈 가능성이 있는지 확인합니다.",
+  },
+  sma60Gap: {
+    category: "중기 이동평균 이격도",
+    calculation: "(현재 종가 - 60일 단순이동평균) / 60일 단순이동평균 × 100으로 계산합니다.",
+    dataRequirement: "최근 60거래일 이상의 종가가 필요하며, 중기 추세선 대비 위치를 측정합니다.",
+    currentReadingFocus: "20일선과 60일선 배열, 중기 추세 유지 여부, 과도한 상승·하락 후 되돌림 가능성을 봅니다.",
+  },
+  volume20Ratio: {
+    category: "거래활동·수급 강도 지표",
+    calculation: "현재 거래량 / 직전 20거래일 평균 거래량 × 100으로 계산합니다.",
+    dataRequirement: "현재일 거래량과 직전 20거래일 거래량이 필요하며, 가격 방향과 함께 해석해야 합니다.",
+    currentReadingFocus: "거래량이 평균 대비 늘었는지 줄었는지, 가격 상승·하락과 동행하는지 확인합니다.",
+  },
+  high52Distance: {
+    category: "52주 고점 대비 위치 지표",
+    calculation: "(현재 종가 - 조회 가능 기간의 52주 고점) / 52주 고점 × 100으로 계산합니다.",
+    dataRequirement: "최대 1년 내외의 고가·종가 이력이 필요하며, 0%에 가까울수록 고점에 접근한 상태입니다.",
+    currentReadingFocus: "고점 돌파 직전인지, 고점 대비 조정폭이 충분한지, 추세 강도와 함께 판단합니다.",
+  },
+  low52Distance: {
+    category: "52주 저점 대비 반등 위치 지표",
+    calculation: "(현재 종가 - 조회 가능 기간의 52주 저점) / 52주 저점 × 100으로 계산합니다.",
+    dataRequirement: "최대 1년 내외의 저가·종가 이력이 필요하며, 값이 낮을수록 저점 부근입니다.",
+    currentReadingFocus: "저점권 반등 후보인지, 구조적 하락으로 저점 근처에 머무는지 거래량 회복과 같이 확인합니다.",
+  },
+};
+
+const clampNumber = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const averageValues = (values: number[]) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+
+const rollingAverage = (values: number[], endIndex: number, period: number) => {
+  if (endIndex + 1 < period) return null;
+  return averageValues(values.slice(endIndex + 1 - period, endIndex + 1));
+};
+
+const rollingStandardDeviation = (values: number[], endIndex: number, period: number) => {
+  const mean = rollingAverage(values, endIndex, period);
+  if (mean === null) return null;
+  const slice = values.slice(endIndex + 1 - period, endIndex + 1);
+  const variance = averageValues(slice.map(value => (value - mean) ** 2));
+  return variance === null ? null : Math.sqrt(variance);
+};
+
+const emaSeriesAligned = (values: number[], period: number) => {
+  const output: Array<number | null> = Array(values.length).fill(null);
+  if (values.length < period) return output;
+  const multiplier = 2 / (period + 1);
+  let previous = averageValues(values.slice(0, period));
+  if (previous === null) return output;
+  output[period - 1] = previous;
+  for (let index = period; index < values.length; index += 1) {
+    previous = (values[index] - previous) * multiplier + previous;
+    output[index] = previous;
+  }
+  return output;
+};
+
+const buildIndicatorEvidenceRows = (candles: Array<{ date: string; close: number; high: number; low: number; volume: number }>): IndicatorEvidenceRow[] => {
+  const closes = candles.map(candle => candle.close);
+  const ema12 = emaSeriesAligned(closes, 12);
+  const ema26 = emaSeriesAligned(closes, 26);
+  const macdLine = closes.map((_, index) => (ema12[index] !== null && ema26[index] !== null ? (ema12[index] as number) - (ema26[index] as number) : null));
+  const macdIndexes = macdLine.map((value, index) => (value === null ? null : index)).filter((value): value is number => value !== null);
+  const macdValues = macdIndexes.map(index => macdLine[index] as number);
+  const signalValues = emaSeriesAligned(macdValues, 9);
+  const macdHistogramByIndex = new Map<number, number>();
+  macdIndexes.forEach((originalIndex, macdIndex) => {
+    const signal = signalValues[macdIndex];
+    const macd = macdLine[originalIndex];
+    if (signal !== null && macd !== null) macdHistogramByIndex.set(originalIndex, macd - signal);
+  });
+
+  return candles.map((candle, index) => {
+    const sma20 = rollingAverage(closes, index, 20);
+    const sma60 = rollingAverage(closes, index, 60);
+    const standardDeviation20 = rollingStandardDeviation(closes, index, 20);
+    const previousVolumes = index >= 20 ? candles.slice(index - 20, index).map(item => item.volume).filter(value => Number.isFinite(value) && value > 0) : [];
+    const previousVolumeAverage = previousVolumes.length === 20 ? averageValues(previousVolumes) : null;
+    return {
+      date: candle.date.slice(5),
+      fullDate: candle.date,
+      close: candle.close,
+      high: candle.high,
+      low: candle.low,
+      volume: candle.volume,
+      sma20,
+      sma60,
+      bollingerUpper: sma20 !== null && standardDeviation20 !== null ? sma20 + 2 * standardDeviation20 : null,
+      bollingerLower: sma20 !== null && standardDeviation20 !== null ? sma20 - 2 * standardDeviation20 : null,
+      macdHistogram: macdHistogramByIndex.get(index) ?? null,
+      volumeRatio: previousVolumeAverage ? (candle.volume / previousVolumeAverage) * 100 : null,
+    };
+  });
+};
+
+const indicatorGaugePosition = (value: number | null, scale?: IndicatorScale) => {
+  if (value === null || !Number.isFinite(value)) return null;
+  if (!scale) {
+    const dynamicMax = Math.max(Math.abs(value) * 2, 1);
+    return clampNumber(((value + dynamicMax) / (dynamicMax * 2)) * 100, 0, 100);
+  }
+  return clampNumber(((value - scale.min) / (scale.max - scale.min)) * 100, 0, 100);
+};
+
+const renderIndicatorGauge = (value: number | null, guide?: IndicatorDetailGuide, compact = false) => {
+  const position = indicatorGaugePosition(value, guide?.scale);
+  const lowPosition = guide?.scale ? indicatorGaugePosition(guide.scale.low, guide.scale) : 50;
+  const highPosition = guide?.scale ? indicatorGaugePosition(guide.scale.high, guide.scale) : 50;
+  return (
+    <div className={compact ? "mt-3" : "mt-4"}>
+      <div className="relative h-2.5 overflow-hidden rounded-full bg-white/70 ring-1 ring-slate-200/70">
+        <div className="absolute inset-y-0 left-0 bg-blue-200/80" style={{ width: `${lowPosition ?? 0}%` }} />
+        <div className="absolute inset-y-0 bg-emerald-200/80" style={{ left: `${lowPosition ?? 0}%`, width: `${Math.max((highPosition ?? 100) - (lowPosition ?? 0), 0)}%` }} />
+        <div className="absolute inset-y-0 right-0 bg-rose-200/80" style={{ width: `${Math.max(100 - (highPosition ?? 100), 0)}%` }} />
+        {position !== null ? <span className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-slate-950 shadow" style={{ left: `${position}%` }} /> : null}
+      </div>
+      {!compact && guide?.scale ? (
+        <div className="mt-2 flex justify-between text-[11px] font-bold text-slate-500">
+          <span>{guide.scale.min}{guide.scale.unit ?? ""}</span>
+          <span>저점 기준 {guide.scale.low}{guide.scale.unit ?? ""}</span>
+          <span>고점 기준 {guide.scale.high}{guide.scale.unit ?? ""}</span>
+          <span>{guide.scale.max}{guide.scale.unit ?? ""}</span>
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
 export default function Home() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -137,9 +441,19 @@ export default function Home() {
 
   const queryInput = useMemo(() => (selectedSector === "all" ? {} : { sector: selectedSector }), [selectedSector]);
   const utils = trpc.useUtils();
-  const stocksQuery = trpc.stocks.list.useQuery(queryInput);
+  const stocksQuery = trpc.stocks.list.useQuery(queryInput, {
+    refetchInterval: PRICE_AUTO_REFETCH_MS,
+    refetchIntervalInBackground: true,
+    staleTime: 15_000,
+  });
+  const autoRefreshStatus = trpc.stocks.autoRefreshStatus.useQuery(undefined, {
+    enabled: isAdmin,
+    refetchInterval: PRICE_AUTO_REFETCH_MS,
+    retry: false,
+  });
   const [selectedStock, setSelectedStock] = useState<NonNullable<typeof stocksQuery.data>[number] | null>(null);
   const [priceChartFrame, setPriceChartFrame] = useState<PriceChartFrame>("daily");
+  const [selectedIndicatorKey, setSelectedIndicatorKey] = useState<string | null>(null);
   const financialDetail = trpc.stocks.financialDetail.useQuery(
     {
       code: selectedStock?.code ?? "000000",
@@ -191,6 +505,21 @@ export default function Home() {
       await utils.stocks.list.invalidate();
     },
     onError: error => toast.error(`${error.message} 관리자는 현재가를 수동으로 수정할 수 있습니다.`),
+  });
+  const enableAutoRefresh = trpc.stocks.enableAutoRefresh.useMutation({
+    onSuccess: async status => {
+      toast.success(status.enabled ? "60초 자동 가격 추적이 활성화되었습니다." : "자동 가격 추적 설정을 확인했습니다.");
+      await autoRefreshStatus.refetch();
+      await utils.stocks.list.invalidate();
+    },
+    onError: error => toast.error(`자동 가격 추적 활성화에 실패했습니다. ${error.message}`),
+  });
+  const pauseAutoRefresh = trpc.stocks.pauseAutoRefresh.useMutation({
+    onSuccess: async () => {
+      toast.info("60초 자동 가격 추적을 일시정지했습니다.");
+      await autoRefreshStatus.refetch();
+    },
+    onError: error => toast.error(`자동 가격 추적 일시정지에 실패했습니다. ${error.message}`),
   });
 
   const selectedSectorMeta = selectedSector === "all" ? allSectorMeta : sectors.find(sector => sector.key === selectedSector) ?? sectors[0];
@@ -310,6 +639,15 @@ export default function Home() {
     });
     return Array.from(grouped.values()).sort((a, b) => a.fullDate.localeCompare(b.fullDate));
   }, [technicalIndicators.data?.priceHistory, priceChartFrame]);
+
+
+  const technicalEvidenceData = useMemo(() => buildIndicatorEvidenceRows(technicalIndicators.data?.priceHistory ?? []).slice(-120), [technicalIndicators.data?.priceHistory]);
+  const selectedIndicatorDetail = useMemo(() => {
+    if (!selectedIndicatorKey || !technicalIndicators.data) return null;
+    return technicalIndicators.data.indicators.find(indicator => indicator.key === selectedIndicatorKey) ?? null;
+  }, [selectedIndicatorKey, technicalIndicators.data]);
+  const selectedIndicatorGuide = selectedIndicatorDetail ? indicatorDetailGuides[selectedIndicatorDetail.key] : undefined;
+  const selectedIndicatorMethod = selectedIndicatorDetail ? indicatorMethodGuides[selectedIndicatorDetail.key] : undefined;
 
   const chartData = useMemo(() => {
     if (selectedSector === "all") {
@@ -439,6 +777,14 @@ export default function Home() {
     </button>
   );
   const currentSortLabel = sortState ? `${sortLabels[sortState.key]} ${sortState.direction === "desc" ? "내림차순" : "오름차순"}` : "정렬취소: 기본 표시순";
+  const lastClientRefreshText = stocksQuery.dataUpdatedAt ? formatDateTime(new Date(stocksQuery.dataUpdatedAt)) : "대기 중";
+  const serverAutoRefreshText = !isAdmin
+    ? "화면 60초 자동 조회"
+    : autoRefreshStatus.isLoading
+      ? "서버 자동 추적 확인 중"
+      : autoRefreshStatus.data?.enabled
+        ? "서버 60초 자동 추적 활성"
+        : "서버 자동 추적 비활성";
   const indicatorStatusClass = (status: string) => {
     if (status === "overheated" || status === "watch_high") return "border-rose-200 bg-rose-50 text-rose-800";
     if (status === "oversold" || status === "watch_low") return "border-blue-200 bg-blue-50 text-blue-800";
@@ -518,31 +864,199 @@ export default function Home() {
       ) : technicalIndicators.data ? (
         <>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {technicalIndicators.data.indicators.map(indicator => (
-              <div key={indicator.key} className={`rounded-3xl border p-4 ${indicatorStatusClass(indicator.status)}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-black">{indicator.label}</p>
-                    <p className="mt-1 text-xs opacity-80">{indicator.statusLabel}</p>
+            {technicalIndicators.data.indicators.map(indicator => {
+              const guide = indicatorDetailGuides[indicator.key];
+              const isSelected = selectedIndicatorKey === indicator.key;
+              return (
+                <button
+                  key={indicator.key}
+                  type="button"
+                  onClick={() => setSelectedIndicatorKey(indicator.key)}
+                  aria-pressed={isSelected}
+                  className={`rounded-3xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 ${indicatorStatusClass(indicator.status)} ${isSelected ? "ring-2 ring-slate-950" : ""}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-black">{indicator.label}</p>
+                      <p className="mt-1 text-xs opacity-80">{indicator.statusLabel}</p>
+                    </div>
+                    <p className="whitespace-nowrap text-lg font-black">{indicator.displayValue}</p>
                   </div>
-                  <p className="whitespace-nowrap text-lg font-black">{indicator.displayValue}</p>
-                </div>
-                <p className="mt-3 text-xs font-semibold leading-5">{indicator.interpretation}</p>
-                <div className="mt-3 rounded-2xl bg-white/55 p-3 text-xs leading-5 text-slate-700">
-                  <div className="flex items-center justify-between gap-2 font-black">
-                    <span>예상 적정주가</span>
-                    <span>{indicator.fairPriceDisplay}</span>
+                  {renderIndicatorGauge(indicator.value, guide, true)}
+                  <p className="mt-3 text-xs font-semibold leading-5">{indicator.interpretation}</p>
+                  <div className="mt-3 rounded-2xl bg-white/55 p-3 text-xs leading-5 text-slate-700">
+                    <div className="flex items-center justify-between gap-2 font-black">
+                      <span>예상 적정주가</span>
+                      <span>{indicator.fairPriceDisplay}</span>
+                    </div>
+                    <p className="mt-1 opacity-80">{indicator.fairPriceBasis}</p>
                   </div>
-                  <p className="mt-1 opacity-80">{indicator.fairPriceBasis}</p>
-                </div>
-              </div>
-            ))}
+                  <span className="mt-3 inline-flex rounded-full bg-white/65 px-3 py-1 text-[11px] font-black text-slate-600 ring-1 ring-slate-200">상세 해설·근거 차트 보기</span>
+                </button>
+              );
+            })}
           </div>
+          {selectedIndicatorDetail ? (
+            <div className="mt-4 rounded-3xl border border-blue-100 bg-blue-50/80 p-4 text-sm text-blue-950" id="technical-indicator-detail">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-black">보조지표 상세 분석창 열림 · {selectedIndicatorDetail.label}</p>
+                  <p className="mt-1 text-xs leading-5 text-blue-800">선택한 지표의 종류, 계산 방식, 현재 종목 해석, 게이지와 근거 차트를 별도 창에서 확인합니다.</p>
+                </div>
+                <Button type="button" size="sm" variant="outline" className="w-fit rounded-full bg-white" onClick={() => setSelectedIndicatorKey(null)}>상세창 닫기</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+              각 보조지표 카드를 클릭하면 의미, 판단 기준, 현재 해석, 주의점과 함께 지표 종류, 계산 방식, 가격·이동평균·볼린저밴드·MACD 근거 차트가 상세 분석창으로 열립니다.
+            </div>
+          )}
           <p className="mt-3 text-xs text-slate-500">출처: {technicalIndicators.data.source} · 조회 시각: {formatDateTime(technicalIndicators.data.fetchedAt)}</p>
         </>
       ) : null}
     </div>
   );
+
+  const indicatorDetailDialog = selectedIndicatorDetail ? (
+    <Dialog open={Boolean(selectedStock && selectedIndicatorDetail)} onOpenChange={(open) => { if (!open) setSelectedIndicatorKey(null); }}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-0 bg-slate-50 text-slate-950 sm:max-w-6xl">
+        <DialogHeader>
+          <DialogTitle className="flex flex-wrap items-center gap-3 text-2xl font-black">
+            <Activity className="h-6 w-6 text-blue-500" />
+            보조지표 상세 해설 · {selectedIndicatorDetail.label}
+          </DialogTitle>
+          <DialogDescription>
+            의미, 판단 기준, 현재 해석, 주의점에 더해 지표 종류와 계산 방식을 함께 보여주는 현재 종목 기준 상세 분석창입니다.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-slate-100">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">Indicator Drilldown</p>
+                <h4 className="mt-1 text-xl font-black text-slate-950">{selectedStock?.name ?? "현재 종목"}의 {selectedIndicatorDetail.label} 분석</h4>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{selectedIndicatorGuide?.meaning ?? selectedIndicatorDetail.interpretation}</p>
+              </div>
+              <Badge className="w-fit rounded-full bg-slate-950 text-white hover:bg-slate-950">현재 {selectedIndicatorDetail.displayValue} · {selectedIndicatorDetail.statusLabel}</Badge>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-100">
+                <p className="text-xs font-black text-slate-500">지표 종류</p>
+                <p className="mt-2 text-sm font-bold leading-6 text-slate-800">{selectedIndicatorMethod?.category ?? "가격 이력 기반 보조지표"}</p>
+              </div>
+              <div className="rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-100">
+                <p className="text-xs font-black text-slate-500">현재값</p>
+                <p className="mt-2 text-xl font-black text-slate-950">{selectedIndicatorDetail.displayValue}</p>
+                <p className="mt-1 text-xs text-slate-500">{selectedIndicatorDetail.statusLabel}</p>
+              </div>
+              <div className="rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-100">
+                <p className="text-xs font-black text-slate-500">예상 적정주가</p>
+                <p className="mt-2 text-xl font-black text-slate-950">{selectedIndicatorDetail.fairPriceDisplay}</p>
+                <p className="mt-1 text-xs text-slate-500">종가 {formatNumber(technicalIndicators.data?.latestClose ?? selectedStock?.currentPrice ?? 0)}원 기준</p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-3xl bg-blue-50 p-4 ring-1 ring-blue-100">
+              <p className="text-xs font-black text-blue-700">현재 종목에 대한 상세 분석</p>
+              <p className="mt-2 text-sm leading-6 text-blue-950">{selectedStock?.name ?? "현재 종목"}은(는) {selectedIndicatorDetail.label} 기준 현재 {selectedIndicatorDetail.statusLabel} 구간에 있습니다. {selectedIndicatorDetail.interpretation} {selectedIndicatorDetail.fairPriceBasis} 이 평가는 최근 가격 이력에서 계산된 참고 신호이므로 재무지표, 업종 수급, 뉴스와 함께 교차 확인해야 합니다.</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-slate-100">
+              <p className="text-sm font-black text-slate-950">어떻게 얻는 지표인가?</p>
+              <p className="mt-2 text-sm leading-6 text-slate-700">{selectedIndicatorMethod?.calculation ?? "최근 가격 이력에서 현재값과 기준선을 계산합니다."}</p>
+              <p className="mt-3 text-xs font-black text-slate-500">필요 데이터</p>
+              <p className="mt-1 text-sm leading-6 text-slate-700">{selectedIndicatorMethod?.dataRequirement ?? "종가, 고가, 저가, 거래량 등 가격 이력 데이터가 필요합니다."}</p>
+            </div>
+            <div className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-slate-100">
+              <p className="text-sm font-black text-slate-950">해석 기준과 주의점</p>
+              <p className="mt-2 text-sm leading-6 text-slate-700"><span className="font-black">판단 기준:</span> {selectedIndicatorGuide?.thresholds ?? "중립 기준선과 최근 가격 추세의 괴리를 함께 확인합니다."}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-700"><span className="font-black">주의점:</span> {selectedIndicatorGuide?.caution ?? "단일 지표만으로 매수·매도를 결정하지 말고 재무·수급·뉴스를 함께 확인해야 합니다."}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-slate-100">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm font-black text-slate-950">현재값 위치 게이지</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">{selectedIndicatorMethod?.currentReadingFocus ?? selectedIndicatorGuide?.chartFocus ?? "최근 가격 이력에서 계산한 기준선과 현재값을 함께 비교합니다."}</p>
+            </div>
+            <p className="text-sm font-black text-slate-900">{selectedIndicatorDetail.displayValue}</p>
+          </div>
+          {renderIndicatorGauge(selectedIndicatorDetail.value, selectedIndicatorGuide)}
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-2">
+          <div className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-slate-100">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-black text-slate-950">가격·이동평균·볼린저밴드 근거</p>
+                <p className="mt-1 text-xs text-slate-500">최근 120거래일 기준 종가, 20일선, 60일선, 볼린저 상·하단입니다.</p>
+              </div>
+            </div>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={technicalEvidenceData} margin={{ top: 12, right: 18, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} minTickGap={20} tickLine={false} axisLine={false} />
+                  <YAxis yAxisId="price" tick={{ fontSize: 11, fill: "#64748b" }} tickFormatter={(value) => `${Number(value).toLocaleString("ko-KR")}`} width={74} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    formatter={(value, name) => {
+                      const labelMap: Record<string, string> = { close: "종가", sma20: "20일선", sma60: "60일선", bollingerUpper: "볼린저 상단", bollingerLower: "볼린저 하단" };
+                      return [typeof value === "number" ? `${value.toLocaleString("ko-KR", { maximumFractionDigits: 0 })}원` : value, labelMap[String(name)] ?? String(name)];
+                    }}
+                    labelFormatter={(_label, payload: any) => payload?.[0]?.payload?.fullDate ?? ""}
+                    contentStyle={{ borderRadius: 18, border: "1px solid #e2e8f0", boxShadow: "0 20px 60px rgba(15, 23, 42, 0.12)" }}
+                  />
+                  <Line yAxisId="price" type="monotone" dataKey="bollingerUpper" stroke="#fb7185" strokeDasharray="4 4" dot={false} strokeWidth={1.5} connectNulls />
+                  <Line yAxisId="price" type="monotone" dataKey="bollingerLower" stroke="#60a5fa" strokeDasharray="4 4" dot={false} strokeWidth={1.5} connectNulls />
+                  <Line yAxisId="price" type="monotone" dataKey="sma60" stroke="#a78bfa" dot={false} strokeWidth={2} connectNulls />
+                  <Line yAxisId="price" type="monotone" dataKey="sma20" stroke="#f59e0b" dot={false} strokeWidth={2} connectNulls />
+                  <Line yAxisId="price" type="monotone" dataKey="close" stroke="#0f172a" dot={false} strokeWidth={2.8} connectNulls />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+          <div className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-slate-100">
+            <div className="mb-3">
+              <p className="text-sm font-black text-slate-950">MACD·거래량 보조 근거</p>
+              <p className="mt-1 text-xs text-slate-500">모멘텀은 0선, 거래량은 100% 기준선을 중심으로 확인합니다.</p>
+            </div>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={technicalEvidenceData} margin={{ top: 12, right: 18, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} minTickGap={20} tickLine={false} axisLine={false} />
+                  <YAxis yAxisId="macd" tick={{ fontSize: 11, fill: "#64748b" }} width={56} tickLine={false} axisLine={false} />
+                  <YAxis yAxisId="volume" orientation="right" tick={{ fontSize: 11, fill: "#64748b" }} tickFormatter={(value) => `${Number(value).toFixed(0)}%`} width={58} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    formatter={(value, name) => {
+                      if (typeof value !== "number") return [value, name];
+                      if (name === "volumeRatio") return [`${value.toLocaleString("ko-KR", { maximumFractionDigits: 0 })}%`, "거래량 20일 배율"];
+                      return [value.toLocaleString("ko-KR", { maximumFractionDigits: 2 }), "MACD 히스토그램"];
+                    }}
+                    labelFormatter={(_label, payload: any) => payload?.[0]?.payload?.fullDate ?? ""}
+                    contentStyle={{ borderRadius: 18, border: "1px solid #e2e8f0", boxShadow: "0 20px 60px rgba(15, 23, 42, 0.12)" }}
+                  />
+                  <ReferenceLine yAxisId="macd" y={0} stroke="#94a3b8" strokeDasharray="4 4" />
+                  <ReferenceLine yAxisId="volume" y={100} stroke="#cbd5e1" strokeDasharray="3 3" />
+                  <Bar yAxisId="macd" dataKey="macdHistogram" radius={[4, 4, 0, 0]} fill="#2563eb" opacity={0.7} />
+                  <Line yAxisId="volume" type="monotone" dataKey="volumeRatio" stroke="#f97316" strokeWidth={2} dot={false} connectNulls />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        <p className="text-xs leading-5 text-slate-500">출처: {technicalIndicators.data?.source ?? "YahooFinance"} · 조회 시각: {formatDateTime(technicalIndicators.data?.fetchedAt)} · 이 상세 분석은 기술적 보조지표 참고 자료이며 투자 판단을 대체하지 않습니다.</p>
+      </DialogContent>
+    </Dialog>
+  ) : null;
+
   return (
     <div className="relative min-h-[calc(100vh-3rem)] overflow-hidden rounded-[2rem] bg-[#f7f9fb] p-4 text-slate-950 md:p-8">
       <div className="pointer-events-none absolute right-[-5rem] top-[-5rem] h-64 w-64 rounded-[4rem] bg-blue-200/60 blur-3xl" />
@@ -575,6 +1089,35 @@ export default function Home() {
               {refreshAll.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
               전체 현재가 갱신
             </Button>
+            <div className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-900">
+              <span className="inline-flex items-center gap-2">
+                <Activity className={`h-3.5 w-3.5 ${stocksQuery.isFetching ? "animate-pulse" : ""}`} />
+                {serverAutoRefreshText} · 화면 60초 재조회 · 최근 반영 {lastClientRefreshText}
+              </span>
+            </div>
+            {isAdmin ? (
+              autoRefreshStatus.data?.enabled ? (
+                <Button
+                  variant="outline"
+                  disabled={pauseAutoRefresh.isPending}
+                  onClick={() => pauseAutoRefresh.mutate()}
+                  className="rounded-full border-slate-200 bg-white/70 px-5"
+                >
+                  {pauseAutoRefresh.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                  자동 추적 일시정지
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  disabled={enableAutoRefresh.isPending}
+                  onClick={() => enableAutoRefresh.mutate()}
+                  className="rounded-full border-emerald-200 bg-white/70 px-5 text-emerald-800 hover:text-emerald-900"
+                >
+                  {enableAutoRefresh.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+                  60초 자동 추적 활성화
+                </Button>
+              )
+            ) : null}
             <div className="relative min-w-[240px] flex-1 md:flex-none">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
@@ -849,7 +1392,7 @@ export default function Home() {
         </Card>
       </section>
 
-      <Dialog open={Boolean(selectedStock)} onOpenChange={(open) => { if (!open) setSelectedStock(null); }}>
+      <Dialog open={Boolean(selectedStock)} onOpenChange={(open) => { if (!open) { setSelectedStock(null); setSelectedIndicatorKey(null); } }}>
         <DialogContent className="max-h-[88vh] overflow-y-auto border-0 bg-white text-slate-950 sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle className="flex flex-wrap items-center gap-3 text-2xl font-black">
@@ -944,6 +1487,7 @@ export default function Home() {
           ) : null}
         </DialogContent>
       </Dialog>
+      {indicatorDetailDialog}
     </div>
   );
 }
