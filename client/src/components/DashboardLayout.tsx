@@ -21,14 +21,16 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { BarChart3, LogOut, PanelLeft } from "lucide-react";
+import { BarChart3, Bitcoin, Globe2, LogOut, PanelLeft } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: BarChart3, label: "섹터 분석", path: "/" },
+  { icon: BarChart3, label: "국내주식 섹터분석", path: "/" },
+  { icon: Globe2, label: "해외주식 섹터분석", path: "/global-stocks" },
+  { icon: Bitcoin, label: "크립토 섹터분석", path: "/crypto-sectors" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -64,7 +66,7 @@ export default function DashboardLayout({
               분석 대시보드에 로그인
             </h1>
             <p className="text-sm text-muted-foreground text-center max-w-sm">
-              대한민국 주식 섹터 분석 도구는 인증된 사용자에게만 제공됩니다. 오너는 종목 데이터 편집과 현재가 갱신 기능을 사용할 수 있습니다.
+              국내주식, 해외주식, 크립토 섹터 분석 도구는 인증된 사용자에게만 제공됩니다. 오너는 국내 종목 데이터 편집과 현재가 갱신 기능을 사용할 수 있습니다.
             </p>
           </div>
           <Button

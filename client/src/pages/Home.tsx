@@ -29,10 +29,11 @@ type SectorKey =
 type ActiveSector = SectorKey | "all";
 
 type SortDirection = "desc" | "asc";
-type SortKey = "marketRank" | "name" | "code" | "sector" | "marketSuffix" | "currentPrice" | "annualEps" | "earningsYield" | "lastPriceFetchedAt";
+type SortKey = "marketRank" | "name" | "code" | "sector" | "marketSuffix" | "currentPrice" | "annualEps" | "earningsYield" | "per" | "pbr" | "marketCapHundredMillionKrw" | "latestOperatingProfitHundredMillionKrw" | "connectionStatus" | "lastPriceFetchedAt";
 type PriceChartFrame = "daily" | "weekly" | "monthly";
 
 const TABLE_PAGE_SIZE = 25;
+const SUMMARY_SORT_KEYS = new Set<SortKey>(["per", "pbr", "marketCapHundredMillionKrw", "latestOperatingProfitHundredMillionKrw"]);
 
 type StockForm = {
   id?: number;
@@ -69,9 +70,9 @@ const DEFAULT_SECTOR: SectorKey = "ai_semiconductor_value_chain";
 
 const allSectorMeta = {
   key: "all" as const,
-  label: "KOSPI 200 전체",
-  shortLabel: "전체 200",
-  description: "KOSPI 시가총액 상위 200개 전체를 자체 테마와 함께 한 번에 비교합니다.",
+  label: "국내주식 전체",
+  shortLabel: "국내 전체",
+  description: "국내 대표 종목 전체를 자체 테마와 함께 한 번에 비교합니다.",
 };
 
 const emptyForm = (sector: SectorKey): StockForm => ({
@@ -99,6 +100,12 @@ const formatHundredMillionKrw = (value: number | null | undefined) => {
     return `${trillion.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}조원`;
   }
   return `${value.toLocaleString("ko-KR", { maximumFractionDigits: 0 })}억원`;
+};
+
+const formatSignedPercent = (value: number | null | undefined) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "-";
+  const prefix = value > 0 ? "+" : "";
+  return `${prefix}${value.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}%`;
 };
 
 const formatDateTime = (value: Date | string | null | undefined) => {
@@ -195,7 +202,7 @@ export default function Home() {
     const list = keyword
       ? scopedRows.filter(row => `${row.name} ${row.code} ${getMarketLabel(row.marketSuffix)} ${getSectorLabel(row.sector)} ${row.dataSource}`.toLowerCase().includes(keyword))
       : scopedRows;
-    if (!sortState) return list;
+    if (!sortState || SUMMARY_SORT_KEYS.has(sortState.key)) return list;
 
     const getSortValue = (row: (typeof list)[number]) => {
       switch (sortState.key) {
@@ -206,6 +213,7 @@ export default function Home() {
         case "currentPrice": return row.currentPrice;
         case "annualEps": return row.annualEps;
         case "earningsYield": return row.earningsYield ?? Number.NEGATIVE_INFINITY;
+        case "connectionStatus": return getConnectionLabel(row.dataSource, row.currentPrice, row.annualEps);
         case "lastPriceFetchedAt": return row.lastPriceFetchedAt ? new Date(row.lastPriceFetchedAt).getTime() : Number.NEGATIVE_INFINITY;
         case "marketRank":
         default: return row.marketRank ?? Number.POSITIVE_INFINITY;
@@ -243,6 +251,33 @@ export default function Home() {
     staleTime: 1000 * 60 * 10,
   });
   const summaryByCode = useMemo(() => new Map((financialSummaries.data ?? []).map(summary => [summary.code, summary])), [financialSummaries.data]);
+  const pagedDisplayRows = useMemo(() => {
+    if (!sortState || !SUMMARY_SORT_KEYS.has(sortState.key)) return pagedRows;
+
+    const getSummarySortValue = (row: (typeof pagedRows)[number]) => {
+      const summary = summaryByCode.get(row.code.padStart(6, "0"));
+      if (!summary?.success) return null;
+      switch (sortState.key) {
+        case "per": return summary.per;
+        case "pbr": return summary.pbr;
+        case "marketCapHundredMillionKrw": return summary.marketCapHundredMillionKrw;
+        case "latestOperatingProfitHundredMillionKrw": return summary.latestOperatingProfitHundredMillionKrw;
+        default: return null;
+      }
+    };
+
+    return [...pagedRows].sort((a, b) => {
+      const aValue = getSummarySortValue(a);
+      const bValue = getSummarySortValue(b);
+      const aMissing = aValue === null || !Number.isFinite(aValue);
+      const bMissing = bValue === null || !Number.isFinite(bValue);
+      if (aMissing && bMissing) return (a.marketRank ?? 999999) - (b.marketRank ?? 999999);
+      if (aMissing) return 1;
+      if (bMissing) return -1;
+      const compared = Number(aValue) - Number(bValue);
+      return sortState.direction === "asc" ? compared : -compared;
+    });
+  }, [pagedRows, sortState, summaryByCode]);
   const priceChartFrameLabels: Record<PriceChartFrame, string> = { daily: "일봉", weekly: "주봉", monthly: "월봉" };
   const priceChartData = useMemo(() => {
     const history = technicalIndicators.data?.priceHistory ?? [];
@@ -381,6 +416,11 @@ export default function Home() {
     currentPrice: "현재가",
     annualEps: "EPS",
     earningsYield: "EPS/주가",
+    per: "PER",
+    pbr: "PBR",
+    marketCapHundredMillionKrw: "시가총액",
+    latestOperatingProfitHundredMillionKrw: "영업이익",
+    connectionStatus: "연동 상태",
     lastPriceFetchedAt: "갱신시각",
   };
   const renderSortIcon = (key: SortKey) => {
@@ -499,12 +539,12 @@ export default function Home() {
 
       <section className="relative z-10 mb-8 grid gap-6 xl:grid-cols-[1.45fr_0.55fr]">
         <div className="rounded-[2rem] bg-white/80 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] ring-1 ring-white sm:p-8">
-          <Badge className="mb-5 bg-slate-950 text-white hover:bg-slate-950">KOSPI Top 200 Theme Dashboard</Badge>
+          <Badge className="mb-5 bg-slate-950 text-white hover:bg-slate-950">Domestic Stock Sector Dashboard</Badge>
           <h1 className="max-w-5xl break-keep text-3xl font-black leading-[1.12] tracking-[-0.03em] text-slate-950 sm:text-4xl lg:text-5xl">
-            KOSPI 200 밸류에이션·실적 테마 분석
+            국내주식 섹터분석
           </h1>
           <p className="mt-5 max-w-3xl text-base font-light leading-7 text-slate-500 md:text-lg">
-            KOSPI 시가총액 상위 200개 종목을 자체 산업·비즈니스 테마로 재분류하고, 종목 클릭 시 PER, PBR, 시가총액, 영업이익, EPS, EPS/주가(%), 최근 분기별 실적과 RSI 등 대표 보조지표 10개를 한 화면에서 확인하도록 정리했습니다.
+            국내 대표 종목을 자체 산업·비즈니스 테마로 재분류하고, 종목 클릭 시 PER, PBR, 시가총액, 영업이익, EPS, EPS/주가(%), 최근 분기별 실적과 RSI 등 대표 보조지표를 한 화면에서 확인하도록 정리했습니다.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button
@@ -574,7 +614,7 @@ export default function Home() {
                 <ShieldCheck className="h-4 w-4 text-slate-500" /> 권한 및 데이터 상태
               </CardTitle>
               <CardDescription>
-                {isAdmin ? "오너 권한으로 수동 편집과 현재가 갱신이 가능합니다." : "일반 사용자는 조회 전용입니다. 데이터 출처와 갱신 시각은 테이블에서 확인할 수 있습니다."}
+                {isAdmin ? "오너 권한으로 수동 편집과 현재가 갱신이 가능합니다." : "일반 사용자는 조회 전용입니다. 데이터 출처와 갱신 시각은 테이블에서 확인할 수 있습니다."} 관리 미리보기는 최신 작업 화면이고, 공개 주소는 마지막으로 Publish한 체크포인트가 보입니다. 수정 직후 공개 화면이 예전처럼 보이면 새 체크포인트에서 Publish를 누르고 Ctrl+Shift+R로 새로고침하세요.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -724,16 +764,17 @@ export default function Home() {
                   <th className="px-2 py-2">{sortableHeader("현재 주가", "currentPrice", "right")}</th>
                   <th className="px-2 py-2">{sortableHeader("EPS", "annualEps", "right")}</th>
                   <th className="px-2 py-2">{sortableHeader("EPS/주가", "earningsYield", "right")}</th>
-                  <th className="px-3 py-2 text-right font-medium">PER</th>
-                  <th className="px-3 py-2 text-right font-medium">PBR</th>
-                  <th className="px-4 py-2 text-right font-medium">시가총액·실적</th>
-                  <th className="px-4 py-2 font-medium">연동 상태</th>
+                  <th className="px-2 py-2">{sortableHeader("PER", "per", "right")}</th>
+                  <th className="px-2 py-2">{sortableHeader("PBR", "pbr", "right")}</th>
+                  <th className="px-2 py-2">{sortableHeader("시가총액", "marketCapHundredMillionKrw", "right")}</th>
+                  <th className="px-2 py-2">{sortableHeader("영업이익", "latestOperatingProfitHundredMillionKrw", "right")}</th>
+                  <th className="px-2 py-2">{sortableHeader("연동 상태", "connectionStatus")}</th>
                   <th className="px-2 py-2">{sortableHeader("마지막 갱신", "lastPriceFetchedAt")}</th>
                   <th className="px-4 py-2 text-right font-medium">관리</th>
                 </tr>
               </thead>
               <tbody>
-                {pagedRows.map(row => {
+                {pagedDisplayRows.map(row => {
                   const summary = summaryByCode.get(row.code.padStart(6, "0"));
                   const summaryLoading = financialSummaries.isLoading || financialSummaries.isFetching;
                   return (
@@ -756,11 +797,13 @@ export default function Home() {
                     </td>
                     <td className="px-4 py-3 text-right text-xs text-slate-700" title={summary && !summary.success ? summary.error : undefined}>
                       {summary?.success ? (
-                        <div className="space-y-1 whitespace-nowrap">
-                          <p className="font-black text-slate-950">{formatHundredMillionKrw(summary.marketCapHundredMillionKrw)}</p>
-                          <p>영업이익 {formatHundredMillionKrw(summary.latestOperatingProfitHundredMillionKrw)}</p>
-                        </div>
-                      ) : summaryLoading ? <span className="text-slate-400">조회 중</span> : summary && !summary.success ? <button type="button" className="rounded-full bg-slate-100 px-2 py-1 text-slate-600 transition hover:bg-blue-50 hover:text-blue-700" onClick={(event) => { event.stopPropagation(); setSelectedStock(row); }} aria-label={`${row.name} 상세 실적 다시 조회`}>상세 조회</button> : <span className="text-slate-400">대기</span>}
+                        <p className="font-black text-slate-950 whitespace-nowrap">{formatHundredMillionKrw(summary.marketCapHundredMillionKrw)}</p>
+                      ) : summaryLoading ? <span className="text-slate-400">조회 중</span> : summary && !summary.success ? <button type="button" className="rounded-full bg-slate-100 px-2 py-1 text-slate-600 transition hover:bg-blue-50 hover:text-blue-700" onClick={(event) => { event.stopPropagation(); setSelectedStock(row); }} aria-label={`${row.name} 시가총액 상세 다시 조회`}>상세 조회</button> : <span className="text-slate-400">대기</span>}
+                    </td>
+                    <td className="px-4 py-3 text-right text-xs text-slate-700" title={summary && !summary.success ? summary.error : undefined}>
+                      {summary?.success ? (
+                        <p className="font-semibold whitespace-nowrap">{formatHundredMillionKrw(summary.latestOperatingProfitHundredMillionKrw)}</p>
+                      ) : summaryLoading ? <span className="text-slate-400">조회 중</span> : summary && !summary.success ? <button type="button" className="rounded-full bg-slate-100 px-2 py-1 text-slate-600 transition hover:bg-blue-50 hover:text-blue-700" onClick={(event) => { event.stopPropagation(); setSelectedStock(row); }} aria-label={`${row.name} 영업이익 상세 다시 조회`}>상세 조회</button> : <span className="text-slate-400">대기</span>}
                     </td>
                     <td className="px-4 py-3"><Badge variant="outline" className="rounded-full bg-white">{getConnectionLabel(row.dataSource, row.currentPrice, row.annualEps)}</Badge></td>
                     <td className="px-4 py-3 text-xs text-slate-500">{formatDateTime(row.lastPriceFetchedAt)}</td>
@@ -803,7 +846,7 @@ export default function Home() {
               {selectedStock?.name ?? "종목"} 재무 상세
             </DialogTitle>
             <DialogDescription>
-              네이버 금융 기준 PER, PBR, 시가총액과 최근 분기별 실적을 확인하고, 야후 가격 이력 기반 RSI·스토캐스틱·52주 고저점 이격도 등 10개 보조지표를 함께 봅니다.
+              네이버 금융 기준 기본 지표 12개와 최근 분기별 실적을 확인하고, 야후 가격 이력 기반 RSI·스토캐스틱·52주 고저점 이격도 등 보조지표를 함께 봅니다.
             </DialogDescription>
           </DialogHeader>
 
@@ -824,21 +867,38 @@ export default function Home() {
             </div>
           ) : financialDetail.data ? (
             <div className="space-y-5">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                {[
-                  ["PER", formatMultiple(financialDetail.data.per)],
-                  ["PBR", formatMultiple(financialDetail.data.pbr)],
-                  ["EPS", selectedStock ? `${formatNumber(selectedStock.annualEps)}원` : "-"],
-                  ["EPS/주가", selectedStock ? formatPercent(selectedStock.earningsYield) : "-"],
-                  ["시가총액", formatHundredMillionKrw(financialDetail.data.marketCapHundredMillionKrw)],
-                  ["최근 영업이익", formatHundredMillionKrw(financialDetail.data.latestOperatingProfitHundredMillionKrw)],
-                  ["최근 순이익", formatHundredMillionKrw(financialDetail.data.latestNetIncomeHundredMillionKrw)],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-3xl bg-slate-50 p-4">
-                    <p className="text-xs font-semibold text-slate-500">{label}</p>
-                    <p className="mt-2 break-keep text-xl font-black text-slate-950">{value}</p>
+              <div>
+                <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h3 className="text-lg font-black text-slate-950">상단 핵심 카드 12개</h3>
+                    <p className="text-sm text-slate-500">회사 크기, 가격 부담, 자본 효율, 재무 안정성, 주주환원, 성장성을 한 번에 비교합니다.</p>
                   </div>
-                ))}
+                  <Badge variant="outline" className="w-fit rounded-full bg-slate-50">기본형 12개</Badge>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {[
+                    { label: "시가총액", value: formatHundredMillionKrw(financialDetail.data.marketCapHundredMillionKrw), reason: "회사 크기" },
+                    { label: "PER", value: formatMultiple(financialDetail.data.per), reason: "이익 대비 가격" },
+                    { label: "PBR", value: formatMultiple(financialDetail.data.pbr), reason: "자산 대비 가격" },
+                    { label: "ROE", value: formatPercent(financialDetail.data.roe), reason: "자본 효율" },
+                    { label: "EPS", value: selectedStock ? `${formatNumber(selectedStock.annualEps)}원` : "-", reason: "주당순이익" },
+                    { label: "BPS", value: financialDetail.data.bps === null ? "자료 없음" : `${formatNumber(financialDetail.data.bps)}원`, reason: "주당순자산" },
+                    { label: "영업이익률", value: formatPercent(financialDetail.data.operatingProfitMargin), reason: "본업 수익성" },
+                    { label: "부채비율", value: formatPercent(financialDetail.data.debtRatio), reason: "재무 안정성" },
+                    { label: "순차입금", value: formatHundredMillionKrw(financialDetail.data.netBorrowingsHundredMillionKrw), reason: "실질 빚" },
+                    { label: "배당수익률", value: formatPercent(financialDetail.data.dividendYield), reason: "주주환원" },
+                    { label: "매출 성장률 YoY", value: formatSignedPercent(financialDetail.data.revenueGrowthYoY), reason: "성장성" },
+                    { label: "영업이익 성장률 YoY", value: formatSignedPercent(financialDetail.data.operatingProfitGrowthYoY), reason: "이익 성장성" },
+                  ].map(card => (
+                    <div key={card.label} className="rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-100">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-xs font-semibold text-slate-500">{card.label}</p>
+                        <span className="rounded-full bg-white px-2 py-1 text-[11px] font-bold text-slate-500 ring-1 ring-slate-100">{card.reason}</span>
+                      </div>
+                      <p className="mt-3 break-keep text-xl font-black text-slate-950">{card.value === "-" ? "자료 없음" : card.value}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="overflow-x-auto rounded-3xl border border-slate-100">

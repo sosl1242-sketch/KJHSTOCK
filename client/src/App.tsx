@@ -6,12 +6,16 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import GlobalStocks from "./pages/GlobalStocks";
+import CryptoSectors from "./pages/CryptoSectors";
 
 function Router() {
   return (
     <DashboardLayout>
       <Switch>
         <Route path={"/"} component={Home} />
+        <Route path={"/global-stocks"} component={GlobalStocks} />
+        <Route path={"/crypto-sectors"} component={CryptoSectors} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>

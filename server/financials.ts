@@ -11,6 +11,14 @@ export type StockFinancialDetail = {
   marketSuffix: "KS" | "KQ";
   per: number | null;
   pbr: number | null;
+  roe: number | null;
+  bps: number | null;
+  operatingProfitMargin: number | null;
+  debtRatio: number | null;
+  netBorrowingsHundredMillionKrw: number | null;
+  dividendYield: number | null;
+  revenueGrowthYoY: number | null;
+  operatingProfitGrowthYoY: number | null;
   marketCapHundredMillionKrw: number | null;
   latestRevenueHundredMillionKrw: number | null;
   latestOperatingProfitHundredMillionKrw: number | null;
@@ -131,6 +139,28 @@ function latestNumber(values: Array<number | null | undefined>) {
   return null;
 }
 
+function divideAsPercent(numerator: number | null, denominator: number | null) {
+  if (typeof numerator !== "number" || typeof denominator !== "number" || !Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) {
+    return null;
+  }
+  return (numerator / denominator) * 100;
+}
+
+function findYoYGrowth(periods: string[], values: Array<number | null | undefined>) {
+  for (let index = periods.length - 1; index >= 0; index -= 1) {
+    const currentValue = values[index];
+    if (typeof currentValue !== "number" || !Number.isFinite(currentValue)) continue;
+    const period = periods[index]?.match(/(\d{4})\.(\d{2})/);
+    if (!period) continue;
+    const targetPeriod = `${Number(period[1]) - 1}.${period[2]}`;
+    const previousIndex = periods.findIndex(candidate => candidate.includes(targetPeriod));
+    const previousValue = previousIndex >= 0 ? values[previousIndex] : null;
+    if (typeof previousValue !== "number" || !Number.isFinite(previousValue) || previousValue === 0) continue;
+    return ((currentValue - previousValue) / Math.abs(previousValue)) * 100;
+  }
+  return null;
+}
+
 function extractMarketCap(html: string) {
   const directTableIndex = html.indexOf("<caption>시가총액</caption>");
   if (directTableIndex !== -1) {
@@ -153,6 +183,13 @@ export function parseNaverFinancialDetail(html: string, input: { code: string; n
   const netIncomeValues = extractMetricValues(table, "당기순이익");
   const perValues = extractMetricValues(table, "PER(배)");
   const pbrValues = extractMetricValues(table, "PBR(배)");
+  const roeValues = extractMetricValues(table, "ROE");
+  const bpsValues = extractMetricValues(table, "BPS");
+  const operatingProfitMarginValues = extractMetricValues(table, "영업이익률");
+  const debtRatioValues = extractMetricValues(table, "부채비율");
+  const netBorrowingsValues = extractMetricValues(table, "순차입금");
+  const dividendYieldValues = extractMetricValues(table, "배당수익률");
+  const fallbackDividendYieldValues = dividendYieldValues.length ? dividendYieldValues : extractMetricValues(table, "시가배당률");
   const quarterlyStartIndex = periods.length >= 10 ? 4 : Math.max(0, periods.length - 6);
 
   const quarterly = periods.slice(quarterlyStartIndex).map((period, offset) => {
@@ -165,15 +202,26 @@ export function parseNaverFinancialDetail(html: string, input: { code: string; n
     };
   }).filter(row => row.revenue !== null || row.operatingProfit !== null || row.netIncome !== null);
 
+  const latestRevenue = latestNumber(revenueValues);
+  const latestOperatingProfit = latestNumber(operatingProfitValues);
+
   return {
     code: input.code,
     name: input.name,
     marketSuffix: input.marketSuffix,
     per: latestNumber(perValues),
     pbr: latestNumber(pbrValues),
+    roe: latestNumber(roeValues),
+    bps: latestNumber(bpsValues),
+    operatingProfitMargin: latestNumber(operatingProfitMarginValues) ?? divideAsPercent(latestOperatingProfit, latestRevenue),
+    debtRatio: latestNumber(debtRatioValues),
+    netBorrowingsHundredMillionKrw: latestNumber(netBorrowingsValues),
+    dividendYield: latestNumber(fallbackDividendYieldValues),
+    revenueGrowthYoY: findYoYGrowth(periods, revenueValues),
+    operatingProfitGrowthYoY: findYoYGrowth(periods, operatingProfitValues),
     marketCapHundredMillionKrw: extractMarketCap(html),
-    latestRevenueHundredMillionKrw: latestNumber(revenueValues),
-    latestOperatingProfitHundredMillionKrw: latestNumber(operatingProfitValues),
+    latestRevenueHundredMillionKrw: latestRevenue,
+    latestOperatingProfitHundredMillionKrw: latestOperatingProfit,
     latestNetIncomeHundredMillionKrw: latestNumber(netIncomeValues),
     quarterly,
     source: "NaverFinance",

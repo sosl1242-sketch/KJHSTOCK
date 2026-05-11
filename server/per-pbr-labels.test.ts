@@ -8,8 +8,8 @@ describe("PER/PBR display labels", () => {
   it("keeps PER and PBR as separate table headers instead of a combined ratio label", () => {
     expect(homeSource).not.toContain("PER/PBR");
     expect(homeSource).not.toContain("PER·PBR");
-    expect(homeSource).toContain('text-right font-medium">PER</th>');
-    expect(homeSource).toContain('text-right font-medium">PBR</th>');
+    expect(homeSource).toContain('sortableHeader("PER", "per", "right")');
+    expect(homeSource).toContain('sortableHeader("PBR", "pbr", "right")');
   });
 
   it("keeps the latest-screen marker explicit about separate PER and PBR columns", () => {

@@ -19,6 +19,12 @@ const sampleHtml = `
         <tr><th>당기순이익</th><td>154,871</td><td>315,000</td><td>360,000</td><td>410,000</td><td>67,547</td><td>98,413</td><td>82,200</td><td>75,000</td><td>88,000</td><td>90,000</td></tr>
         <tr><th>PER(배)</th><td>12.3</td><td>10.1</td><td>9.2</td><td>8.4</td><td>11.4</td><td>10.8</td><td>10.5</td><td>9.9</td><td>9.5</td><td>9.1</td></tr>
         <tr><th>PBR(배)</th><td>1.4</td><td>1.3</td><td>1.2</td><td>1.1</td><td>1.35</td><td>1.32</td><td>1.27</td><td>1.24</td><td>1.21</td><td>1.19</td></tr>
+        <tr><th>ROE(%)</th><td>5.0</td><td>9.8</td><td>11.0</td><td>12.0</td><td>8.1</td><td>9.0</td><td>9.4</td><td>10.2</td><td>10.9</td><td>11.3</td></tr>
+        <tr><th>BPS(원)</th><td>53,000</td><td>56,000</td><td>60,000</td><td>64,000</td><td>54,000</td><td>55,000</td><td>56,500</td><td>57,200</td><td>58,600</td><td>60,100</td></tr>
+        <tr><th>영업이익률</th><td>2.54</td><td>10.84</td><td>13.66</td><td>14.66</td><td>9.19</td><td>14.10</td><td>11.61</td><td>10.67</td><td>12.34</td><td>12.35</td></tr>
+        <tr><th>부채비율</th><td>26.4</td><td>27.5</td><td>28.0</td><td>28.2</td><td>27.1</td><td>27.3</td><td>27.5</td><td>27.7</td><td>27.9</td><td>28.1</td></tr>
+        <tr><th>순차입금</th><td>-1,000</td><td>-2,000</td><td>-3,000</td><td>-4,000</td><td>-1,500</td><td>-1,800</td><td>-2,100</td><td>-2,400</td><td>-2,700</td><td>-3,000</td></tr>
+        <tr><th>배당수익률</th><td>2.1</td><td>2.3</td><td>2.4</td><td>2.5</td><td>2.2</td><td>2.25</td><td>2.3</td><td>2.35</td><td>2.4</td><td>2.45</td></tr>
       </tbody>
     </table>
   </body>
@@ -38,6 +44,14 @@ describe("financial detail parser", () => {
     expect(result.marketCapHundredMillionKrw).toBe(4012345);
     expect(result.latestOperatingProfitHundredMillionKrw).toBe(100000);
     expect(result.latestNetIncomeHundredMillionKrw).toBe(90000);
+    expect(result.roe).toBe(11.3);
+    expect(result.bps).toBe(60100);
+    expect(result.operatingProfitMargin).toBe(12.35);
+    expect(result.debtRatio).toBe(28.1);
+    expect(result.netBorrowingsHundredMillionKrw).toBe(-3000);
+    expect(result.dividendYield).toBe(2.45);
+    expect(result.revenueGrowthYoY).toBeCloseTo(9.36, 2);
+    expect(result.operatingProfitGrowthYoY).toBeCloseTo(-4.25, 2);
     expect(result.quarterly).toHaveLength(6);
     expect(result.quarterly.at(-1)).toEqual({ period: "2025.06", revenue: 810000, operatingProfit: 100000, netIncome: 90000 });
   });
