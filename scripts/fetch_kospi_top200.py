@@ -7,6 +7,7 @@ from pykrx import stock
 
 OUTPUT = Path('/home/ubuntu/korea-stock-sector-analyzer/data/kospi_top200.json')
 OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+MARKET_CAP_LIMIT = 300
 
 
 def latest_available_date(max_days: int = 14) -> str:
@@ -43,7 +44,7 @@ def theme_for(name: str) -> str:
 
 def main():
     date = latest_available_date()
-    cap = stock.get_market_cap_by_ticker(date, market='KOSPI').sort_values('시가총액', ascending=False).head(200)
+    cap = stock.get_market_cap_by_ticker(date, market='KOSPI').sort_values('시가총액', ascending=False).head(MARKET_CAP_LIMIT)
     fundamentals = stock.get_market_fundamental_by_ticker(date, market='KOSPI')
 
     records = []

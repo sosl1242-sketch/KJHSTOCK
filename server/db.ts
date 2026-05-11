@@ -5,6 +5,7 @@ import { ENV } from "./_core/env";
 import { KOSPI_TOP200_STOCKS } from "./kospiSeed";
 
 let _db: ReturnType<typeof drizzle> | null = null;
+export const KOREA_MARKET_CAP_STOCK_LIMIT = 300;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
@@ -122,10 +123,11 @@ export async function seedDefaultStocksIfNeeded() {
   const db = await getDb();
   if (!db) return;
 
-  const existing = await db.select({ id: stocks.id }).from(stocks).limit(201);
-  if (existing.length >= 200) return;
+  const seedStocks = KOSPI_TOP200_STOCKS.filter(seed => !seed.marketRank || seed.marketRank <= KOREA_MARKET_CAP_STOCK_LIMIT);
+  const existing = await db.select({ id: stocks.id }).from(stocks).limit(KOREA_MARKET_CAP_STOCK_LIMIT + 1);
+  if (existing.length >= seedStocks.length) return;
 
-  for (const seed of KOSPI_TOP200_STOCKS) {
+  for (const seed of seedStocks) {
     const values = normalizeSeedStock(seed);
     await db.insert(stocks).values(values).onDuplicateKeyUpdate({
       set: {

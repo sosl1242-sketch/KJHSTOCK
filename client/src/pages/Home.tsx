@@ -33,6 +33,7 @@ type SortKey = "marketRank" | "name" | "code" | "sector" | "marketSuffix" | "cur
 type PriceChartFrame = "daily" | "weekly" | "monthly";
 
 const TABLE_PAGE_SIZE = 25;
+const KOREA_MARKET_CAP_LIMIT = 300;
 const SUMMARY_SORT_KEYS = new Set<SortKey>(["per", "pbr", "marketCapHundredMillionKrw", "latestOperatingProfitHundredMillionKrw"]);
 const PRICE_AUTO_REFETCH_MS = 60_000;
 
@@ -526,7 +527,7 @@ export default function Home() {
   const rows = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
     const scopedRows = selectedSector === "all"
-      ? (stocksQuery.data ?? []).filter(row => typeof row.marketRank === "number" && row.marketRank >= 1 && row.marketRank <= 200)
+      ? (stocksQuery.data ?? []).filter(row => typeof row.marketRank === "number" && row.marketRank >= 1 && row.marketRank <= KOREA_MARKET_CAP_LIMIT)
       : stocksQuery.data ?? [];
     const list = keyword
       ? scopedRows.filter(row => `${row.name} ${row.code} ${getMarketLabel(row.marketSuffix)} ${getSectorLabel(row.sector)} ${row.dataSource}`.toLowerCase().includes(keyword))
@@ -1195,7 +1196,7 @@ export default function Home() {
               <CardTitle className="flex items-center gap-2 text-2xl font-black tracking-tight">
                 <BarChart3 className="h-6 w-6 text-blue-500" /> {selectedSector === "all" ? "테마별 구성 차트" : `${selectedSectorMeta.shortLabel} 대표 종목 20개 차트`}
               </CardTitle>
-              <CardDescription>{selectedSector === "all" ? "전체 200개 종목을 자체 테마별 종목 수로 비교합니다." : "선택한 세부 테마 안에서 시가총액을 우선 사용하고, 아직 수집 전이면 현재가 기준으로 대표 종목을 최대 20개까지 비교합니다."}</CardDescription>
+              <CardDescription>{selectedSector === "all" ? `시총 기준 최대 ${KOREA_MARKET_CAP_LIMIT}개 종목을 자체 테마별 종목 수로 비교합니다.` : "선택한 세부 테마 안에서 시가총액을 우선 사용하고, 아직 수집 전이면 현재가 기준으로 대표 종목을 최대 20개까지 비교합니다."}</CardDescription>
             </CardHeader>
             <CardContent className={selectedSector === "all" ? "h-[420px]" : "h-[620px]"}>
               {stocksQuery.isLoading ? (
@@ -1240,7 +1241,7 @@ export default function Home() {
               <CardTitle className="flex items-center gap-2 text-xl font-black">
                 <Database className="h-5 w-5 text-rose-400" /> 오너 편집 패널
               </CardTitle>
-              <CardDescription>KOSPI 200 기본 데이터는 자동 시드되며, 현재가는 오너가 수동 보정할 수 있습니다. PER, PBR, 분기 실적은 종목 클릭 시 각각 네이버 금융에서 조회합니다.</CardDescription>
+              <CardDescription>국내주식은 시총 기준 최대 {KOREA_MARKET_CAP_LIMIT}개까지 관리하며, 현재가는 오너가 수동 보정할 수 있습니다. PER, PBR, 분기 실적은 종목 클릭 시 각각 네이버 금융에서 조회합니다.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
@@ -1300,12 +1301,12 @@ export default function Home() {
 
         <Card className="overflow-hidden rounded-[2rem] border-0 bg-white/95 shadow-[0_24px_80px_rgba(15,23,42,0.06)]">
           <CardHeader>
-            <CardTitle className="text-2xl font-black tracking-tight">KOSPI 200 종목 테이블</CardTitle>
+            <CardTitle className="text-2xl font-black tracking-tight">국내 시총 상위 {KOREA_MARKET_CAP_LIMIT} 종목 테이블</CardTitle>
             <CardDescription>헤더를 클릭하면 내림차순 → 오름차순 → 정렬취소 순서로 전환됩니다. 현재 페이지 25개 종목은 PER, PBR, 시가총액, 최근 영업이익 요약값을 먼저 불러오며, 외부 자료가 일시적으로 지연되면 행 클릭 상세조회에서 다시 확인할 수 있습니다.</CardDescription>
           </CardHeader>
           <CardContent className="max-w-full overflow-x-auto">
             <div className="mb-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500">
-              현재 정렬: <span className="font-black text-slate-900">{currentSortLabel}</span> · 최신 화면 표식: KOSPI 200 테마, PER 별도, PBR 별도, RSI. 폭이 좁은 화면과 크롬 확대 상태에서는 표 영역만 좌우로 밀어 보세요. 공개 사이트가 이전 EPS 화면으로 보이면 Ctrl+Shift+R로 강력 새로고침하세요.
+              현재 정렬: <span className="font-black text-slate-900">{currentSortLabel}</span> · 최신 화면 표식: 시총 기준 최대 {KOREA_MARKET_CAP_LIMIT}개, PER 별도, PBR 별도, RSI. 폭이 좁은 화면과 크롬 확대 상태에서는 표 영역만 좌우로 밀어 보세요. 공개 사이트가 이전 EPS 화면으로 보이면 Ctrl+Shift+R로 강력 새로고침하세요.
             </div>
             <table className="w-full min-w-[1380px] border-separate border-spacing-y-2 text-left text-sm">
               <thead>

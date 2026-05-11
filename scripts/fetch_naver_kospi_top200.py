@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 
 OUTPUT = Path('/home/ubuntu/korea-stock-sector-analyzer/data/kospi_top200.json')
 OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+MARKET_CAP_LIMIT = 300
 
 THEMES = [
     {
@@ -119,9 +120,10 @@ def fetch_page(page: int):
 
 def main():
     records = []
-    for page in range(1, 5):
+    pages = (MARKET_CAP_LIMIT + 49) // 50
+    for page in range(1, pages + 1):
         records.extend(fetch_page(page))
-    records = records[:200]
+    records = records[:MARKET_CAP_LIMIT]
     for i, row in enumerate(records, start=1):
         row['marketRank'] = i
     output = {
