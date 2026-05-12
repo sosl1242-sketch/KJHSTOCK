@@ -130,3 +130,41 @@
 - [x] 비밀번호 인증 페이지 추가: '5690' 입력 시 세션 쿠키 설정, 누구나 접속 가능하게 변경
 
 - [x] GitHub 최신 변경 사항을 현재 프로젝트에 동기화하고 충돌·타입 오류 여부를 확인한다.
+
+- [ ] 동료가 수정한 해외주식·크립토 섹터 변경분을 현재 국내주식 섹터 구조와 충돌 없이 통합한다.
+- [ ] 크립토 섹터에서 바이낸스 USDT 선물시장 상위 100개 종목을 실제 API 기준으로 가져오고 거래대금·등락률·펀딩비를 표시한다.
+- [ ] 해외주식 섹터 화면을 국내주식 섹터처럼 요약 카드, 섹터/테마 필터, 정렬 가능한 표, 상세 분석 흐름으로 재구성한다.
+- [ ] 해외주식·크립토 통합 후 빈 상태, 실패 원인, 마지막 갱신 시각, 수동 재시도 UX를 정리한다.
+- [ ] 통합 작업 후 Vitest, TypeScript 검사, 상태 점검, 체크포인트 저장을 완료한다.
+
+- [ ] 국내·해외주식·크립토 3개 섹터분석에 전체 초기화 대신 부분 캐시 갱신 정책을 적용한다. 현재 국내주식·크립토·해외주식 화면 쿼리 staleTime 조정은 반영했으나, 3개 화면 전체의 서버 실패 캐시 보장까지 테스트로 고정해야 완료 처리한다.
+- [ ] 국내·해외주식·크립토별로 가격·거래량·펀딩비·재무지표의 갱신 주기를 분리하고 실패 시 마지막 성공 데이터를 유지한다. 현재 국내주식 가격/재무 캐시와 크립토 실패 캐시는 확인했으나, 해외주식 서버 캐시 보강이 남아 있다.
+- [ ] 해외주식 상세 모달에 국내주식과 동일한 고점·저점 판단 보조지표 12개와 상세 해설을 구현한다.
+- [ ] 크립토 상세 모달에 고점·저점 판단 보조지표 12개와 상세 해설을 구현한다.
+- [ ] 해외주식·크립토 가격 차트를 일봉 최근 6개월, 주봉 최근 2년, 월봉 최근 3년 범위로 확장한다.
+- [ ] 3개 섹터분석 통합 레시피 적용 후 Vitest, TypeScript 검사, 프로덕션 빌드, 상태 점검, 체크포인트 저장을 완료한다.
+
+- [x] 국내주식 상세 분석 가격 차트도 일봉 최근 6개월, 주봉 최근 2년, 월봉 최근 3년 범위로 확장한다.
+
+- [x] 크립토 섹터분석의 범위를 Binance USDT 선물 상위 100개가 아니라 USDT 선물시장 전체 종목으로 확장한다.
+- [ ] USDT 선물시장 전체 종목 표시를 위해 검색, 섹터 필터, 정렬, 페이지 처리 또는 표시 제한 UX를 성능 저하 없이 구현한다.
+
+- [ ] 이전 ‘맥스 표현 제외’ 요청 철회에 따라 사용자-facing 문구 정리 범위에서 해당 제약을 제거하고 기존 분석 기능 구현을 우선한다.
+
+## 2026-05-12 팀 공동 작업용 상세 TODO — 600포인트 내 우선순위
+
+아래 항목은 현재 동료들과 동시에 수정 중인 상황을 전제로, **충돌을 줄이고 포인트를 아끼기 위해 구현 위치와 완료 기준을 명확히 남긴 작업 목록**입니다. 구현 순서는 `Home.tsx`의 차트 기간 필터처럼 비용이 낮고 파급이 작은 변경을 먼저 처리한 뒤, 해외주식·크립토 상세 모달의 서버 기반 12개 보조지표 연결로 이동하는 방식이 가장 안전합니다.
+
+| 우선순위 | 상태 | 작업 | 담당 파일·수정 위치 | 구체적 수정 방법 | 완료 기준 |
+| --- | --- | --- | --- | --- | --- |
+| 1 | [x] | 국내주식 상세 분석 장기 차트 범위 확장 | `client/src/pages/Home.tsx`의 `priceChartData` `useMemo` 구간. 기존 컨텍스트 기준 약 612~645줄이며, 현재 파일에서 `priceChartFrame === "daily"`, `weekly`, `monthly` 분기 검색 | 일봉은 `history.slice(-126)`으로 최근 약 6개월 거래일만 사용한다. 주봉은 주 단위 집계 후 `Array.from(grouped.values()).slice(-104)`로 최근 2년 104주만 사용한다. 월봉은 월 단위 집계 후 `Array.from(grouped.values()).slice(-36)`로 최근 3년 36개월만 사용한다. 기존 차트 UI와 상태명은 유지해 충돌을 줄인다. | 국내주식 상세 모달에서 일·주·월 버튼 전환 시 각각 최근 6개월, 2년, 3년 범위만 렌더링되며 기존 보조지표 카드와 상세 해설 모달이 깨지지 않는다. |
+| 2 | [x] | 크립토 종목 범위를 Binance USDT 선물 상위 100개에서 전체 USDT 선물시장으로 확장 | `server/cryptoFutures.ts`에서 `TOP_N`, `slice(0, 100)`, `limit` 또는 “상위 100개” 처리 검색. `client/src/pages/CryptoSectors.tsx`의 설명 문구 약 326~328줄도 함께 수정 | 서버에서는 Binance Futures의 USDT 무기한 선물 심볼 전체를 대상으로 하되, `status === "TRADING"`, `quoteAsset === "USDT"`, 가능하면 perpetual 계약만 필터링한다. 단순 상위 100개 제한 상수는 제거한다. 클라이언트는 전체 데이터가 많아질 수 있으므로 기존 검색·섹터 필터·정렬을 유지하고, 화면 설명의 “상위 100개” 문구를 “전체 USDT 선물시장”으로 바꾼다. | 요약 카드의 분석 코인 수가 100개 제한에 묶이지 않고, 크립토 표·섹터 차트가 전체 USDT 선물 종목 기반으로 계산된다. |
+| 3 | [ ] | 해외주식 상세 모달을 서버 기반 12개 고점·저점 보조지표로 교체 | `client/src/pages/GlobalStocks.tsx`. `selectedStock`, 상세 `Dialog`, 로컬 지표 계산, 단기 차트 데이터 생성 구간 검색. 서버 라우터는 `server/routers.ts`의 `globalStocks.getDetail`, 서버 함수는 `server/usStocks.ts`의 `getGlobalStockDetail` 사용 | `const [priceChartFrame, setPriceChartFrame] = useState<"daily" | "weekly" | "monthly">("daily")` 상태를 추가하거나 기존 동일 상태가 있으면 재사용한다. `trpc.globalStocks.getDetail.useQuery({ ticker: selectedStock?.ticker ?? "", frame: priceChartFrame }, { enabled: Boolean(selectedStock?.ticker), staleTime: 1000 * 60 * 3, refetchOnWindowFocus: false })` 형태로 서버 상세 데이터를 연결한다. 기존 로컬 계산 지표와 단기 차트는 서버 응답의 `technical.indicators`, `technical.chartData`, `technical.fairPriceMedian` 또는 실제 응답 필드명에 맞춰 교체한다. 국내주식 `Home.tsx`의 상세 모달 패턴을 복사하되 종목명·티커·통화 표기만 해외주식에 맞춘다. | 해외주식 종목 클릭 시 상세 모달에서 RSI14, 스토캐스틱, Williams %R, CCI20, MFI14, 볼린저 위치, MACD 히스토그램, 20일선 이격도, 60일선 이격도, 거래량 20일 배율, 52주 고점 대비, 52주 저점 대비의 12개 카드가 서버 값으로 표시된다. |
+| 4 | [ ] | 해외주식 상세 모달에 일봉 6개월·주봉 2년·월봉 3년 장기 차트 적용 | `client/src/pages/GlobalStocks.tsx`의 상세 모달 차트 영역. 서버 데이터는 `server/usStocks.ts`의 `getGlobalStockDetail`에서 Yahoo Finance 가격 이력과 `server/technicalIndicators.ts` 결과를 반환 | 상세 모달 상단 또는 차트 헤더에 일·주·월 버튼을 추가한다. 버튼 클릭 시 `priceChartFrame`을 바꾸고 `globalStocks.getDetail` 쿼리가 해당 frame으로 재조회되게 한다. 렌더링은 `ComposedChart` 또는 국내주식과 동일한 Recharts 구조를 사용하며 가격, 20일선, 60일선, 볼린저밴드, MACD, 거래량 보조 차트 중 서버 응답에 있는 필드만 안전하게 렌더링한다. | 해외주식 상세 모달에서 기간 버튼이 동작하고, 일봉은 6개월, 주봉은 2년, 월봉은 3년 기준의 장기 가격 흐름과 보조지표 근거가 보인다. |
+| 5 | [ ] | 크립토 상세 모달에 서버 기반 12개 고점·저점 보조지표 추가 | `client/src/pages/CryptoSectors.tsx`의 `selectedCoin` 상세 `Dialog` 구간. 현재 약 389~395줄에 “상단 핵심 카드 12개”와 “24시간 가격 범위”만 있음. 서버 라우터는 `server/routers.ts`의 `crypto.getDetail`, 서버 함수는 `server/cryptoFutures.ts`의 `getCryptoDetail` 사용 | 기존 Binance 선물 수급 지표 카드(`metricOrder` 기반)는 유지하되, 그 아래에 별도 섹션 “기술적 고점·저점 보조지표 12개”를 추가한다. `trpc.crypto.getDetail.useQuery({ symbol: selectedCoin?.ticker ?? "", frame: priceChartFrame }, { enabled: Boolean(selectedCoin?.ticker), staleTime: 1000 * 60 * 3, refetchOnWindowFocus: false })`를 연결하고 서버 응답의 `technical.indicators`를 카드로 렌더링한다. 기존 Binance 지표 상세 해설 모달과 충돌하지 않도록 기술적 지표 선택 상태는 `selectedIndicatorKey`처럼 별도 state로 분리한다. | 크립토 상세 모달에서 Binance 원천 지표 12개와 별개로 RSI14 등 기술적 보조지표 12개가 표시되고, 서버에서 계산한 상태·해석·예상 적정가가 함께 보인다. |
+| 6 | [ ] | 크립토 상세 모달에 장기 차트 패널 추가 | `client/src/pages/CryptoSectors.tsx`의 24시간 가격 범위 차트 바로 아래. 기존 `detailChartData`는 24h 원천 가격 범위용으로 유지 | `priceChartFrame` 상태와 일·주·월 버튼을 추가한다. `crypto.getDetail`의 `frame` 입력과 연결해 Binance Klines 기반 장기 데이터를 가져온다. 24시간 범위 차트는 제거하지 말고, 그 아래에 “장기 기술적 차트” 섹션으로 가격·이동평균·볼린저밴드·MACD·거래량 근거 차트를 렌더링한다. | 크립토 상세 모달에서 기존 24시간 범위 차트와 별도로 일봉 6개월, 주봉 2년, 월봉 3년 장기 차트를 확인할 수 있다. |
+| 7 | [ ] | 3개 섹터분석 공통 캐시 갱신 정책 정리 | `client/src/pages/Home.tsx`, `client/src/pages/GlobalStocks.tsx`, `client/src/pages/CryptoSectors.tsx`의 tRPC `useQuery` 옵션. 서버 측 캐시는 `server/stocks.ts`, `server/usStocks.ts`, `server/cryptoFutures.ts`의 메모리 캐시 또는 TTL 로직 검색 | 가격·등락률·거래량·펀딩비처럼 빠르게 변하는 데이터는 `staleTime: 1000 * 60 * 3` 정도로 3분 캐시를 적용하고, `refetchInterval`은 제거하거나 5분 이상으로 제한한다. PER/PBR/EPS/시가총액 등 재무·기초지표는 6시간 이상 캐시되도록 서버 TTL 또는 쿼리 staleTime을 분리한다. **1분마다 전체 초기화하는 방식은 금지**하고, 실패 시 마지막 성공 데이터를 유지하도록 한다. | 국내주식·해외주식·크립토 화면이 전체 데이터를 1분마다 비우고 다시 받지 않으며, 가격성 데이터는 짧게 갱신되고 재무성 데이터는 장시간 캐시된다. |
+| 8 | [ ] | 관련 테스트 최소 갱신 | `server/crypto-futures.test.ts`, `server/us-stocks.test.ts`, `server/stocks.test.ts` 및 필요 시 클라이언트 렌더링 테스트 | 크립토 전체 USDT 선물 범위는 “100개로 자르지 않는다”는 회귀 테스트를 추가한다. 해외주식·크립토 상세 함수는 `getDetail`이 12개 보조지표와 차트 데이터를 반환하는지 확인한다. 포인트 절약을 위해 새 테스트는 핵심 회귀만 추가하고, 기존 테스트를 과도하게 재작성하지 않는다. | `pnpm test` 또는 관련 테스트 파일 단위 실행에서 새 회귀가 통과한다. |
+| 9 | [ ] | 최종 검증과 체크포인트 저장 | 프로젝트 루트 `/home/ubuntu/korea-stock-sector-analyzer` | 구현 후 `pnpm check`, 관련 `pnpm test`, 필요 시 `pnpm build`를 실행한다. 모든 완료 항목은 이 파일에서 `[x]`로 바꾼 뒤 체크포인트를 저장한다. 포인트가 부족하면 최소한 TypeScript 검사와 변경 파일 중심 테스트를 우선한다. | 타입 오류와 핵심 회귀 오류가 없고, `todo.md` 완료 상태가 실제 구현 상태와 일치하며, 새 체크포인트가 생성된다. |
+
+주의사항: 현재 공동 작업 중이므로 **대형 리팩터링, 파일 구조 변경, 함수명 변경은 피하고**, 기존 `Home.tsx` 국내주식 상세 분석 패턴을 해외주식·크립토에 얇게 복사·적용하는 방식이 가장 안전합니다. 특히 `server/technicalIndicators.ts`가 이미 12개 보조지표를 계산하므로, 클라이언트에서 동일 지표를 다시 계산하지 말고 서버 상세 API 응답을 그대로 렌더링해야 합니다.

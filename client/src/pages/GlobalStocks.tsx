@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
-import { Activity, ArrowDown, ArrowUp, ArrowUpDown, BarChart3, Globe2, Search, TrendingUp } from "lucide-react";
+import { Activity, AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, BarChart3, Globe2, RefreshCw, Search, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts";
 
@@ -31,6 +31,11 @@ type UsStockRow = {
   dividendYieldPercent: number;
   beta: number;
   analystUpsidePercent: number;
+  volume: number | null;
+  turnoverUsd: number | null;
+  quoteSource: "Stooq" | "Fallback";
+  quoteStatus: "live" | "fallback";
+  quoteWarning?: string;
   lastUpdated: string;
 };
 
@@ -54,6 +59,9 @@ type SortKey =
   | "dividendYieldPercent"
   | "beta"
   | "analystUpsidePercent"
+  | "volume"
+  | "turnoverUsd"
+  | "quoteStatus"
   | "lastUpdated";
 
 type SortDirection = "asc" | "desc";
@@ -111,6 +119,9 @@ const sortLabels: Record<SortKey, string> = {
   dividendYieldPercent: "배당수익률",
   beta: "베타",
   analystUpsidePercent: "애널리스트 업사이드",
+  volume: "거래량",
+  turnoverUsd: "거래대금",
+  quoteStatus: "연동 상태",
   lastUpdated: "마지막 갱신",
 };
 
@@ -211,8 +222,8 @@ export default function GlobalStocks() {
   const [selectedStock, setSelectedStock] = useState<UsStockRow | null>(null);
   const [selectedMetricKey, setSelectedMetricKey] = useState<string | null>(null);
 
-  const summary = trpc.globalStocks.getSummary.useQuery();
-  const table = trpc.globalStocks.getTable.useQuery();
+  const summary = trpc.globalStocks.getSummary.useQuery(undefined, { staleTime: 1000 * 60 * 3, refetchOnWindowFocus: false });
+  const table = trpc.globalStocks.getTable.useQuery(undefined, { staleTime: 1000 * 60 * 3, refetchOnWindowFocus: false });
 
   const stocks = useMemo<UsStockRow[]>(() => (table.data?.success && table.data?.stocks ? table.data.stocks : []), [table.data]);
   const sectors = useMemo(() => Array.from(new Set(stocks.map(stock => stock.sector))), [stocks]);
@@ -274,6 +285,12 @@ export default function GlobalStocks() {
 
   const currentSortLabel = sortState ? `${sortLabels[sortState.key]} ${sortState.direction === "desc" ? "내림차순" : "오름차순"}` : "정렬취소: 기본 표시순";
   const isLoading = summary.isLoading || table.isLoading;
+  const dataError = summary.data?.success === false ? summary.data.error : table.data?.success === false ? table.data.error : null;
+  const warning = summary.data?.success ? summary.data.summary?.warning : undefined;
+  const refetchAll = () => {
+    void summary.refetch();
+    void table.refetch();
+  };
   const selectedMetric = selectedMetricKey && selectedStock
     ? {
         key: selectedMetricKey,
@@ -285,12 +302,12 @@ export default function GlobalStocks() {
 
   const formatMetricValue = (row: UsStockRow, key: string) => {
     const value = row[key as keyof UsStockRow];
-    if (key === "marketCapUsd" || key === "revenueTtmUsd") return formatUsd(value as number | null);
+    if (key === "marketCapUsd" || key === "revenueTtmUsd" || key === "turnoverUsd") return formatUsd(value as number | null);
     if (key === "grossMarginPercent" || key === "operatingMarginPercent" || key === "dividendYieldPercent") return formatPlainPercent(value as number | null);
     if (key === "analystUpsidePercent") return formatPercent(value as number | null);
     if (key === "epsTtm") return formatPrice(value as number | null);
     if (key === "peRatio" || key === "forwardPeRatio" || key === "priceToSalesRatio" || key === "priceToBookRatio") return formatRatio(value as number | null);
-    if (key === "beta") return formatNumber(value as number | null);
+    if (key === "beta" || key === "volume") return formatNumber(value as number | null, 0);
     return typeof value === "number" ? formatNumber(value) : `${value ?? "-"}`;
   };
 
@@ -320,11 +337,29 @@ export default function GlobalStocks() {
               미국 대형주를 섹터별로 묶고 시가총액, TTM 매출, 마진, EPS, PER, P/S, P/B, 배당, 베타, 목표가 여력을 한 화면에서 비교합니다.
             </p>
           </div>
-          <div className="relative w-full max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input value={searchText} onChange={event => setSearchText(event.target.value)} placeholder="티커, 회사명, 섹터 검색" className="rounded-full bg-white pl-9" />
+          <div className="flex w-full max-w-md flex-col gap-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input value={searchText} onChange={event => setSearchText(event.target.value)} placeholder="티커, 회사명, 섹터 검색" className="rounded-full bg-white pl-9" />
+            </div>
+            <Button type="button" variant="outline" className="rounded-full bg-white" onClick={refetchAll} disabled={isLoading}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+              최신 시세 다시 불러오기
+            </Button>
           </div>
         </div>
+
+        {dataError ? (
+          <div className="flex items-start gap-3 rounded-3xl border border-red-100 bg-red-50 px-5 py-4 text-sm text-red-700">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+            <div><p className="font-black">해외주식 데이터 수집 실패</p><p className="mt-1">{dataError}. 잠시 뒤 다시 조회하거나 기본 기초지표 화면을 확인해 주세요.</p></div>
+          </div>
+        ) : warning ? (
+          <div className="flex items-start gap-3 rounded-3xl border border-amber-100 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+            <div><p className="font-black">부분 갱신 안내</p><p className="mt-1">{warning}</p></div>
+          </div>
+        ) : null}
 
         {summary.data?.success ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
@@ -435,7 +470,7 @@ export default function GlobalStocks() {
             <div className="mb-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500">
               현재 정렬: <span className="font-black text-slate-900">{currentSortLabel}</span> · 표시 종목 {filteredRows.length}개 · 마지막 갱신 {formatDateTime(summary.data?.success && summary.data?.summary ? summary.data.summary.lastUpdated : undefined)}
             </div>
-            <table className="w-full min-w-[1760px] border-separate border-spacing-y-2 text-left text-sm">
+            <table className="w-full min-w-[1960px] border-separate border-spacing-y-2 text-left text-sm">
               <thead>
                 <tr className="text-slate-500">
                   <th className="px-2 py-2">{sortableHeader("순위", "rank")}</th>
@@ -447,6 +482,8 @@ export default function GlobalStocks() {
                   <th className="px-2 py-2 text-right">{sortableHeader("1d", "change1dPercent", "right")}</th>
                   <th className="px-2 py-2 text-right">{sortableHeader("5d", "change5dPercent", "right")}</th>
                   <th className="px-2 py-2 text-right">{sortableHeader("시가총액", "marketCapUsd", "right")}</th>
+                  <th className="px-2 py-2 text-right">{sortableHeader("거래대금", "turnoverUsd", "right")}</th>
+                  <th className="px-2 py-2 text-right">{sortableHeader("거래량", "volume", "right")}</th>
                   <th className="px-2 py-2 text-right">{sortableHeader("TTM 매출", "revenueTtmUsd", "right")}</th>
                   <th className="px-2 py-2 text-right">{sortableHeader("매출총이익률", "grossMarginPercent", "right")}</th>
                   <th className="px-2 py-2 text-right">{sortableHeader("영업이익률", "operatingMarginPercent", "right")}</th>
@@ -458,6 +495,7 @@ export default function GlobalStocks() {
                   <th className="px-2 py-2 text-right">{sortableHeader("배당", "dividendYieldPercent", "right")}</th>
                   <th className="px-2 py-2 text-right">{sortableHeader("베타", "beta", "right")}</th>
                   <th className="px-2 py-2 text-right">{sortableHeader("업사이드", "analystUpsidePercent", "right")}</th>
+                  <th className="px-2 py-2 text-right">{sortableHeader("연동", "quoteStatus", "right")}</th>
                   <th className="px-2 py-2 text-right">{sortableHeader("마지막 갱신", "lastUpdated", "right")}</th>
                 </tr>
               </thead>
@@ -480,6 +518,8 @@ export default function GlobalStocks() {
                     <td className="px-4 py-3 text-right"><Badge className={`rounded-full ${row.change1dPercent >= 0 ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-50" : "bg-red-50 text-red-700 hover:bg-red-50"}`}>{formatPercent(row.change1dPercent)}</Badge></td>
                     <td className="px-4 py-3 text-right text-slate-700">{formatPercent(row.change5dPercent)}</td>
                     <td className="px-4 py-3 text-right font-black text-slate-950">{formatUsd(row.marketCapUsd)}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-slate-900">{formatUsd(row.turnoverUsd)}</td>
+                    <td className="px-4 py-3 text-right text-slate-700">{formatNumber(row.volume, 0)}</td>
                     <td className="px-4 py-3 text-right text-slate-700">{formatUsd(row.revenueTtmUsd)}</td>
                     <td className="px-4 py-3 text-right text-slate-700">{formatPlainPercent(row.grossMarginPercent)}</td>
                     <td className="px-4 py-3 text-right text-slate-700">{formatPlainPercent(row.operatingMarginPercent)}</td>
@@ -491,6 +531,7 @@ export default function GlobalStocks() {
                     <td className="px-4 py-3 text-right text-slate-700">{formatPlainPercent(row.dividendYieldPercent)}</td>
                     <td className="px-4 py-3 text-right text-slate-700">{formatNumber(row.beta)}</td>
                     <td className="px-4 py-3 text-right font-semibold text-blue-700">{formatPercent(row.analystUpsidePercent)}</td>
+                    <td className="px-4 py-3 text-right"><Badge className={`rounded-full ${row.quoteStatus === "live" ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-50" : "bg-amber-50 text-amber-700 hover:bg-amber-50"}`}>{row.quoteSource}</Badge></td>
                     <td className="rounded-r-2xl px-4 py-3 text-right text-slate-500">{formatDateTime(row.lastUpdated)}</td>
                   </tr>
                 ))}

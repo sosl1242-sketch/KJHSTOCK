@@ -9,8 +9,8 @@ import { fetchNaverFinancialDetail, fetchNaverFinancialSummaries } from "./finan
 import { ensureStockPriceAutoRefreshJob, getStockPriceAutoRefreshStatus, pauseStockPriceAutoRefreshJob } from "./priceAutoRefresh";
 import { fetchKoreanStockPrice, refreshAllStoredStockPrices } from "./stockPrice";
 import { fetchTechnicalIndicatorDetail } from "./technicalIndicators";
-import { getCryptoFuturesSummary, getCryptoFuturesTable } from "./cryptoFutures";
-import { getUsStocksSummary, getUsStocksTable } from "./usStocks";
+import { fetchCryptoFuturesTechnicalDetail, getCryptoFuturesSummary, getCryptoFuturesTable } from "./cryptoFutures";
+import { fetchUsStockTechnicalDetail, getUsStocksSummary, getUsStocksTable } from "./usStocks";
 
 const sectorSchema = z.enum(stockSectors);
 
@@ -90,37 +90,58 @@ export const appRouter = router({
   globalStocks: router({
     getSummary: publicProcedure.query(async () => {
       try {
-        return { success: true, summary: getUsStocksSummary() };
+        const summary = await getUsStocksSummary();
+        return { success: true, summary };
       } catch (error) {
         return { success: false, error: "Failed to fetch US stock summary" };
       }
     }),
     getTable: publicProcedure.query(async () => {
       try {
-        const stocks = getUsStocksTable();
+        const stocks = await getUsStocksTable();
         return { success: true, stocks, total: stocks.length, lastUpdated: new Date().toISOString() };
       } catch (error) {
         return { success: false, error: "Failed to fetch US stock table" };
       }
     }),
+    technicalIndicators: publicProcedure
+      .input(z.object({ ticker: z.string().min(1).max(16), name: z.string().max(120).optional() }))
+      .query(async ({ input }) => {
+        try {
+          return { success: true, detail: await fetchUsStockTechnicalDetail(input) };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Failed to fetch US technical indicators";
+          return { success: false, error: message };
+        }
+      }),
   }),
 
   cryptoFutures: router({
     getSummary: publicProcedure.query(async () => {
       try {
-        return { success: true, summary: getCryptoFuturesSummary() };
+        return { success: true, summary: await getCryptoFuturesSummary() };
       } catch (error) {
         return { success: false, error: "Failed to fetch crypto summary" };
       }
     }),
     getTable: publicProcedure.query(async () => {
       try {
-        const coins = getCryptoFuturesTable();
+        const coins = await getCryptoFuturesTable();
         return { success: true, coins, total: coins.length, lastUpdated: new Date().toISOString() };
       } catch (error) {
         return { success: false, error: "Failed to fetch crypto table" };
       }
     }),
+    technicalIndicators: publicProcedure
+      .input(z.object({ symbol: z.string().min(4).max(24), name: z.string().max(120).optional() }))
+      .query(async ({ input }) => {
+        try {
+          return { success: true, detail: await fetchCryptoFuturesTechnicalDetail(input) };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Failed to fetch crypto technical indicators";
+          return { success: false, error: message };
+        }
+      }),
   }),
 });
 

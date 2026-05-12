@@ -14,8 +14,8 @@ describe("US stock sector metrics", () => {
     expect(labels).toContain("베타");
   });
 
-  it("returns expanded US stock table rows with sector and valuation fields", () => {
-    const rows = getUsStocksTable();
+  it("returns expanded US stock table rows with sector, valuation and quote fields", async () => {
+    const rows = await getUsStocksTable();
 
     expect(rows.length).toBeGreaterThanOrEqual(20);
     expect(rows[0]).toMatchObject({
@@ -26,17 +26,22 @@ describe("US stock sector metrics", () => {
       operatingMarginPercent: expect.any(Number),
     });
     expect(rows.every(row => row.ticker.length > 0 && row.sector.length > 0)).toBe(true);
-  });
+    expect(rows.every(row => row.quoteSource === "Stooq" || row.quoteSource === "Fallback")).toBe(true);
+    expect(rows.every(row => typeof row.lastUpdated === "string" && row.lastUpdated.length > 0)).toBe(true);
+  }, 15000);
 
-  it("summarizes sector buckets, average valuation and market leaders", () => {
-    const summary = getUsStocksSummary();
+  it("summarizes sector buckets, average valuation and market leaders", async () => {
+    const summary = await getUsStocksSummary();
+    const rows = await getUsStocksTable();
 
-    expect(summary.totalStocks).toBe(getUsStocksTable().length);
+    expect(summary.totalStocks).toBe(rows.length);
     expect(summary.totalMarketCapUsd).toBeGreaterThan(0);
     expect(summary.totalRevenueTtmUsd).toBeGreaterThan(0);
     expect(summary.avgPeRatio).toBeGreaterThan(0);
     expect(summary.sectors.length).toBeGreaterThan(1);
     expect(summary.indicators).toHaveLength(12);
+    expect(summary.liveQuoteCount).toBeGreaterThanOrEqual(0);
+    expect(summary.totalTurnoverUsd).toBeGreaterThanOrEqual(0);
     expect(summary.highestMarketCap.ticker.length).toBeGreaterThan(0);
-  });
+  }, 15000);
 });

@@ -1,114 +1,402 @@
+import { buildTechnicalIndicatorDetailFromCandles, PriceCandle } from "./technicalIndicators";
 export const CRYPTO_FUTURES_METRICS = [
-  { key: "marketCapUsd", label: "시가총액", description: "유통 물량 기준 시장 규모입니다." },
-  { key: "fdvUsd", label: "FDV", description: "최대 공급량 기준 완전희석가치입니다." },
-  { key: "circulatingSupply", label: "유통 공급량", description: "현재 시장에 유통되는 토큰 수량입니다." },
-  { key: "volume24hUsd", label: "24h 거래대금", description: "최근 24시간 거래 유동성입니다." },
-  { key: "volumeToMarketCapPercent", label: "거래대금/시총", description: "시가총액 대비 거래 회전율입니다." },
-  { key: "fundingRate", label: "펀딩비", description: "선물 시장의 롱·숏 비용 균형입니다." },
-  { key: "openInterestUsd", label: "미결제약정", description: "아직 청산되지 않은 선물 포지션 규모입니다." },
-  { key: "openInterestToMarketCapPercent", label: "OI/시총", description: "시가총액 대비 레버리지 포지션 부담입니다." },
-  { key: "change24hPercent", label: "24h 등락률", description: "하루 기준 가격 모멘텀입니다." },
-  { key: "change7dPercent", label: "7d 등락률", description: "주간 추세 방향입니다." },
-  { key: "volatility30dPercent", label: "30d 변동성", description: "최근 한 달 가격 변동 위험입니다." },
-  { key: "longShortRatio", label: "롱/숏 비율", description: "선물 포지션 심리의 쏠림 정도입니다." },
+  { key: "volume24hUsd", label: "24h 거래대금", description: "바이낸스 USDT 무기한 선물의 최근 24시간 명목 거래대금입니다." },
+  { key: "change24hPercent", label: "24h 등락률", description: "바이낸스 선물 티커 기준 하루 가격 변화율입니다." },
+  { key: "fundingRate", label: "펀딩비", description: "최근 펀딩비 기준 롱·숏 비용 균형입니다." },
+  { key: "openInterestUsd", label: "미결제약정", description: "현재 미결제약정 수량에 최근 가격을 곱한 추정 명목 규모입니다." },
+  { key: "openInterestToVolumePercent", label: "OI/거래대금", description: "24시간 거래대금 대비 미결제약정 부담입니다." },
+  { key: "price", label: "가격", description: "바이낸스 선물 최근 체결 가격입니다." },
+  { key: "high24h", label: "24h 고가", description: "최근 24시간 최고가입니다." },
+  { key: "low24h", label: "24h 저가", description: "최근 24시간 최저가입니다." },
+  { key: "baseVolume24h", label: "24h 거래량", description: "기초자산 수량 기준 최근 24시간 거래량입니다." },
+  { key: "markPrice", label: "마크가격", description: "펀딩비 산정에 활용되는 선물 마크가격입니다." },
+  { key: "nextFundingTime", label: "다음 펀딩", description: "다음 펀딩 정산 예정 시각입니다." },
+  { key: "contractType", label: "계약유형", description: "USDT 무기한 선물 계약 구분입니다." },
 ] as const;
 
 export type CryptoMetricKey = (typeof CRYPTO_FUTURES_METRICS)[number]["key"];
+
+export type CryptoFuturesSector = "L1" | "L2" | "AI" | "DeFi" | "Meme" | "Exchange" | "Payments" | "Infrastructure" | "Other";
 
 export type CryptoFuturesAsset = {
   rank: number;
   ticker: string;
   name: string;
-  sector: "L1" | "L2" | "AI" | "DeFi" | "Meme" | "Exchange" | "Payments";
+  baseAsset: string;
+  sector: CryptoFuturesSector;
+  contractType: "PERPETUAL";
   price: number;
+  high24h: number;
+  low24h: number;
   change24hPercent: number;
-  change7dPercent: number;
-  marketCapUsd: number;
-  fdvUsd: number;
-  circulatingSupply: number;
+  change7dPercent: number | null;
+  marketCapUsd: number | null;
+  fdvUsd: number | null;
+  circulatingSupply: number | null;
+  baseVolume24h: number;
   volume24hUsd: number;
   fundingRate: number;
-  openInterestUsd: number;
-  volatility30dPercent: number;
-  longShortRatio: number;
+  markPrice: number | null;
+  nextFundingTime: string | null;
+  openInterestUsd: number | null;
+  volatility30dPercent: number | null;
+  longShortRatio: number | null;
   lastUpdated: string;
 };
 
 export type CryptoFuturesTableRow = CryptoFuturesAsset & {
-  volumeToMarketCapPercent: number;
-  openInterestToMarketCapPercent: number;
+  volumeToMarketCapPercent: number | null;
+  openInterestToMarketCapPercent: number | null;
+  openInterestToVolumePercent: number | null;
 };
+
+type BinanceTicker24hr = {
+  symbol: string;
+  lastPrice: string;
+  highPrice: string;
+  lowPrice: string;
+  priceChangePercent: string;
+  volume: string;
+  quoteVolume: string;
+  closeTime: number;
+};
+
+type BinancePremiumIndex = {
+  symbol: string;
+  markPrice: string;
+  lastFundingRate: string;
+  nextFundingTime: number;
+};
+
+type BinanceExchangeInfo = {
+  symbols?: Array<{
+    symbol: string;
+    pair: string;
+    baseAsset: string;
+    quoteAsset: string;
+    contractType: string;
+    status: string;
+  }>;
+};
+
+type BinanceOpenInterest = {
+  symbol: string;
+  openInterest: string;
+};
+type BinanceKline = [number, string, string, string, string, string, number, string, number, string, string, string];
+
+type CachedCryptoFutures = {
+  rows: CryptoFuturesTableRow[];
+  fetchedAt: string;
+  warning?: string;
+};
+
+const BINANCE_FUTURES_BASE_URL = "https://fapi.binance.com";
+const CACHE_TTL_MS = 1000 * 60 * 3;
+const OPEN_INTEREST_DETAIL_LIMIT = 120;
+const REQUEST_TIMEOUT_MS = 8_000;
+
+let cachedResult: CachedCryptoFutures | null = null;
 
 const nowIso = () => new Date().toISOString();
 
-const assets: Omit<CryptoFuturesAsset, "lastUpdated">[] = [
-  { rank: 1, ticker: "BTCUSDT", name: "Bitcoin", sector: "Payments", price: 67850, change24hPercent: 2.1, change7dPercent: 5.8, marketCapUsd: 1338000000000, fdvUsd: 1424000000000, circulatingSupply: 19720000, volume24hUsd: 28500000000, fundingRate: 0.0001, openInterestUsd: 18200000000, volatility30dPercent: 42.5, longShortRatio: 1.08 },
-  { rank: 2, ticker: "ETHUSDT", name: "Ethereum", sector: "L1", price: 3580, change24hPercent: 1.8, change7dPercent: 4.6, marketCapUsd: 430500000000, fdvUsd: 430500000000, circulatingSupply: 120250000, volume24hUsd: 15200000000, fundingRate: 0.00008, openInterestUsd: 9600000000, volatility30dPercent: 48.2, longShortRatio: 1.04 },
-  { rank: 3, ticker: "BNBUSDT", name: "BNB", sector: "Exchange", price: 612, change24hPercent: 0.9, change7dPercent: 2.4, marketCapUsd: 94100000000, fdvUsd: 94100000000, circulatingSupply: 153800000, volume24hUsd: 2100000000, fundingRate: 0.00005, openInterestUsd: 820000000, volatility30dPercent: 35.6, longShortRatio: 0.98 },
-  { rank: 4, ticker: "SOLUSDT", name: "Solana", sector: "L1", price: 142.5, change24hPercent: 3.2, change7dPercent: 8.7, marketCapUsd: 65500000000, fdvUsd: 81500000000, circulatingSupply: 459600000, volume24hUsd: 1850000000, fundingRate: 0.00012, openInterestUsd: 2140000000, volatility30dPercent: 63.1, longShortRatio: 1.18 },
-  { rank: 5, ticker: "XRPUSDT", name: "XRP", sector: "Payments", price: 0.61, change24hPercent: 0.6, change7dPercent: 1.9, marketCapUsd: 33800000000, fdvUsd: 61000000000, circulatingSupply: 55400000000, volume24hUsd: 1250000000, fundingRate: 0.00003, openInterestUsd: 760000000, volatility30dPercent: 39.4, longShortRatio: 0.95 },
-  { rank: 6, ticker: "DOGEUSDT", name: "Dogecoin", sector: "Meme", price: 0.15, change24hPercent: 4.1, change7dPercent: 11.3, marketCapUsd: 22000000000, fdvUsd: 22000000000, circulatingSupply: 146700000000, volume24hUsd: 1680000000, fundingRate: 0.00016, openInterestUsd: 1180000000, volatility30dPercent: 78.5, longShortRatio: 1.24 },
-  { rank: 7, ticker: "ADAUSDT", name: "Cardano", sector: "L1", price: 0.98, change24hPercent: -0.5, change7dPercent: 3.4, marketCapUsd: 34700000000, fdvUsd: 44100000000, circulatingSupply: 35400000000, volume24hUsd: 1200000000, fundingRate: 0.00002, openInterestUsd: 530000000, volatility30dPercent: 44.7, longShortRatio: 0.92 },
-  { rank: 8, ticker: "AVAXUSDT", name: "Avalanche", sector: "L1", price: 36.8, change24hPercent: 2.7, change7dPercent: 6.2, marketCapUsd: 14800000000, fdvUsd: 26400000000, circulatingSupply: 402000000, volume24hUsd: 670000000, fundingRate: 0.00009, openInterestUsd: 690000000, volatility30dPercent: 61.8, longShortRatio: 1.11 },
-  { rank: 9, ticker: "LINKUSDT", name: "Chainlink", sector: "DeFi", price: 18.2, change24hPercent: 1.4, change7dPercent: 7.1, marketCapUsd: 10700000000, fdvUsd: 18200000000, circulatingSupply: 587000000, volume24hUsd: 520000000, fundingRate: 0.00006, openInterestUsd: 420000000, volatility30dPercent: 52.4, longShortRatio: 1.03 },
-  { rank: 10, ticker: "TONUSDT", name: "Toncoin", sector: "L1", price: 6.2, change24hPercent: -1.1, change7dPercent: 2.2, marketCapUsd: 21500000000, fdvUsd: 31500000000, circulatingSupply: 3470000000, volume24hUsd: 410000000, fundingRate: -0.00001, openInterestUsd: 260000000, volatility30dPercent: 49.1, longShortRatio: 0.88 },
-  { rank: 11, ticker: "NEARUSDT", name: "NEAR Protocol", sector: "AI", price: 7.1, change24hPercent: 5.2, change7dPercent: 13.4, marketCapUsd: 7800000000, fdvUsd: 8500000000, circulatingSupply: 1098000000, volume24hUsd: 620000000, fundingRate: 0.00018, openInterestUsd: 390000000, volatility30dPercent: 72.6, longShortRatio: 1.31 },
-  { rank: 12, ticker: "APTUSDT", name: "Aptos", sector: "L1", price: 9.4, change24hPercent: 2.4, change7dPercent: 5.3, marketCapUsd: 4200000000, fdvUsd: 10300000000, circulatingSupply: 447000000, volume24hUsd: 310000000, fundingRate: 0.00011, openInterestUsd: 240000000, volatility30dPercent: 66.9, longShortRatio: 1.09 },
-  { rank: 13, ticker: "ARBUSDT", name: "Arbitrum", sector: "L2", price: 1.28, change24hPercent: 1.2, change7dPercent: 4.1, marketCapUsd: 5100000000, fdvUsd: 12800000000, circulatingSupply: 3980000000, volume24hUsd: 360000000, fundingRate: 0.00007, openInterestUsd: 310000000, volatility30dPercent: 58.4, longShortRatio: 1.02 },
-  { rank: 14, ticker: "OPUSDT", name: "Optimism", sector: "L2", price: 2.34, change24hPercent: 0.4, change7dPercent: 3.8, marketCapUsd: 2550000000, fdvUsd: 10050000000, circulatingSupply: 1090000000, volume24hUsd: 185000000, fundingRate: 0.00004, openInterestUsd: 145000000, volatility30dPercent: 55.2, longShortRatio: 0.99 },
-  { rank: 15, ticker: "UNIUSDT", name: "Uniswap", sector: "DeFi", price: 10.6, change24hPercent: -0.8, change7dPercent: 1.5, marketCapUsd: 6370000000, fdvUsd: 10600000000, circulatingSupply: 601000000, volume24hUsd: 240000000, fundingRate: -0.00002, openInterestUsd: 190000000, volatility30dPercent: 50.3, longShortRatio: 0.91 },
-  { rank: 16, ticker: "SUIUSDT", name: "Sui", sector: "L1", price: 1.84, change24hPercent: 3.8, change7dPercent: 9.9, marketCapUsd: 5100000000, fdvUsd: 18400000000, circulatingSupply: 2770000000, volume24hUsd: 520000000, fundingRate: 0.00014, openInterestUsd: 480000000, volatility30dPercent: 74.2, longShortRatio: 1.21 },
-  { rank: 17, ticker: "INJUSDT", name: "Injective", sector: "DeFi", price: 28.5, change24hPercent: 2.9, change7dPercent: 8.2, marketCapUsd: 2800000000, fdvUsd: 2850000000, circulatingSupply: 98200000, volume24hUsd: 210000000, fundingRate: 0.0001, openInterestUsd: 185000000, volatility30dPercent: 69.5, longShortRatio: 1.16 },
-  { rank: 18, ticker: "RNDRUSDT", name: "Render", sector: "AI", price: 8.7, change24hPercent: 4.6, change7dPercent: 12.7, marketCapUsd: 3400000000, fdvUsd: 4650000000, circulatingSupply: 390000000, volume24hUsd: 290000000, fundingRate: 0.00017, openInterestUsd: 250000000, volatility30dPercent: 82.1, longShortRatio: 1.28 },
-];
+const assetNames: Record<string, string> = {
+  BTC: "Bitcoin",
+  ETH: "Ethereum",
+  BNB: "BNB",
+  SOL: "Solana",
+  XRP: "XRP",
+  DOGE: "Dogecoin",
+  ADA: "Cardano",
+  AVAX: "Avalanche",
+  LINK: "Chainlink",
+  TON: "Toncoin",
+  NEAR: "NEAR Protocol",
+  APT: "Aptos",
+  ARB: "Arbitrum",
+  OP: "Optimism",
+  UNI: "Uniswap",
+  SUI: "Sui",
+  INJ: "Injective",
+  RENDER: "Render",
+  RNDR: "Render",
+  WLD: "Worldcoin",
+  PEPE: "Pepe",
+  SHIB: "Shiba Inu",
+  LTC: "Litecoin",
+  BCH: "Bitcoin Cash",
+  DOT: "Polkadot",
+  ATOM: "Cosmos",
+  FIL: "Filecoin",
+  ETC: "Ethereum Classic",
+  TRX: "TRON",
+  MATIC: "Polygon",
+  POL: "Polygon Ecosystem Token",
+  AAVE: "Aave",
+  MKR: "Maker",
+  LDO: "Lido DAO",
+  DYDX: "dYdX",
+  JUP: "Jupiter",
+  SEI: "Sei",
+  FET: "Artificial Superintelligence Alliance",
+  TAO: "Bittensor",
+  GRT: "The Graph",
+  PYTH: "Pyth Network",
+  ENA: "Ethena",
+  ONDO: "Ondo",
+  PENDLE: "Pendle",
+};
+
+const sectorSets: Record<Exclude<CryptoFuturesSector, "Other">, Set<string>> = {
+  L1: new Set(["BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "AVAX", "TON", "NEAR", "APT", "SUI", "DOT", "ATOM", "SEI", "TRX", "ETC", "LTC", "BCH", "ICP", "KAS", "HBAR", "ALGO", "EGLD", "XLM", "FIL"]),
+  L2: new Set(["ARB", "OP", "MATIC", "POL", "STRK", "METIS", "IMX", "MANTA", "ZK", "ZRO"]),
+  AI: new Set(["FET", "TAO", "RNDR", "RENDER", "NEAR", "GRT", "WLD", "ARKM", "AI", "AGIX", "OCEAN", "NMR", "PHB", "VIRTUAL", "KAITO"]),
+  DeFi: new Set(["UNI", "AAVE", "MKR", "LDO", "DYDX", "JUP", "ENA", "ONDO", "PENDLE", "INJ", "RUNE", "CRV", "COMP", "SNX", "SUSHI", "1INCH", "CAKE", "GMX", "WOO", "ZRX"]),
+  Meme: new Set(["DOGE", "SHIB", "PEPE", "WIF", "BONK", "FLOKI", "MEME", "BRETT", "POPCAT", "PNUT", "MEW", "TURBO"]),
+  Exchange: new Set(["BNB", "OKB", "CRO", "GT", "KCS", "LEO", "BGB", "FTT"]),
+  Payments: new Set(["BTC", "XRP", "LTC", "BCH", "XLM", "DASH", "ZEC"]),
+  Infrastructure: new Set(["LINK", "PYTH", "TIA", "AR", "FIL", "STORJ", "JASMY", "IOTX", "ENS", "API3", "ANKR"]),
+};
 
 function round(value: number, digits = 2) {
   const factor = 10 ** digits;
   return Math.round(value * factor) / factor;
 }
 
-export function getCryptoFuturesTable(): CryptoFuturesTableRow[] {
-  const lastUpdated = nowIso();
-  return assets.map(asset => ({
-    ...asset,
-    lastUpdated,
-    volumeToMarketCapPercent: round((asset.volume24hUsd / asset.marketCapUsd) * 100, 2),
-    openInterestToMarketCapPercent: round((asset.openInterestUsd / asset.marketCapUsd) * 100, 2),
-  }));
+function parseNumber(value: string | number | null | undefined): number | null {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
-export function getCryptoFuturesSummary() {
-  const rows = getCryptoFuturesTable();
-  const totalMarketCapUsd = rows.reduce((sum, row) => sum + row.marketCapUsd, 0);
+function requireNumber(value: string | number | null | undefined, fallback = 0): number {
+  return parseNumber(value) ?? fallback;
+}
+
+function asIsoTime(ms: number | null | undefined) {
+  if (!ms || !Number.isFinite(ms)) return null;
+  return new Date(ms).toISOString();
+}
+
+function getBaseAsset(symbol: string) {
+  return symbol.endsWith("USDT") ? symbol.slice(0, -4) : symbol;
+}
+
+function classifySector(baseAsset: string): CryptoFuturesSector {
+  const entries = Object.entries(sectorSets) as Array<[Exclude<CryptoFuturesSector, "Other">, Set<string>]>;
+  const matched = entries.find(([, set]) => set.has(baseAsset));
+  return matched?.[0] ?? "Other";
+}
+
+async function fetchJson<T>(path: string): Promise<T> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${BINANCE_FUTURES_BASE_URL}${path}`, { signal: controller.signal });
+    if (!response.ok) {
+      throw new Error(`Binance API ${path} returned ${response.status}`);
+    }
+    return await response.json() as T;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function mapWithConcurrency<T, R>(items: T[], limit: number, worker: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = [];
+  let nextIndex = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await worker(items[currentIndex]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
+async function fetchOpenInterestUsd(symbols: string[], priceBySymbol: Map<string, number>) {
+  const entries = await mapWithConcurrency(symbols, 10, async symbol => {
+    try {
+      const openInterest = await fetchJson<BinanceOpenInterest>(`/fapi/v1/openInterest?symbol=${encodeURIComponent(symbol)}`);
+      const contracts = parseNumber(openInterest.openInterest);
+      const price = priceBySymbol.get(symbol);
+      return [symbol, contracts !== null && price ? contracts * price : null] as const;
+    } catch {
+      return [symbol, null] as const;
+    }
+  });
+  return new Map(entries);
+}
+
+async function fetchLiveCryptoFutures(): Promise<CachedCryptoFutures> {
+  const [tickers, premiumIndex, exchangeInfo] = await Promise.all([
+    fetchJson<BinanceTicker24hr[]>("/fapi/v1/ticker/24hr"),
+    fetchJson<BinancePremiumIndex[]>("/fapi/v1/premiumIndex"),
+    fetchJson<BinanceExchangeInfo>("/fapi/v1/exchangeInfo"),
+  ]);
+
+  const tradablePerpetuals = new Set((exchangeInfo.symbols ?? [])
+    .filter(symbol => symbol.quoteAsset === "USDT" && symbol.contractType === "PERPETUAL" && symbol.status === "TRADING")
+    .map(symbol => symbol.symbol));
+  const premiumMap = new Map(premiumIndex.map(item => [item.symbol, item]));
+
+  const topTickers = tickers
+    .filter(ticker => tradablePerpetuals.has(ticker.symbol))
+    .filter(ticker => ticker.symbol.endsWith("USDT") && !ticker.symbol.includes("_"))
+    .map(ticker => ({ ...ticker, parsedQuoteVolume: requireNumber(ticker.quoteVolume) }))
+    .filter(ticker => ticker.parsedQuoteVolume > 0)
+    .sort((a, b) => b.parsedQuoteVolume - a.parsedQuoteVolume)
+    ;
+
+  const priceBySymbol = new Map(topTickers.map(ticker => [ticker.symbol, requireNumber(ticker.lastPrice)]));
+  const openInterestSymbols = topTickers.slice(0, OPEN_INTEREST_DETAIL_LIMIT).map(ticker => ticker.symbol);
+  const openInterestUsdMap = await fetchOpenInterestUsd(openInterestSymbols, priceBySymbol);
+  const fetchedAt = nowIso();
+
+  const rows = topTickers.map((ticker, index): CryptoFuturesTableRow => {
+    const baseAsset = getBaseAsset(ticker.symbol);
+    const premium = premiumMap.get(ticker.symbol);
+    const price = requireNumber(ticker.lastPrice);
+    const volume24hUsd = requireNumber(ticker.quoteVolume);
+    const openInterestUsd = openInterestUsdMap.get(ticker.symbol) ?? null;
+    return {
+      rank: index + 1,
+      ticker: ticker.symbol,
+      name: assetNames[baseAsset] ?? baseAsset,
+      baseAsset,
+      sector: classifySector(baseAsset),
+      contractType: "PERPETUAL",
+      price,
+      high24h: requireNumber(ticker.highPrice),
+      low24h: requireNumber(ticker.lowPrice),
+      change24hPercent: round(requireNumber(ticker.priceChangePercent), 2),
+      change7dPercent: null,
+      marketCapUsd: null,
+      fdvUsd: null,
+      circulatingSupply: null,
+      baseVolume24h: requireNumber(ticker.volume),
+      volume24hUsd,
+      fundingRate: requireNumber(premium?.lastFundingRate),
+      markPrice: parseNumber(premium?.markPrice),
+      nextFundingTime: asIsoTime(premium?.nextFundingTime),
+      openInterestUsd: openInterestUsd === null ? null : round(openInterestUsd, 2),
+      volatility30dPercent: null,
+      longShortRatio: null,
+      lastUpdated: fetchedAt,
+      volumeToMarketCapPercent: null,
+      openInterestToMarketCapPercent: null,
+      openInterestToVolumePercent: openInterestUsd !== null && volume24hUsd > 0 ? round((openInterestUsd / volume24hUsd) * 100, 2) : null,
+    };
+  });
+
+  return { rows, fetchedAt };
+}
+
+async function loadCryptoFutures(): Promise<CachedCryptoFutures> {
+  if (cachedResult && Date.now() - new Date(cachedResult.fetchedAt).getTime() < CACHE_TTL_MS) {
+    return cachedResult;
+  }
+
+  try {
+    const live = await fetchLiveCryptoFutures();
+    cachedResult = live;
+    return live;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "알 수 없는 Binance API 오류";
+    if (cachedResult) {
+      cachedResult = {
+        ...cachedResult,
+        warning: `Binance 실시간 API 갱신에 실패해 최근 캐시를 표시합니다. 실패 원인: ${message}`,
+      };
+      return cachedResult;
+    }
+    throw new Error(`Binance USDT 선물 데이터를 가져오지 못했습니다. ${message}`);
+  }
+}
+
+export async function getCryptoFuturesTable(): Promise<CryptoFuturesTableRow[]> {
+  const result = await loadCryptoFutures();
+  return result.rows;
+}
+
+export async function getCryptoFuturesDataStatus() {
+  const result = await loadCryptoFutures();
+  return {
+    total: result.rows.length,
+    lastUpdated: result.fetchedAt,
+    warning: result.warning,
+    source: "Binance Futures Public API",
+    sourceUrl: `${BINANCE_FUTURES_BASE_URL}/fapi/v1/ticker/24hr`,
+  };
+}
+
+export async function getCryptoFuturesSummary() {
+  const rows = await getCryptoFuturesTable();
   const totalVolume24hUsd = rows.reduce((sum, row) => sum + row.volume24hUsd, 0);
-  const totalOpenInterestUsd = rows.reduce((sum, row) => sum + row.openInterestUsd, 0);
-  const avgFundingRate = rows.reduce((sum, row) => sum + row.fundingRate, 0) / rows.length;
-  const avgChange24hPercent = rows.reduce((sum, row) => sum + row.change24hPercent, 0) / rows.length;
+  const oiRows = rows.filter(row => typeof row.openInterestUsd === "number" && Number.isFinite(row.openInterestUsd));
+  const totalOpenInterestUsd = oiRows.reduce((sum, row) => sum + Number(row.openInterestUsd), 0);
+  const avgFundingRate = rows.length ? rows.reduce((sum, row) => sum + row.fundingRate, 0) / rows.length : 0;
+  const avgChange24hPercent = rows.length ? rows.reduce((sum, row) => sum + row.change24hPercent, 0) / rows.length : 0;
   const topGainer = [...rows].sort((a, b) => b.change24hPercent - a.change24hPercent)[0];
   const topLoser = [...rows].sort((a, b) => a.change24hPercent - b.change24hPercent)[0];
   const hottestFunding = [...rows].sort((a, b) => Math.abs(b.fundingRate) - Math.abs(a.fundingRate))[0];
+  const volumeLeader = [...rows].sort((a, b) => b.volume24hUsd - a.volume24hUsd)[0];
   const sectors = Array.from(rows.reduce((map, row) => {
-    const current = map.get(row.sector) ?? { sector: row.sector, count: 0, marketCapUsd: 0, volume24hUsd: 0 };
+    const current = map.get(row.sector) ?? { sector: row.sector, count: 0, marketCapUsd: 0, volume24hUsd: 0, openInterestUsd: 0 };
     current.count += 1;
-    current.marketCapUsd += row.marketCapUsd;
+    current.marketCapUsd += row.volume24hUsd;
     current.volume24hUsd += row.volume24hUsd;
+    current.openInterestUsd += row.openInterestUsd ?? 0;
     map.set(row.sector, current);
     return map;
-  }, new Map<CryptoFuturesTableRow["sector"], { sector: CryptoFuturesTableRow["sector"]; count: number; marketCapUsd: number; volume24hUsd: number }>()).values())
-    .sort((a, b) => b.marketCapUsd - a.marketCapUsd);
+  }, new Map<CryptoFuturesTableRow["sector"], { sector: CryptoFuturesTableRow["sector"]; count: number; marketCapUsd: number; volume24hUsd: number; openInterestUsd: number }>()).values())
+    .sort((a, b) => b.volume24hUsd - a.volume24hUsd);
+  const status = await getCryptoFuturesDataStatus();
 
   return {
     totalCoins: rows.length,
-    totalMarketCapUsd,
+    totalMarketCapUsd: totalVolume24hUsd,
     totalVolume24hUsd,
     totalOpenInterestUsd,
     avgFundingRate,
     avgChange24hPercent: round(avgChange24hPercent, 2),
-    topGainer: { ticker: topGainer.ticker, change: topGainer.change24hPercent },
-    topLoser: { ticker: topLoser.ticker, change: topLoser.change24hPercent },
-    hottestFunding: { ticker: hottestFunding.ticker, fundingRate: hottestFunding.fundingRate },
+    topGainer: { ticker: topGainer?.ticker ?? "-", change: topGainer?.change24hPercent ?? 0 },
+    topLoser: { ticker: topLoser?.ticker ?? "-", change: topLoser?.change24hPercent ?? 0 },
+    hottestFunding: { ticker: hottestFunding?.ticker ?? "-", fundingRate: hottestFunding?.fundingRate ?? 0 },
+    volumeLeader: { ticker: volumeLeader?.ticker ?? "-", volume24hUsd: volumeLeader?.volume24hUsd ?? 0 },
     sectors,
     indicators: CRYPTO_FUTURES_METRICS,
-    lastUpdated: rows[0]?.lastUpdated ?? nowIso(),
+    lastUpdated: status.lastUpdated,
+    warning: status.warning,
+    source: status.source,
+    sourceUrl: status.sourceUrl,
   };
+}
+
+
+function parseKlinesToCandles(klines: BinanceKline[]): PriceCandle[] {
+  return klines.map(kline => ({
+    date: new Date(kline[0]).toISOString().slice(0, 10),
+    open: requireNumber(kline[1]),
+    high: requireNumber(kline[2]),
+    low: requireNumber(kline[3]),
+    close: requireNumber(kline[4]),
+    volume: requireNumber(kline[5]),
+  })).filter(candle => [candle.open, candle.high, candle.low, candle.close].every(value => Number.isFinite(value) && value > 0));
+}
+
+export async function fetchCryptoFuturesTechnicalDetail(input: { symbol: string; name?: string }) {
+  const symbol = input.symbol.trim().toUpperCase();
+  if (!symbol.endsWith("USDT")) {
+    throw new Error("USDT 선물 심볼만 상세 분석할 수 있습니다.");
+  }
+  const klines = await fetchJson<BinanceKline[]>(`/fapi/v1/klines?symbol=${encodeURIComponent(symbol)}&interval=1d&limit=1095`);
+  return buildTechnicalIndicatorDetailFromCandles({
+    code: symbol,
+    name: input.name,
+    symbol,
+    candles: parseKlinesToCandles(klines),
+    source: "Binance Futures Public API",
+  });
 }

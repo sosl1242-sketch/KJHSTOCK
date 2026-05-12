@@ -123,7 +123,7 @@ describe("technical indicators", () => {
         symbol: "005930.KS",
         region: "KR",
         interval: "1d",
-        range: "1y",
+        range: "3y",
         includeAdjustedClose: "true",
       }),
     });

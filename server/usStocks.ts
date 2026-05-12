@@ -1,3 +1,4 @@
+import { buildTechnicalIndicatorDetailFromCandles, PriceCandle } from "./technicalIndicators";
 export const US_STOCK_METRICS = [
   { key: "marketCapUsd", label: "시가총액", description: "상장 주식 기준 기업가치입니다." },
   { key: "revenueTtmUsd", label: "TTM 매출", description: "최근 12개월 누적 매출입니다." },
@@ -37,12 +38,47 @@ export type UsStockTableRow = {
   dividendYieldPercent: number;
   beta: number;
   analystUpsidePercent: number;
+  volume: number | null;
+  turnoverUsd: number | null;
+  quoteSource: "Stooq" | "Fallback";
+  quoteStatus: "live" | "fallback";
+  quoteWarning?: string;
   lastUpdated: string;
+};
+
+type BaseUsStock = Omit<UsStockTableRow, "lastUpdated" | "volume" | "turnoverUsd" | "quoteSource" | "quoteStatus" | "quoteWarning">;
+
+type StooqQuote = {
+  ticker: string;
+  close: number;
+  open: number | null;
+  volume: number | null;
+  updatedAt: string;
+};
+
+
+type YahooChartResponse = {
+  chart?: {
+    result?: Array<{
+      timestamp?: number[];
+      meta?: { symbol?: string };
+      indicators?: {
+        quote?: Array<{
+          open?: Array<number | null>;
+          high?: Array<number | null>;
+          low?: Array<number | null>;
+          close?: Array<number | null>;
+          volume?: Array<number | null>;
+        }>;
+      };
+    }>;
+    error?: unknown;
+  };
 };
 
 const nowIso = () => new Date().toISOString();
 
-const stocks: Omit<UsStockTableRow, "lastUpdated">[] = [
+const stocks: BaseUsStock[] = [
   { rank: 1, ticker: "NVDA", name: "NVIDIA", sector: "AI·반도체", exchange: "NASDAQ", price: 875.4, change1dPercent: 5.2, change5dPercent: 9.4, marketCapUsd: 2150000000000, revenueTtmUsd: 60900000000, grossMarginPercent: 73.8, operatingMarginPercent: 54.1, epsTtm: 11.93, peRatio: 73.4, forwardPeRatio: 34.8, priceToSalesRatio: 35.3, priceToBookRatio: 50.1, dividendYieldPercent: 0.02, beta: 1.72, analystUpsidePercent: 11.5 },
   { rank: 2, ticker: "MSFT", name: "Microsoft", sector: "클라우드·소프트웨어", exchange: "NASDAQ", price: 420.75, change1dPercent: 1.8, change5dPercent: 3.6, marketCapUsd: 3140000000000, revenueTtmUsd: 236600000000, grossMarginPercent: 69.8, operatingMarginPercent: 44.6, epsTtm: 11.8, peRatio: 35.7, forwardPeRatio: 29.3, priceToSalesRatio: 13.3, priceToBookRatio: 12.4, dividendYieldPercent: 0.74, beta: 0.89, analystUpsidePercent: 8.2 },
   { rank: 3, ticker: "AAPL", name: "Apple", sector: "소비재", exchange: "NASDAQ", price: 195.5, change1dPercent: 2.3, change5dPercent: 4.1, marketCapUsd: 3050000000000, revenueTtmUsd: 383300000000, grossMarginPercent: 45.6, operatingMarginPercent: 30.8, epsTtm: 6.13, peRatio: 31.9, forwardPeRatio: 27.4, priceToSalesRatio: 8.0, priceToBookRatio: 39.8, dividendYieldPercent: 0.51, beta: 1.2, analystUpsidePercent: 5.6 },
@@ -74,15 +110,97 @@ function round(value: number, digits = 2) {
   return Math.round(value * factor) / factor;
 }
 
-export function getUsStocksTable(): UsStockTableRow[] {
-  const lastUpdated = nowIso();
-  return stocks.map(stock => ({ ...stock, lastUpdated }));
+function parseNumber(value: string | undefined): number | null {
+  if (!value || value === "N/D") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
-export function getUsStocksSummary() {
-  const rows = getUsStocksTable();
+function stooqSymbol(ticker: string) {
+  return `${ticker.toLowerCase().replace(".", "-")}.us`;
+}
+
+async function fetchStooqQuote(stock: BaseUsStock): Promise<StooqQuote | null> {
+  const symbol = stooqSymbol(stock.ticker);
+  const url = `https://stooq.com/q/l/?s=${encodeURIComponent(symbol)}&f=sd2t2ohlcv&h&e=csv`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 4500);
+
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; KoreaStockSectorAnalyzer/1.0)" },
+    });
+    if (!response.ok) return null;
+    const csv = (await response.text()).trim();
+    const [, row] = csv.split(/\r?\n/);
+    if (!row) return null;
+    const columns = row.split(",");
+    const close = parseNumber(columns[6]);
+    if (close === null || close <= 0) return null;
+    const date = columns[1] && columns[1] !== "N/D" ? columns[1] : undefined;
+    const time = columns[2] && columns[2] !== "N/D" ? columns[2] : undefined;
+    const updatedAt = date ? new Date(`${date}T${time ?? "00:00:00"}Z`).toISOString() : nowIso();
+
+    return {
+      ticker: stock.ticker,
+      close,
+      open: parseNumber(columns[3]),
+      volume: parseNumber(columns[7]),
+      updatedAt,
+    };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function fetchLiveQuotes() {
+  const settled = await Promise.allSettled(stocks.map(stock => fetchStooqQuote(stock)));
+  const quotes = new Map<string, StooqQuote>();
+  for (const result of settled) {
+    if (result.status === "fulfilled" && result.value) quotes.set(result.value.ticker, result.value);
+  }
+  return quotes;
+}
+
+export async function getUsStocksTable(): Promise<UsStockTableRow[]> {
+  const quotes = await fetchLiveQuotes();
+  const fallbackUpdatedAt = nowIso();
+  const liveCount = quotes.size;
+  const warning = liveCount === 0
+    ? "Stooq 최신 시세 API 응답이 없어 저장된 기본 기초지표와 이전 기준 주가를 표시합니다."
+    : liveCount < stocks.length
+      ? `일부 종목(${liveCount}/${stocks.length})만 Stooq 최신 시세로 갱신되었습니다.`
+      : undefined;
+
+  return stocks.map(stock => {
+    const quote = quotes.get(stock.ticker);
+    const price = quote?.close ?? stock.price;
+    const change1dPercent = quote?.open && quote.open > 0 ? round(((price - quote.open) / quote.open) * 100, 2) : stock.change1dPercent;
+    const volume = quote?.volume ?? null;
+    const turnoverUsd = volume === null ? null : round(price * volume, 2);
+
+    return {
+      ...stock,
+      price,
+      change1dPercent,
+      volume,
+      turnoverUsd,
+      quoteSource: quote ? "Stooq" : "Fallback",
+      quoteStatus: quote ? "live" : "fallback",
+      quoteWarning: quote ? undefined : warning,
+      lastUpdated: quote?.updatedAt ?? fallbackUpdatedAt,
+    };
+  });
+}
+
+export async function getUsStocksSummary() {
+  const rows = await getUsStocksTable();
   const totalMarketCapUsd = rows.reduce((sum, row) => sum + row.marketCapUsd, 0);
   const totalRevenueTtmUsd = rows.reduce((sum, row) => sum + row.revenueTtmUsd, 0);
+  const totalTurnoverUsd = rows.reduce((sum, row) => sum + (row.turnoverUsd ?? 0), 0);
   const avgChange1dPercent = rows.reduce((sum, row) => sum + row.change1dPercent, 0) / rows.length;
   const valuedPeRows = rows.filter(row => typeof row.peRatio === "number" && Number.isFinite(row.peRatio));
   const avgPeRatio = valuedPeRows.reduce((sum, row) => sum + Number(row.peRatio), 0) / valuedPeRows.length;
@@ -90,28 +208,95 @@ export function getUsStocksSummary() {
   const topGainer = [...rows].sort((a, b) => b.change1dPercent - a.change1dPercent)[0];
   const topLoser = [...rows].sort((a, b) => a.change1dPercent - b.change1dPercent)[0];
   const highestMarketCap = [...rows].sort((a, b) => b.marketCapUsd - a.marketCapUsd)[0];
+  const liveQuoteCount = rows.filter(row => row.quoteStatus === "live").length;
+  const warning = liveQuoteCount < rows.length
+    ? liveQuoteCount === 0
+      ? "최신 해외주식 시세 수집에 실패해 기본 기초지표 중심으로 표시합니다."
+      : `최신 시세는 ${liveQuoteCount}/${rows.length}개 종목에만 반영되었습니다.`
+    : undefined;
   const sectors = Array.from(rows.reduce((map, row) => {
-    const current = map.get(row.sector) ?? { sector: row.sector, count: 0, marketCapUsd: 0, revenueTtmUsd: 0 };
+    const current = map.get(row.sector) ?? { sector: row.sector, count: 0, marketCapUsd: 0, revenueTtmUsd: 0, turnoverUsd: 0, avgChange1dPercent: 0 };
     current.count += 1;
     current.marketCapUsd += row.marketCapUsd;
     current.revenueTtmUsd += row.revenueTtmUsd;
+    current.turnoverUsd += row.turnoverUsd ?? 0;
+    current.avgChange1dPercent += row.change1dPercent;
     map.set(row.sector, current);
     return map;
-  }, new Map<UsStockSector, { sector: UsStockSector; count: number; marketCapUsd: number; revenueTtmUsd: number }>()).values())
+  }, new Map<UsStockSector, { sector: UsStockSector; count: number; marketCapUsd: number; revenueTtmUsd: number; turnoverUsd: number; avgChange1dPercent: number }>()).values())
+    .map(sector => ({ ...sector, avgChange1dPercent: round(sector.avgChange1dPercent / sector.count, 2) }))
     .sort((a, b) => b.marketCapUsd - a.marketCapUsd);
 
   return {
     totalStocks: rows.length,
     totalMarketCapUsd,
     totalRevenueTtmUsd,
+    totalTurnoverUsd,
     avgChange1dPercent: round(avgChange1dPercent, 2),
     avgPeRatio: round(avgPeRatio, 2),
     avgAnalystUpsidePercent: round(avgAnalystUpsidePercent, 2),
+    liveQuoteCount,
     topGainer: { ticker: topGainer.ticker, change: topGainer.change1dPercent },
     topLoser: { ticker: topLoser.ticker, change: topLoser.change1dPercent },
     highestMarketCap: { ticker: highestMarketCap.ticker, marketCapUsd: highestMarketCap.marketCapUsd },
     sectors,
     indicators: US_STOCK_METRICS,
-    lastUpdated: rows[0]?.lastUpdated ?? nowIso(),
+    warning,
+    lastUpdated: rows.map(row => row.lastUpdated).sort().at(-1) ?? nowIso(),
   };
+}
+
+
+function parseYahooCandles(payload: YahooChartResponse): { symbol?: string; candles: PriceCandle[] } {
+  const result = payload.chart?.result?.[0];
+  const timestamps = result?.timestamp ?? [];
+  const quote = result?.indicators?.quote?.[0];
+  const candles: PriceCandle[] = [];
+  for (let index = 0; index < timestamps.length; index += 1) {
+    const close = quote?.close?.[index];
+    const high = quote?.high?.[index];
+    const low = quote?.low?.[index];
+    const open = quote?.open?.[index] ?? close;
+    const volume = quote?.volume?.[index] ?? 0;
+    if ([open, high, low, close].every(value => typeof value === "number" && Number.isFinite(value) && value > 0)) {
+      candles.push({
+        date: new Date(timestamps[index] * 1000).toISOString().slice(0, 10),
+        open: open as number,
+        high: high as number,
+        low: low as number,
+        close: close as number,
+        volume: typeof volume === "number" && Number.isFinite(volume) ? volume : 0,
+      });
+    }
+  }
+  return { symbol: result?.meta?.symbol, candles };
+}
+
+export async function fetchUsStockTechnicalDetail(input: { ticker: string; name?: string }) {
+  const ticker = input.ticker.trim().toUpperCase();
+  const yahooSymbol = ticker.replace(".", "-");
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=3y&interval=1d&includeAdjustedClose=true`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6500);
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; KoreaStockSectorAnalyzer/1.0)" },
+    });
+    if (!response.ok) throw new Error(`Yahoo Finance chart returned ${response.status}`);
+    const payload = await response.json() as YahooChartResponse;
+    const parsed = parseYahooCandles(payload);
+    return buildTechnicalIndicatorDetailFromCandles({
+      code: ticker,
+      name: input.name,
+      symbol: parsed.symbol ?? yahooSymbol,
+      candles: parsed.candles,
+      source: "YahooFinance",
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "알 수 없는 오류";
+    throw new Error(`${ticker} 해외주식 보조지표 데이터를 가져오지 못했습니다. ${reason}`);
+  } finally {
+    clearTimeout(timeout);
+  }
 }

@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { callDataApi } from "./_core/dataApi";
 
-type MarketSuffix = "KS" | "KQ";
+export type MarketSuffix = "KS" | "KQ";
 
 type YahooChartResponse = {
   chart?: {
@@ -379,7 +379,7 @@ export async function fetchTechnicalIndicatorDetail(input: { code: string; name?
           symbol,
           region: "KR",
           interval: "1d",
-          range: "1y",
+          range: "3y",
           includeAdjustedClose: "true",
         },
       });
@@ -413,4 +413,56 @@ export async function fetchTechnicalIndicatorDetail(input: { code: string; name?
     code: "BAD_GATEWAY",
     message: `${code} 종목의 보조지표를 계산할 주가 이력을 가져오지 못했습니다. ${reason}`,
   });
+}
+
+
+export type GenericTechnicalIndicatorDetail = {
+  code: string;
+  name?: string;
+  symbol: string;
+  latestClose: number | null;
+  high52Week: number | null;
+  low52Week: number | null;
+  fairPriceMedian: number | null;
+  indicators: TechnicalIndicator[];
+  priceHistory: PriceCandle[];
+  source: string;
+  fetchedAt: string;
+  note?: string;
+};
+
+export function buildTechnicalIndicatorDetailFromCandles(input: {
+  code: string;
+  name?: string;
+  symbol: string;
+  candles: PriceCandle[];
+  source: string;
+  note?: string;
+}): GenericTechnicalIndicatorDetail {
+  const candles = input.candles
+    .filter(candle => [candle.open, candle.high, candle.low, candle.close].every(value => typeof value === "number" && Number.isFinite(value) && value > 0))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  if (candles.length < 30) {
+    throw new TRPCError({
+      code: "BAD_GATEWAY",
+      message: `${input.symbol} 보조지표를 계산할 가격 이력이 부족합니다. 최소 30개 이상의 일봉이 필요합니다.`,
+    });
+  }
+
+  const calculated = calculateTechnicalIndicators(candles);
+  return {
+    code: input.code,
+    name: input.name,
+    symbol: input.symbol,
+    latestClose: round(calculated.latestClose, 4),
+    high52Week: round(calculated.high52Week, 4),
+    low52Week: round(calculated.low52Week, 4),
+    fairPriceMedian: round(calculated.fairPriceMedian, 4),
+    indicators: calculated.indicators,
+    priceHistory: candles,
+    source: input.source,
+    fetchedAt: new Date().toISOString(),
+    note: input.note ?? (candles.length < 220 ? "거래 이력이 1년보다 짧아 52주 지표는 조회 가능한 기간 기준입니다." : undefined),
+  };
 }

@@ -1,44 +1,54 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { CRYPTO_FUTURES_METRICS, getCryptoFuturesSummary, getCryptoFuturesTable } from "./cryptoFutures";
 
 describe("crypto futures sector metrics", () => {
-  it("uses twelve crypto-native metrics instead of equity valuation labels", () => {
+  it("uses twelve crypto-native futures metrics instead of equity valuation labels", () => {
     expect(CRYPTO_FUTURES_METRICS).toHaveLength(12);
     const labels = CRYPTO_FUTURES_METRICS.map(metric => metric.label).join(" ");
 
-    expect(labels).toContain("시가총액");
-    expect(labels).toContain("FDV");
-    expect(labels).toContain("유통 공급량");
+    expect(labels).toContain("24h 거래대금");
     expect(labels).toContain("펀딩비");
     expect(labels).toContain("미결제약정");
+    expect(labels).toContain("OI/거래대금");
     expect(labels).not.toContain("PER");
     expect(labels).not.toContain("PBR");
     expect(labels).not.toContain("EPS");
   });
 
-  it("returns expanded table rows with derived liquidity and leverage ratios", () => {
-    const rows = getCryptoFuturesTable();
+  it("does not cap the Binance USDT perpetual universe to a top-100 slice", () => {
+    const source = readFileSync(resolve(process.cwd(), "server/cryptoFutures.ts"), "utf8");
 
-    expect(rows.length).toBeGreaterThanOrEqual(12);
-    expect(rows[0]).toMatchObject({
-      ticker: "BTCUSDT",
-      marketCapUsd: expect.any(Number),
-      volumeToMarketCapPercent: expect.any(Number),
-      openInterestToMarketCapPercent: expect.any(Number),
-    });
-    expect(rows.every(row => Number.isFinite(row.fundingRate))).toBe(true);
-    expect(rows.every(row => Number.isFinite(row.longShortRatio))).toBe(true);
+    expect(source).toContain('quoteAsset === "USDT"');
+    expect(source).toContain('contractType === "PERPETUAL"');
+    expect(source).not.toContain("slice(0, 100)");
+    expect(source).not.toContain("TOP_N");
   });
 
-  it("summarizes market cap, volume, open interest, sector buckets and funding pressure", () => {
-    const summary = getCryptoFuturesSummary();
+  it("returns Binance USDT perpetual rows with liquidity and funding fields", async () => {
+    const rows = await getCryptoFuturesTable();
 
-    expect(summary.totalCoins).toBe(getCryptoFuturesTable().length);
-    expect(summary.totalMarketCapUsd).toBeGreaterThan(0);
+    expect(rows.length).toBeGreaterThanOrEqual(100);
+    expect(rows.every(row => row.ticker.endsWith("USDT"))).toBe(true);
+    expect(rows[0]).toMatchObject({
+      ticker: expect.stringMatching(/USDT$/),
+      contractType: "PERPETUAL",
+      volume24hUsd: expect.any(Number),
+      fundingRate: expect.any(Number),
+    });
+    expect(rows.some(row => typeof row.openInterestToVolumePercent === "number")).toBe(true);
+  }, 30000);
+
+  it("summarizes full USDT futures market volume, sectors and funding pressure", async () => {
+    const rows = await getCryptoFuturesTable();
+    const summary = await getCryptoFuturesSummary();
+
+    expect(summary.totalCoins).toBe(rows.length);
+    expect(summary.totalCoins).toBeGreaterThanOrEqual(100);
     expect(summary.totalVolume24hUsd).toBeGreaterThan(0);
-    expect(summary.totalOpenInterestUsd).toBeGreaterThan(0);
     expect(summary.sectors.length).toBeGreaterThan(1);
     expect(summary.indicators).toHaveLength(12);
     expect(summary.hottestFunding.ticker.endsWith("USDT")).toBe(true);
-  });
+  }, 30000);
 });
