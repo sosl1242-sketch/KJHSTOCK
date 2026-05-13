@@ -221,9 +221,15 @@ export default function GlobalStocks() {
   const [sortState, setSortState] = useState<{ key: SortKey; direction: SortDirection } | null>({ key: "marketCapUsd", direction: "desc" });
   const [selectedStock, setSelectedStock] = useState<UsStockRow | null>(null);
   const [selectedMetricKey, setSelectedMetricKey] = useState<string | null>(null);
+  const [selectedTechnicalKey, setSelectedTechnicalKey] = useState<string | null>(null);
+  const [priceChartFrame, setPriceChartFrame] = useState<"daily" | "weekly" | "monthly">("daily");
 
   const summary = trpc.globalStocks.getSummary.useQuery(undefined, { staleTime: 1000 * 60 * 3, refetchOnWindowFocus: false });
   const table = trpc.globalStocks.getTable.useQuery(undefined, { staleTime: 1000 * 60 * 3, refetchOnWindowFocus: false });
+  const technicalDetail = trpc.globalStocks.technicalIndicators.useQuery(
+    { ticker: selectedStock?.ticker ?? "", name: selectedStock?.name },
+    { enabled: Boolean(selectedStock?.ticker), staleTime: 1000 * 60 * 3, refetchOnWindowFocus: false },
+  );
 
   const stocks = useMemo<UsStockRow[]>(() => (table.data?.success && table.data?.stocks ? table.data.stocks : []), [table.data]);
   const sectors = useMemo(() => Array.from(new Set(stocks.map(stock => stock.sector))), [stocks]);
@@ -291,13 +297,18 @@ export default function GlobalStocks() {
     void summary.refetch();
     void table.refetch();
   };
-  const selectedMetric = selectedMetricKey && selectedStock
+  const selectedMetric = selectedStock && selectedMetricKey
     ? {
         key: selectedMetricKey,
         label: sortLabels[selectedMetricKey as SortKey] ?? selectedMetricKey,
         value: selectedStock[selectedMetricKey as keyof UsStockRow],
         guide: metricGuides[selectedMetricKey],
       }
+    : null;
+  const selectedTechnicalIndicator = selectedTechnicalKey
+    ? technicalDetail.data?.success
+      ? technicalDetail.data.detail?.indicators.find(indicator => indicator.key === selectedTechnicalKey) ?? null
+      : null
     : null;
 
   const formatMetricValue = (row: UsStockRow, key: string) => {
@@ -311,18 +322,49 @@ export default function GlobalStocks() {
     return typeof value === "number" ? formatNumber(value) : `${value ?? "-"}`;
   };
 
+  const technical = technicalDetail.data?.success ? technicalDetail.data.detail : null;
   const detailChartData = useMemo(() => {
-    if (!selectedStock) return [];
-    const start = selectedStock.price / (1 + selectedStock.change5dPercent / 100);
-    return Array.from({ length: 6 }, (_, index) => {
-      const progress = index / 5;
-      const curve = Math.sin(progress * Math.PI) * selectedStock.change1dPercent * 0.15;
+    const withEvidence = (points: Array<{ date: string; label: string; price: number; volume: number }>) => points.map((point, index) => {
+      const ma20Source = points.slice(Math.max(0, index - 19), index + 1).map(item => item.price);
+      const ma60Source = points.slice(Math.max(0, index - 59), index + 1).map(item => item.price);
+      const ma20 = ma20Source.length >= Math.min(20, points.length) ? ma20Source.reduce((sum, value) => sum + value, 0) / ma20Source.length : null;
+      const ma60 = ma60Source.length >= Math.min(60, points.length) ? ma60Source.reduce((sum, value) => sum + value, 0) / ma60Source.length : null;
       return {
-        label: index === 5 ? "현재" : `D-${5 - index}`,
-        price: Number((start + (selectedStock.price - start) * progress + curve).toFixed(2)),
+        ...point,
+        ma20: ma20 === null ? null : Number(ma20.toFixed(2)),
+        ma60: ma60 === null ? null : Number(ma60.toFixed(2)),
+        volumeScaled: point.volume > 0 ? Number((point.volume / 1_000_000).toFixed(1)) : 0,
       };
     });
-  }, [selectedStock]);
+    const history = technical?.priceHistory ?? [];
+    const source = history.map(candle => ({
+      date: candle.date,
+      label: candle.date.slice(5),
+      price: Number(candle.close.toFixed(2)),
+      volume: candle.volume,
+    }));
+    if (priceChartFrame === "daily") return withEvidence(source.slice(-126));
+
+    const grouped = new Map<string, { date: string; label: string; price: number; volume: number }>();
+    source.forEach(point => {
+      const date = new Date(`${point.date}T00:00:00Z`);
+      const key = priceChartFrame === "weekly"
+        ? `${date.getUTCFullYear()}-W${Math.floor((Number(point.date.slice(5, 7)) * 31 + Number(point.date.slice(8, 10))) / 7).toString().padStart(2, "0")}`
+        : point.date.slice(0, 7);
+      grouped.set(key, {
+        ...point,
+        label: priceChartFrame === "weekly" ? point.date.slice(2, 10) : point.date.slice(2, 7),
+      });
+    });
+    return withEvidence(Array.from(grouped.values()).slice(priceChartFrame === "weekly" ? -104 : -36));
+  }, [technical?.priceHistory, priceChartFrame]);
+  const technicalStatusClass = (status: string) => {
+    if (status === "overheated") return "bg-red-50 text-red-700";
+    if (status === "oversold" || status === "watch_low") return "bg-blue-50 text-blue-700";
+    if (status === "watch_high") return "bg-amber-50 text-amber-700";
+    return "bg-slate-100 text-slate-700";
+  };
+  const chartFrameLabels = { daily: "일봉 6개월", weekly: "주봉 2년", monthly: "월봉 3년" } as const;
 
   return (
     <div className="min-h-[calc(100vh-3rem)] bg-[#f7f9fb] p-4 text-slate-950 md:p-8">
@@ -505,8 +547,10 @@ export default function GlobalStocks() {
                     key={row.ticker}
                     className="cursor-pointer rounded-2xl bg-slate-50/80 shadow-sm transition hover:bg-blue-50/80"
                     onClick={() => {
-                      setSelectedStock(row);
-                      setSelectedMetricKey(null);
+	                      setSelectedStock(row);
+	                      setSelectedMetricKey(null);
+	                      setPriceChartFrame("daily");
+
                     }}
                   >
                     <td className="rounded-l-2xl px-4 py-3 text-slate-500">{row.rank}</td>
@@ -543,7 +587,7 @@ export default function GlobalStocks() {
           </CardContent>
         </Card>
 
-        <Dialog open={Boolean(selectedStock)} onOpenChange={(open) => { if (!open) { setSelectedStock(null); setSelectedMetricKey(null); } }}>
+        <Dialog open={Boolean(selectedStock)} onOpenChange={(open) => { if (!open) { setSelectedStock(null); setSelectedMetricKey(null); setSelectedTechnicalKey(null); } }}>
           <DialogContent className="max-h-[88vh] overflow-y-auto border-0 bg-white text-slate-950 sm:max-w-5xl">
             <DialogHeader>
               <DialogTitle className="flex flex-wrap items-center gap-3 text-2xl font-black">
@@ -586,30 +630,118 @@ export default function GlobalStocks() {
                   </div>
                 </div>
 
-                <div className="rounded-3xl border border-slate-100 bg-slate-50 p-5">
-                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+	                <div className="rounded-3xl border border-slate-100 bg-slate-50 p-5">
+	                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+	                    <div>
+	                      <h3 className="flex items-center gap-2 text-lg font-black text-slate-950"><TrendingUp className="h-5 w-5 text-blue-500" /> 고점·저점 판단 보조지표 12개</h3>
+	                      <p className="mt-1 text-sm text-slate-500">Yahoo Finance 3년 가격 이력으로 계산한 서버 기반 기술적 보조지표입니다.</p>
+	                    </div>
+	                    <Badge className="rounded-full bg-blue-600 text-white hover:bg-blue-600">예상 적정가 중앙값 {formatPrice(technical?.fairPriceMedian)}</Badge>
+	                  </div>
+	                  {technicalDetail.isLoading ? <div className="rounded-3xl bg-white p-6 text-sm text-slate-500">보조지표를 계산하는 중입니다.</div> : technicalDetail.data?.success === false ? <div className="rounded-3xl bg-red-50 p-6 text-sm text-red-700">{technicalDetail.data.error}</div> : (
+	                    <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-4">
+		                      {(technical?.indicators ?? []).map(indicator => (
+		                        <button key={indicator.key} type="button" className="rounded-3xl bg-white p-4 text-left ring-1 ring-slate-100 transition hover:bg-blue-50 hover:ring-blue-200" onClick={() => setSelectedTechnicalKey(indicator.key)}>
+		                          <div className="flex items-start justify-between gap-2">
+		                            <p className="text-xs font-black text-slate-500">{indicator.label}</p>
+		                            <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${technicalStatusClass(indicator.status)}`}>{indicator.statusLabel}</span>
+		                          </div>
+		                          <p className="mt-3 text-2xl font-black text-slate-950">{indicator.displayValue}</p>
+		                          <p className="mt-2 text-xs leading-5 text-slate-500">{indicator.interpretation}</p>
+		                          <p className="mt-3 text-xs font-bold text-blue-700">참고가 {indicator.fairPriceDisplay}</p>
+		                          <p className="mt-1 text-[11px] font-bold text-slate-400">클릭해 상세 해설 보기</p>
+		                        </button>
+		                      ))}
+	                    </div>
+	                  )}
+	                </div>
+
+	                <div className="rounded-3xl border border-slate-100 bg-slate-50 p-5">
+	                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+	                    <div>
+	                      <h3 className="flex items-center gap-2 text-lg font-black text-slate-950"><BarChart3 className="h-5 w-5 text-blue-500" /> 장기 가격 차트</h3>
+		                      <p className="mt-1 text-sm text-slate-500">일봉 6개월, 주봉 2년, 월봉 3년 범위로 서버 가격 이력을 재집계하고 20·60기간 이동평균과 거래량 근거를 함께 표시합니다.</p>
+	                    </div>
+	                    <div className="flex rounded-full bg-white p-1 ring-1 ring-slate-200">
+	                      {(["daily", "weekly", "monthly"] as const).map(frame => (
+	                        <button key={frame} type="button" className={`rounded-full px-3 py-1.5 text-xs font-black transition ${priceChartFrame === frame ? "bg-blue-600 text-white" : "text-slate-500 hover:text-slate-950"}`} onClick={() => setPriceChartFrame(frame)}>{chartFrameLabels[frame]}</button>
+	                      ))}
+	                    </div>
+	                  </div>
+	                  <div className="h-72">
+	                    <ResponsiveContainer width="100%" height="100%">
+	                      <AreaChart data={detailChartData} margin={{ top: 12, right: 18, left: 0, bottom: 0 }}>
+	                        <defs>
+	                          <linearGradient id="usDetailPrice" x1="0" y1="0" x2="0" y2="1">
+	                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.28} />
+	                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.02} />
+	                          </linearGradient>
+	                        </defs>
+	                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+	                        <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748b" }} tickLine={false} axisLine={false} minTickGap={24} />
+		                        <YAxis tick={{ fontSize: 12, fill: "#64748b" }} tickFormatter={value => `$${Number(value).toLocaleString("ko-KR", { maximumFractionDigits: 0 })}`} width={74} tickLine={false} axisLine={false} />
+		                        <YAxis yAxisId="volume" orientation="right" hide />
+		                        <RechartsTooltip formatter={(value, name) => {
+		                          if (name === "volumeScaled") return [`${Number(value).toLocaleString("ko-KR", { maximumFractionDigits: 1 })}M주`, "거래량"];
+		                          if (name === "ma20") return [formatPrice(Number(value)), "20기간 평균"];
+		                          if (name === "ma60") return [formatPrice(Number(value)), "60기간 평균"];
+		                          return [formatPrice(Number(value)), "주가"];
+		                        }} />
+		                        <Bar dataKey="volumeScaled" fill="#cbd5e1" opacity={0.28} yAxisId="volume" />
+		                        <Area type="monotone" dataKey="ma60" stroke="#94a3b8" strokeWidth={1.5} fill="transparent" dot={false} connectNulls />
+		                        <Area type="monotone" dataKey="ma20" stroke="#f59e0b" strokeWidth={1.8} fill="transparent" dot={false} connectNulls />
+		                        <Area type="monotone" dataKey="price" stroke="#2563eb" strokeWidth={3} fill="url(#usDetailPrice)" />
+	                      </AreaChart>
+	                    </ResponsiveContainer>
+	                  </div>
+	                </div>
+
+              </div>
+            ) : null}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={Boolean(selectedStock && selectedTechnicalIndicator)} onOpenChange={(open) => { if (!open) setSelectedTechnicalKey(null); }}>
+          <DialogContent className="max-h-[88vh] overflow-y-auto border-0 bg-slate-50 text-slate-950 sm:max-w-3xl">
+            <DialogHeader>
+              <DialogTitle className="flex flex-wrap items-center gap-3 text-2xl font-black">
+                <Activity className="h-6 w-6 text-blue-500" />
+                기술지표 상세 해설 · {selectedTechnicalIndicator?.label}
+              </DialogTitle>
+              <DialogDescription>
+                {selectedStock?.name}의 현재 기술지표 값, 판단 기준, 주의점, 참고 적정가 산식을 분리해서 보여줍니다.
+              </DialogDescription>
+            </DialogHeader>
+            {selectedStock && selectedTechnicalIndicator ? (
+              <div className="space-y-4">
+                <div className="rounded-3xl bg-white p-5 ring-1 ring-slate-100">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <h3 className="flex items-center gap-2 text-lg font-black text-slate-950"><BarChart3 className="h-5 w-5 text-blue-500" /> 가격 차트</h3>
-                      <p className="mt-1 text-sm text-slate-500">최근 5거래일 등락률을 기준으로 만든 요약 가격 흐름입니다.</p>
+                      <p className={`inline-flex rounded-full px-2 py-1 text-[11px] font-black ${technicalStatusClass(selectedTechnicalIndicator.status)}`}>{selectedTechnicalIndicator.statusLabel}</p>
+                      <h4 className="mt-2 text-xl font-black">{selectedStock.name}의 {selectedTechnicalIndicator.label}</h4>
                     </div>
-                    <Badge variant="secondary" className="rounded-full">5d {formatPercent(selectedStock.change5dPercent)}</Badge>
+                    <Badge className="rounded-full bg-slate-950 text-white hover:bg-slate-950">현재 {selectedTechnicalIndicator.displayValue}</Badge>
                   </div>
-                  <div className="h-72">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={detailChartData} margin={{ top: 12, right: 18, left: 0, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="usDetailPrice" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.28} />
-                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.02} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                        <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748b" }} tickLine={false} axisLine={false} />
-                        <YAxis tick={{ fontSize: 12, fill: "#64748b" }} tickFormatter={value => `$${Number(value).toLocaleString("ko-KR", { maximumFractionDigits: 0 })}`} width={74} tickLine={false} axisLine={false} />
-                        <RechartsTooltip formatter={value => [formatPrice(Number(value)), "주가"]} />
-                        <Area type="monotone" dataKey="price" stroke="#2563eb" strokeWidth={3} fill="url(#usDetailPrice)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                  <p className="mt-4 text-sm leading-6 text-slate-700">{selectedTechnicalIndicator.meaning ?? selectedTechnicalIndicator.interpretation}</p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-3xl bg-white p-5 ring-1 ring-slate-100">
+                    <p className="text-xs font-black text-slate-500">판단 기준</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-700">{selectedTechnicalIndicator.standard ?? "서버는 최근 3년 가격·고가·저가·거래량 이력을 기반으로 과열, 저점 근접, 상승·하락 모멘텀, 중립 상태를 분류합니다."}</p>
+                  </div>
+                  <div className="rounded-3xl bg-white p-5 ring-1 ring-slate-100">
+                    <p className="text-xs font-black text-slate-500">주의점</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-700">{selectedTechnicalIndicator.caution ?? "해외주식은 장전·장후 거래, 환율, 실적 발표, 지수 편입 이벤트의 영향이 커서 기술지표만으로 매수·매도 결정을 확정하면 안 됩니다."}</p>
+                  </div>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-3xl bg-white p-5 ring-1 ring-slate-100">
+                    <p className="text-xs font-black text-slate-500">참고 적정가</p>
+                    <p className="mt-2 text-2xl font-black text-blue-700">{selectedTechnicalIndicator.fairPriceDisplay}</p>
+                  </div>
+                  <div className="rounded-3xl bg-white p-5 ring-1 ring-slate-100">
+                    <p className="text-xs font-black text-slate-500">산출 근거</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-700">{selectedTechnicalIndicator.fairPriceBasis}</p>
                   </div>
                 </div>
               </div>

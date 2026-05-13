@@ -168,15 +168,27 @@ const metricOrder: SortKey[] = [
   "contractType",
 ];
 
+const chartFrameLabels = {
+  daily: "일봉 6개월",
+  weekly: "주봉 2년",
+  monthly: "월봉 3년",
+} as const;
+
 export default function CryptoSectors() {
   const [searchText, setSearchText] = useState("");
   const [selectedSector, setSelectedSector] = useState<CryptoSector | "all">("all");
   const [sortState, setSortState] = useState<{ key: SortKey; direction: SortDirection } | null>({ key: "volume24hUsd", direction: "desc" });
   const [selectedCoin, setSelectedCoin] = useState<CryptoRow | null>(null);
   const [selectedMetricKey, setSelectedMetricKey] = useState<string | null>(null);
+  const [selectedTechnicalKey, setSelectedTechnicalKey] = useState<string | null>(null);
+  const [priceChartFrame, setPriceChartFrame] = useState<"daily" | "weekly" | "monthly">("daily");
 
   const summary = trpc.cryptoFutures.getSummary.useQuery(undefined, { staleTime: 1000 * 60 * 3, refetchOnWindowFocus: false });
   const table = trpc.cryptoFutures.getTable.useQuery(undefined, { staleTime: 1000 * 60 * 3, refetchOnWindowFocus: false });
+  const technicalDetail = trpc.cryptoFutures.technicalIndicators.useQuery(
+    { symbol: selectedCoin?.ticker ?? "", name: selectedCoin?.name },
+    { enabled: Boolean(selectedCoin?.ticker), staleTime: 1000 * 60 * 3, refetchOnWindowFocus: false },
+  );
 
   const coins = useMemo<CryptoRow[]>(() => (table.data?.success && table.data?.coins ? table.data.coins : []), [table.data]);
   const sectors = useMemo(() => Array.from(new Set(coins.map(coin => coin.sector))), [coins]);
@@ -247,6 +259,11 @@ export default function CryptoSectors() {
         guide: metricGuides[selectedMetricKey],
       }
     : null;
+  const selectedTechnicalIndicator = selectedTechnicalKey
+    ? technicalDetail.data?.success
+      ? technicalDetail.data.detail?.indicators.find(indicator => indicator.key === selectedTechnicalKey) ?? null
+      : null
+    : null;
 
   const refreshAll = () => {
     void summary.refetch();
@@ -276,6 +293,49 @@ export default function CryptoSectors() {
       { label: "24h 고가", price: high },
     ];
   }, [selectedCoin]);
+
+  const technical = technicalDetail.data?.success ? technicalDetail.data.detail : null;
+  const longTermChartData = useMemo(() => {
+    const withEvidence = (points: Array<{ date: string; label: string; price: number; volume: number }>) => points.map((point, index) => {
+      const ma20Source = points.slice(Math.max(0, index - 19), index + 1).map(item => item.price);
+      const ma60Source = points.slice(Math.max(0, index - 59), index + 1).map(item => item.price);
+      const ma20 = ma20Source.length >= Math.min(20, points.length) ? ma20Source.reduce((sum, value) => sum + value, 0) / ma20Source.length : null;
+      const ma60 = ma60Source.length >= Math.min(60, points.length) ? ma60Source.reduce((sum, value) => sum + value, 0) / ma60Source.length : null;
+      return {
+        ...point,
+        ma20: ma20 === null ? null : Number(ma20.toFixed(6)),
+        ma60: ma60 === null ? null : Number(ma60.toFixed(6)),
+        volumeScaled: point.volume > 0 ? Number((point.volume / 1_000_000).toFixed(2)) : 0,
+      };
+    });
+    const source = (technical?.priceHistory ?? []).map(candle => ({
+      date: candle.date,
+      label: candle.date.slice(5),
+      price: Number(candle.close.toFixed(8)),
+      volume: candle.volume,
+    }));
+    if (priceChartFrame === "daily") return withEvidence(source.slice(-126));
+
+    const grouped = new Map<string, { date: string; label: string; price: number; volume: number }>();
+    source.forEach(point => {
+      const date = new Date(`${point.date}T00:00:00Z`);
+      const key = priceChartFrame === "weekly"
+        ? `${date.getUTCFullYear()}-W${Math.floor((Number(point.date.slice(5, 7)) * 31 + Number(point.date.slice(8, 10))) / 7).toString().padStart(2, "0")}`
+        : point.date.slice(0, 7);
+      grouped.set(key, {
+        ...point,
+        label: priceChartFrame === "weekly" ? point.date.slice(2, 10) : point.date.slice(2, 7),
+      });
+    });
+    return withEvidence(Array.from(grouped.values()).slice(priceChartFrame === "weekly" ? -104 : -36));
+  }, [technical?.priceHistory, priceChartFrame]);
+
+  const technicalStatusClass = (status: string) => {
+    if (status === "overheated") return "bg-red-50 text-red-700";
+    if (status === "oversold" || status === "watch_low") return "bg-blue-50 text-blue-700";
+    if (status === "watch_high") return "bg-amber-50 text-amber-700";
+    return "bg-slate-100 text-slate-700";
+  };
 
   return (
     <div className="min-h-[calc(100vh-3rem)] bg-[#f7f9fb] p-4 text-slate-950 md:p-8">
@@ -374,7 +434,7 @@ export default function CryptoSectors() {
                 <th className="px-2 py-2 text-right">{sortableHeader("가격", "price", "right")}</th><th className="px-2 py-2 text-right">{sortableHeader("24h", "change24hPercent", "right")}</th><th className="px-2 py-2 text-right">{sortableHeader("거래대금", "volume24hUsd", "right")}</th><th className="px-2 py-2 text-right">{sortableHeader("펀딩비", "fundingRate", "right")}</th><th className="px-2 py-2 text-right">{sortableHeader("미결제약정", "openInterestUsd", "right")}</th><th className="px-2 py-2 text-right">{sortableHeader("OI/거래", "openInterestToVolumePercent", "right")}</th><th className="px-2 py-2 text-right">{sortableHeader("마크가격", "markPrice", "right")}</th><th className="px-2 py-2 text-right">{sortableHeader("다음 펀딩", "nextFundingTime", "right")}</th>
               </tr></thead>
               <tbody>{filteredRows.map(row => (
-                <tr key={row.ticker} className="cursor-pointer rounded-2xl bg-slate-50/80 shadow-sm transition hover:bg-amber-50/80" onClick={() => { setSelectedCoin(row); setSelectedMetricKey(null); }}>
+                <tr key={row.ticker} className="cursor-pointer rounded-2xl bg-slate-50/80 shadow-sm transition hover:bg-amber-50/80" onClick={() => { setSelectedCoin(row); setSelectedMetricKey(null); setSelectedTechnicalKey(null); setPriceChartFrame("daily"); }}>
                   <td className="rounded-l-2xl px-4 py-3 text-slate-500">{row.rank}</td><td className="px-4 py-3 font-black text-slate-950">{row.ticker}</td><td className="px-4 py-3 font-semibold text-slate-700">{row.name}</td><td className="px-4 py-3"><Badge variant="secondary" className="rounded-full bg-amber-50 text-amber-700">{sectorLabels[row.sector]}</Badge></td>
                   <td className="px-4 py-3 text-right font-semibold">{formatPrice(row.price)}</td><td className="px-4 py-3 text-right"><Badge className={`rounded-full ${row.change24hPercent >= 0 ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-50" : "bg-red-50 text-red-700 hover:bg-red-50"}`}>{formatPercent(row.change24hPercent)}</Badge></td><td className="px-4 py-3 text-right font-black text-slate-950">{formatUsd(row.volume24hUsd)}</td><td className={`px-4 py-3 text-right font-semibold ${row.fundingRate >= 0 ? "text-emerald-700" : "text-red-700"}`}>{formatFundingRate(row.fundingRate)}</td><td className="px-4 py-3 text-right text-slate-700">{formatUsd(row.openInterestUsd)}</td><td className="px-4 py-3 text-right text-slate-700">{formatPercent(row.openInterestToVolumePercent)}</td><td className="px-4 py-3 text-right text-slate-700">{formatPrice(row.markPrice)}</td><td className="rounded-r-2xl px-4 py-3 text-right text-slate-500">{formatDateTime(row.nextFundingTime)}</td>
                 </tr>
@@ -384,7 +444,7 @@ export default function CryptoSectors() {
           </CardContent>
         </Card>
 
-        <Dialog open={Boolean(selectedCoin)} onOpenChange={(open) => { if (!open) { setSelectedCoin(null); setSelectedMetricKey(null); } }}>
+        <Dialog open={Boolean(selectedCoin)} onOpenChange={(open) => { if (!open) { setSelectedCoin(null); setSelectedMetricKey(null); setSelectedTechnicalKey(null); setPriceChartFrame("daily"); } }}>
           <DialogContent className="max-h-[88vh] overflow-y-auto border-0 bg-white text-slate-950 sm:max-w-5xl">
             <DialogHeader><DialogTitle className="flex flex-wrap items-center gap-3 text-2xl font-black"><Activity className="h-6 w-6 text-amber-500" />{selectedCoin?.name ?? "코인"} 선물 상세</DialogTitle><DialogDescription>핵심 지표 12개와 가격 범위를 확인하고 각 지표 카드를 클릭해 의미·판단 기준·주의점을 봅니다.</DialogDescription></DialogHeader>
             {selectedCoin ? <div className="space-y-5">
@@ -392,7 +452,18 @@ export default function CryptoSectors() {
                 <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-4">{metricOrder.map(key => { const guide = metricGuides[key]; return <button type="button" key={key} className="rounded-3xl bg-slate-50 p-4 text-left transition hover:bg-amber-50 hover:ring-2 hover:ring-amber-100" onClick={() => setSelectedMetricKey(key)}><div className="flex items-start justify-between gap-2"><p className="text-xs font-black text-slate-500">{sortLabels[key]}</p><span className="rounded-full bg-white px-2 py-1 text-[11px] font-bold text-slate-500 ring-1 ring-slate-200">{guide?.category}</span></div><p className="mt-4 text-2xl font-black text-slate-950">{formatMetricValue(selectedCoin, key)}</p></button>; })}</div>
               </div>
               <div className="rounded-3xl border border-slate-100 bg-slate-50 p-5"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h3 className="flex items-center gap-2 text-lg font-black text-slate-950"><BarChart3 className="h-5 w-5 text-amber-500" /> 24시간 가격 범위</h3><p className="mt-1 text-sm text-slate-500">24시간 고가·저가, 현재가, 마크가격 기준의 원천 가격 흐름입니다.</p></div><Badge variant="secondary" className="rounded-full">24h {formatPercent(selectedCoin.change24hPercent)}</Badge></div><div className="h-72"><ResponsiveContainer width="100%" height="100%"><AreaChart data={detailChartData} margin={{ top: 12, right: 18, left: 0, bottom: 0 }}><defs><linearGradient id="cryptoDetailPrice" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f59e0b" stopOpacity={0.28} /><stop offset="95%" stopColor="#f59e0b" stopOpacity={0.02} /></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} /><XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748b" }} tickLine={false} axisLine={false} /><YAxis tick={{ fontSize: 12, fill: "#64748b" }} tickFormatter={value => `$${Number(value).toLocaleString("ko-KR", { maximumFractionDigits: 0 })}`} width={74} tickLine={false} axisLine={false} /><RechartsTooltip formatter={value => [formatPrice(Number(value)), "가격"]} /><Area type="monotone" dataKey="price" stroke="#d97706" strokeWidth={3} fill="url(#cryptoDetailPrice)" /></AreaChart></ResponsiveContainer></div></div>
+
+              <div className="rounded-3xl border border-slate-100 bg-slate-50 p-5"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h3 className="flex items-center gap-2 text-lg font-black text-slate-950"><Gauge className="h-5 w-5 text-amber-500" /> 기술적 고점·저점 보조지표 12개</h3><p className="mt-1 text-sm text-slate-500">Binance Klines 가격 이력으로 계산한 서버 기반 RSI, 스토캐스틱, 이격도, 52주 위치 지표입니다.</p></div><Badge className="rounded-full bg-amber-500 text-white hover:bg-amber-500">예상 적정가 중앙값 {formatPrice(technical?.fairPriceMedian)}</Badge></div>{technicalDetail.isLoading ? <div className="rounded-3xl bg-white p-6 text-sm text-slate-500">보조지표를 계산하는 중입니다.</div> : technicalDetail.data?.success === false ? <div className="rounded-3xl bg-red-50 p-6 text-sm text-red-700">{technicalDetail.data.error}</div> : <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-4">{(technical?.indicators ?? []).map(indicator => <button key={indicator.key} type="button" className="rounded-3xl bg-white p-4 text-left ring-1 ring-slate-100 transition hover:bg-amber-50 hover:ring-amber-200" onClick={() => setSelectedTechnicalKey(indicator.key)}><div className="flex items-start justify-between gap-2"><p className="text-xs font-black text-slate-500">{indicator.label}</p><span className={`rounded-full px-2 py-1 text-[11px] font-bold ${technicalStatusClass(indicator.status)}`}>{indicator.statusLabel}</span></div><p className="mt-3 text-2xl font-black text-slate-950">{indicator.displayValue}</p><p className="mt-2 text-xs leading-5 text-slate-500">{indicator.interpretation}</p><p className="mt-3 text-xs font-bold text-amber-700">참고가 {indicator.fairPriceDisplay}</p><p className="mt-1 text-[11px] font-bold text-slate-400">클릭해 상세 해설 보기</p></button>)}</div>}</div>
+
+              <div className="rounded-3xl border border-slate-100 bg-slate-50 p-5"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h3 className="flex items-center gap-2 text-lg font-black text-slate-950"><BarChart3 className="h-5 w-5 text-amber-500" /> 장기 기술적 차트</h3><p className="mt-1 text-sm text-slate-500">일봉 6개월, 주봉 2년, 월봉 3년 범위로 가격 이력을 재집계하고 20·60기간 평균과 거래량 근거를 함께 표시합니다.</p></div><div className="flex rounded-full bg-white p-1 ring-1 ring-slate-200">{(["daily", "weekly", "monthly"] as const).map(frame => <button key={frame} type="button" className={`rounded-full px-3 py-1.5 text-xs font-black transition ${priceChartFrame === frame ? "bg-amber-500 text-white" : "text-slate-500 hover:text-slate-950"}`} onClick={() => setPriceChartFrame(frame)}>{chartFrameLabels[frame]}</button>)}</div></div><div className="h-72"><ResponsiveContainer width="100%" height="100%"><AreaChart data={longTermChartData} margin={{ top: 12, right: 18, left: 0, bottom: 0 }}><defs><linearGradient id="cryptoLongTermPrice" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f59e0b" stopOpacity={0.28} /><stop offset="95%" stopColor="#f59e0b" stopOpacity={0.02} /></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} /><XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748b" }} tickLine={false} axisLine={false} minTickGap={24} /><YAxis tick={{ fontSize: 12, fill: "#64748b" }} tickFormatter={value => `$${Number(value).toLocaleString("ko-KR", { maximumFractionDigits: 0 })}`} width={74} tickLine={false} axisLine={false} /><YAxis yAxisId="volume" orientation="right" hide /><RechartsTooltip formatter={(value, name) => { if (name === "volumeScaled") return [`${Number(value).toLocaleString("ko-KR", { maximumFractionDigits: 2 })}M`, "거래량"]; if (name === "ma20") return [formatPrice(Number(value)), "20기간 평균"]; if (name === "ma60") return [formatPrice(Number(value)), "60기간 평균"]; return [formatPrice(Number(value)), "가격"]; }} /><Bar dataKey="volumeScaled" fill="#cbd5e1" opacity={0.28} yAxisId="volume" /><Area type="monotone" dataKey="ma60" stroke="#94a3b8" strokeWidth={1.5} fill="transparent" dot={false} connectNulls /><Area type="monotone" dataKey="ma20" stroke="#f59e0b" strokeWidth={1.8} fill="transparent" dot={false} connectNulls /><Area type="monotone" dataKey="price" stroke="#d97706" strokeWidth={3} fill="url(#cryptoLongTermPrice)" /></AreaChart></ResponsiveContainer></div></div>
             </div> : null}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={Boolean(selectedCoin && selectedTechnicalIndicator)} onOpenChange={(open) => { if (!open) setSelectedTechnicalKey(null); }}>
+          <DialogContent className="max-h-[88vh] overflow-y-auto border-0 bg-slate-50 text-slate-950 sm:max-w-3xl">
+            <DialogHeader><DialogTitle className="flex flex-wrap items-center gap-3 text-2xl font-black"><Gauge className="h-6 w-6 text-amber-500" />기술지표 상세 해설 · {selectedTechnicalIndicator?.label}</DialogTitle><DialogDescription>{selectedCoin?.name}의 현재 기술지표 값, 판단 기준, 주의점, 참고 적정가 산식을 분리해서 보여줍니다.</DialogDescription></DialogHeader>
+            {selectedCoin && selectedTechnicalIndicator ? <div className="space-y-4"><div className="rounded-3xl bg-white p-5 ring-1 ring-slate-100"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className={`inline-flex rounded-full px-2 py-1 text-[11px] font-black ${technicalStatusClass(selectedTechnicalIndicator.status)}`}>{selectedTechnicalIndicator.statusLabel}</p><h4 className="mt-2 text-xl font-black">{selectedCoin.name}의 {selectedTechnicalIndicator.label}</h4></div><Badge className="rounded-full bg-slate-950 text-white hover:bg-slate-950">현재 {selectedTechnicalIndicator.displayValue}</Badge></div><p className="mt-4 text-sm leading-6 text-slate-700">{selectedTechnicalIndicator.meaning ?? selectedTechnicalIndicator.interpretation}</p></div><div className="grid gap-4 md:grid-cols-2"><div className="rounded-3xl bg-white p-5 ring-1 ring-slate-100"><p className="text-xs font-black text-slate-500">판단 기준</p><p className="mt-2 text-sm leading-6 text-slate-700">{selectedTechnicalIndicator.standard ?? "서버는 최근 가격·고가·저가·거래량 이력을 기반으로 과열, 저점 근접, 상승·하락 모멘텀, 중립 상태를 분류합니다."}</p></div><div className="rounded-3xl bg-white p-5 ring-1 ring-slate-100"><p className="text-xs font-black text-slate-500">주의점</p><p className="mt-2 text-sm leading-6 text-slate-700">{selectedTechnicalIndicator.caution ?? "크립토 선물은 레버리지, 펀딩비, 청산 물량 영향이 커서 기술지표만으로 매수·매도 결정을 확정하면 안 됩니다."}</p></div></div><div className="grid gap-4 md:grid-cols-2"><div className="rounded-3xl bg-white p-5 ring-1 ring-slate-100"><p className="text-xs font-black text-slate-500">참고 적정가</p><p className="mt-2 text-2xl font-black text-amber-700">{selectedTechnicalIndicator.fairPriceDisplay}</p></div><div className="rounded-3xl bg-white p-5 ring-1 ring-slate-100"><p className="text-xs font-black text-slate-500">산출 근거</p><p className="mt-2 text-sm leading-6 text-slate-700">{selectedTechnicalIndicator.fairPriceBasis}</p></div></div></div> : null}
           </DialogContent>
         </Dialog>
 

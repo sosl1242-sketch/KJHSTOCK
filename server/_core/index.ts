@@ -6,7 +6,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
-import { refreshStockPricesHandler } from "../scheduled";
+import { refreshStockPricesHandler, refreshPublicDataHandler } from "../scheduled";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 
@@ -38,6 +38,7 @@ async function startServer() {
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   app.post("/api/scheduled/refreshStockPrices", refreshStockPricesHandler);
+  app.post("/api/scheduled/refresh", refreshPublicDataHandler);
   // tRPC API
   app.use(
     "/api/trpc",

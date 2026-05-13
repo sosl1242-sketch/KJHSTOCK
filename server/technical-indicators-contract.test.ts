@@ -18,4 +18,11 @@ describe("technical indicator detail contract", () => {
     expect(indicatorSource).toContain("fairPriceMedian");
     expect(indicatorSource).toContain("fairPriceBasis");
   });
+
+  it("keeps per-indicator explanation fields for shared detail dialogs", () => {
+    expect(indicatorSource).toContain("TECHNICAL_INDICATOR_GUIDES");
+    expect(indicatorSource).toContain("meaning: guide.meaning");
+    expect(indicatorSource).toContain("standard: guide.standard");
+    expect(indicatorSource).toContain("caution: guide.caution");
+  });
 });

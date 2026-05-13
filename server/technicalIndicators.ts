@@ -43,6 +43,9 @@ export type TechnicalIndicator = {
   status: "overheated" | "neutral" | "oversold" | "watch_high" | "watch_low";
   statusLabel: string;
   interpretation: string;
+  meaning: string;
+  standard: string;
+  caution: string;
   fairPrice: number | null;
   fairPriceDisplay: string;
   fairPriceBasis: string;
@@ -251,6 +254,21 @@ function statusForUpperLower(value: number | null, upper: number, lower: number,
   return { status: "neutral" as const, label: "중립" };
 }
 
+const TECHNICAL_INDICATOR_GUIDES: Record<string, { meaning: string; standard: string; caution: string }> = {
+  rsi14: { meaning: "RSI는 최근 상승폭과 하락폭의 균형으로 단기 모멘텀 과열·침체를 판단합니다.", standard: "일반적으로 70 이상은 과열, 30 이하는 침체, 50 부근은 중립권으로 봅니다.", caution: "강한 추세장에서는 과열·침체 구간이 오래 지속될 수 있어 추세선과 거래량을 함께 확인해야 합니다." },
+  stochastic14: { meaning: "스토캐스틱은 최근 14거래일 고저 범위 안에서 현재가의 위치를 백분율로 보여줍니다.", standard: "80% 이상은 상단권, 20% 이하는 하단권으로 보며 방향 전환 가능성을 점검합니다.", caution: "박스권에서는 민감하게 반응하지만 강한 추세장에서는 잦은 거짓 신호가 발생할 수 있습니다." },
+  williams14: { meaning: "Williams %R은 고점 대비 현재가 위치를 음수 구간으로 표현하는 역방향 모멘텀 지표입니다.", standard: "-20 이상은 고점권, -80 이하는 저점권으로 해석합니다.", caution: "단독으로 저점·고점을 확정하지 말고 RSI, 스토캐스틱, 지지·저항과 함께 비교해야 합니다." },
+  cci20: { meaning: "CCI는 전형가격이 최근 평균에서 얼마나 벗어났는지 측정해 추세 강도와 이격을 봅니다.", standard: "+100 이상은 강한 상단 모멘텀, -100 이하는 하단 과매도 가능성을 참고합니다.", caution: "변동성이 큰 종목은 기준선을 자주 넘나들 수 있어 섹터 평균과 함께 확인하는 것이 안전합니다." },
+  mfi14: { meaning: "MFI는 가격과 거래량을 함께 반영한 자금흐름 지표로 RSI의 거래량 보강형입니다.", standard: "80 이상은 자금 유입 과열, 20 이하는 자금 유출 침체로 해석합니다.", caution: "거래량 이벤트가 일회성 뉴스 때문인지 지속 수급인지 추가 확인이 필요합니다." },
+  bollinger20: { meaning: "볼린저 위치는 20일 밴드 안에서 현재가가 하단·중앙·상단 중 어디에 있는지 환산합니다.", standard: "90% 이상은 상단 근접, 10% 이하는 하단 근접, 50% 부근은 중앙 회귀권입니다.", caution: "밴드가 확장되는 추세장에서는 상단 돌파가 즉시 매도 신호가 아닐 수 있습니다." },
+  macdHistogram: { meaning: "MACD 히스토그램은 단기·장기 EMA 차이와 시그널의 괴리로 모멘텀 방향을 확인합니다.", standard: "0 이상은 상승 모멘텀, 0 이하는 하락 모멘텀으로 보며 확대·축소 방향도 중요합니다.", caution: "후행성이 있어 급격한 뉴스나 갭 변동에는 늦게 반응할 수 있습니다." },
+  sma20Gap: { meaning: "20일선 이격도는 현재가가 단기 이동평균에서 얼마나 떨어져 있는지 보여줍니다.", standard: "+12% 이상은 단기 과열, -12% 이하는 단기 침체 가능성을 점검합니다.", caution: "고성장주나 급락 종목은 이격 기준을 업종 변동성과 함께 보정해야 합니다." },
+  sma60Gap: { meaning: "60일선 이격도는 중기 추세선 대비 현재가의 과도한 상승·하락 폭을 봅니다.", standard: "+18% 이상은 중기 과열, -18% 이하는 중기 저평가 또는 추세 훼손 가능성을 봅니다.", caution: "이동평균은 후행 지표이므로 실적 발표 전후에는 가격 반응을 별도로 확인해야 합니다." },
+  volume20Ratio: { meaning: "거래량 20일 배율은 현재 거래량이 직전 20거래일 평균 대비 얼마나 큰지 보여줍니다.", standard: "140% 이상은 관심 증가, 220% 이상은 거래 과열, 60% 이하는 거래 침체로 봅니다.", caution: "거래량 증가는 상승·하락 양쪽 모두를 강화할 수 있어 가격 방향과 함께 해석해야 합니다." },
+  high52Distance: { meaning: "52주 고점 대비는 현재가가 최근 1년 최고가에서 얼마나 떨어져 있는지 보여줍니다.", standard: "0%에 가까울수록 고점권이며, 큰 음수일수록 고점 대비 조정 폭이 큽니다.", caution: "고점 접근은 강세 지속과 과열 위험을 동시에 의미하므로 이익 성장과 밸류에이션을 함께 봐야 합니다." },
+  low52Distance: { meaning: "52주 저점 대비는 현재가가 최근 1년 최저가에서 얼마나 위에 있는지 보여줍니다.", standard: "낮은 양수는 저점권 접근, 높은 값은 저점 대비 상당한 반등을 뜻합니다.", caution: "저점 근접이 항상 매수 기회는 아니며 실적 악화나 구조적 하락 가능성을 확인해야 합니다." },
+};
+
 function buildIndicator(
   key: string,
   label: string,
@@ -261,6 +279,7 @@ function buildIndicator(
   interpretation: string,
   fairPriceEstimate: FairPriceEstimate,
 ): TechnicalIndicator {
+  const guide = TECHNICAL_INDICATOR_GUIDES[key] ?? { meaning: interpretation, standard: statusLabel, caution: "단일 보조지표만으로 판단하지 말고 가격 추세와 거래량을 함께 확인해야 합니다." };
   return {
     key,
     label,
@@ -269,6 +288,9 @@ function buildIndicator(
     status,
     statusLabel,
     interpretation,
+    meaning: guide.meaning,
+    standard: guide.standard,
+    caution: guide.caution,
     fairPrice: fairPriceEstimate.fairPrice,
     fairPriceDisplay: formatFairPrice(fairPriceEstimate.fairPrice),
     fairPriceBasis: fairPriceEstimate.basis,

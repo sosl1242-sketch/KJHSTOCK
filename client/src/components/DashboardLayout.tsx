@@ -57,38 +57,8 @@ export default function DashboardLayout({
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
 
-  if (loading) {
+   if (loading) {
     return <DashboardLayoutSkeleton />
-  }
-
-  if (!isPasswordVerified) {
-    return <PasswordLogin />;
-  }
-
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
-          <div className="flex flex-col items-center gap-6">
-            <h1 className="text-2xl font-semibold tracking-tight text-center">
-              분석 대시보드에 로그인
-            </h1>
-            <p className="text-sm text-muted-foreground text-center max-w-sm">
-              국내주식, 해외주식, 크립토 섹터 분석 도구는 인증된 사용자에게만 제공됩니다. 오너는 국내 종목 데이터 편집과 현재가 갱신 기능을 사용할 수 있습니다.
-            </p>
-          </div>
-          <Button
-            onClick={() => {
-              window.location.href = getLoginUrl();
-            }}
-            size="lg"
-            className="w-full shadow-lg hover:shadow-xl transition-all"
-          >
-            로그인하기
-          </Button>
-        </div>
-      </div>
-    );
   }
 
   return (
