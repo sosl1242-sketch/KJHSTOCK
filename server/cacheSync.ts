@@ -193,6 +193,7 @@ const CRYPTO_TECHNICAL_TARGETS = [
   { symbol: "BCHUSDT", name: "Bitcoin Cash" },
   { symbol: "XLMUSDT", name: "Stellar" },
   { symbol: "ZECUSDT", name: "Zcash" },
+  { symbol: "SAGAUSDT", name: "Saga" },
   { symbol: "DASHUSDT", name: "Dash" },
   { symbol: "CELOUSDT", name: "Celo" },
   { symbol: "ACHUSDT", name: "Alchemy Pay" },
@@ -208,19 +209,6 @@ const CRYPTO_TECHNICAL_TARGETS = [
   { symbol: "POLYXUSDT", name: "Polymesh" },
   { symbol: "RSRUSDT", name: "Reserve Rights" },
   { symbol: "MKRUSDT", name: "Maker" },
-  { symbol: "MSTRUSDT", name: "Strategy" },
-  { symbol: "AMZNUSDT", name: "Amazon" },
-  { symbol: "CRCLUSDT", name: "Circle" },
-  { symbol: "COINUSDT", name: "Coinbase" },
-  { symbol: "PLTRUSDT", name: "Palantir" },
-  { symbol: "TSLAUSDT", name: "Tesla" },
-  { symbol: "METAUSDT", name: "Meta" },
-  { symbol: "NVDAUSDT", name: "NVIDIA" },
-  { symbol: "GOOGLUSDT", name: "Alphabet" },
-  { symbol: "QQQUSDT", name: "Invesco QQQ" },
-  { symbol: "SPYUSDT", name: "SPDR S&P 500 ETF" },
-  { symbol: "EWYUSDT", name: "iShares MSCI South Korea ETF" },
-  { symbol: "EWJUSDT", name: "iShares MSCI Japan ETF" },
   { symbol: "XAUUSDT", name: "Gold" },
   { symbol: "XAGUSDT", name: "Silver" },
   { symbol: "CLUSDT", name: "WTI Crude Oil" },
@@ -244,7 +232,7 @@ async function getCryptoTechnicalTargets() {
  */
 export async function syncCryptoTechnicalCache() {
   try {
-    // 주요 코인 + TradeFi/Energy 후보만 캐싱 (차트 이력 API 호출 최소화)
+    // 주요 코인 + 에너지/원자재 후보만 캐싱 (차트 이력 API 호출 최소화)
     const topSymbols = await getCryptoTechnicalTargets();
 
     let synced = 0;

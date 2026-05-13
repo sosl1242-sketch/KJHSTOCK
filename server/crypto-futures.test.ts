@@ -25,19 +25,14 @@ describe("crypto futures sector metrics", () => {
     expect(source).not.toContain("TOP_N");
   });
 
-  it("classifies Binance TradeFi and energy candidates before broad sectors", () => {
+  it("keeps equity-like TradeFi assets out of Binance futures sectors", () => {
     const source = readFileSync(resolve(process.cwd(), "server/cryptoFutures.ts"), "utf8");
-    const tradeFiIndex = source.indexOf("TradeFi: new Set");
     const energyIndex = source.indexOf("Energy: new Set");
     const l1Index = source.indexOf("L1: new Set");
-    const defiIndex = source.indexOf("DeFi: new Set");
-    expect(tradeFiIndex).toBeGreaterThan(-1);
     expect(energyIndex).toBeGreaterThan(-1);
-    expect(source).toContain('"MSTR"');
-    expect(source).toContain('"ONDO"');
+    expect(source).not.toContain('TradeFi: new Set(["MSTR"');
     expect(source).toContain('"NATGAS"');
-    expect(tradeFiIndex).toBeLessThan(l1Index);
-    expect(tradeFiIndex).toBeLessThan(defiIndex);
+    expect(source).toContain('"SAGA"');
     expect(energyIndex).toBeLessThan(l1Index);
   });
 

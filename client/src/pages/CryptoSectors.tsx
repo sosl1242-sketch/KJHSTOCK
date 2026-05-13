@@ -10,7 +10,7 @@ import { useMemo, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
-type CryptoSector = "TradeFi" | "Energy" | "L1" | "L2" | "AI" | "DeFi" | "Meme" | "Exchange" | "Payments" | "Infrastructure" | "Other";
+type CryptoSector = "Energy" | "L1" | "L2" | "AI" | "DeFi" | "Meme" | "Exchange" | "Payments" | "Infrastructure" | "Other";
 type CryptoRow = {
   rank: number; ticker: string; name: string; baseAsset: string; sector: CryptoSector; contractType: "PERPETUAL";
   price: number; high24h: number; low24h: number; change24hPercent: number; change7dPercent: number | null;
@@ -19,6 +19,11 @@ type CryptoRow = {
   nextFundingTime: string | null; openInterestUsd: number | null; volumeToMarketCapPercent: number | null;
   openInterestToMarketCapPercent: number | null; openInterestToVolumePercent: number | null;
   volatility30dPercent: number | null; longShortRatio: number | null; lastUpdated: string;
+};
+type TradeFiRow = {
+  rank: number; ticker: string; name: string; assetType: "Stock" | "ETF" | "Commodity ETF"; exchange: string;
+  price: number; change1dPercent: number; marketCapUsd: number | null; volume: number | null;
+  turnoverUsd: number | null; quoteSource: "Stooq" | "Fallback"; quoteStatus: "live" | "fallback"; lastUpdated: string;
 };
 type SortKey = "rank" | "ticker" | "sector" | "price" | "high24h" | "low24h" | "change24hPercent" | "change7dPercent"
   | "marketCapUsd" | "fdvUsd" | "circulatingSupply" | "baseVolume24h" | "volume24hUsd" | "volumeToMarketCapPercent"
@@ -54,7 +59,7 @@ const fmtDt = (v: string | null | undefined) => {
 const fmtNum = (v: number | null | undefined, d = 2) => typeof v === "number" && Number.isFinite(v) ? v.toLocaleString("ko-KR", { maximumFractionDigits: d }) : "-";
 
 // ─── 레이블 ───────────────────────────────────────────────────────────────────
-const sectorLabels: Record<CryptoSector, string> = { TradeFi: "TradeFi", Energy: "에너지", L1: "L1", L2: "L2", AI: "AI", DeFi: "DeFi", Meme: "밈", Exchange: "거래소", Payments: "결제", Infrastructure: "인프라", Other: "기타" };
+const sectorLabels: Record<CryptoSector, string> = { Energy: "에너지", L1: "L1", L2: "L2", AI: "AI", DeFi: "DeFi", Meme: "밈", Exchange: "거래소", Payments: "결제", Infrastructure: "인프라", Other: "기타" };
 const sortLabels: Record<SortKey, string> = {
   rank: "순위", ticker: "티커", sector: "섹터", price: "가격", high24h: "24h 고가", low24h: "24h 저가",
   change24hPercent: "24h 등락률", change7dPercent: "7d 등락률", marketCapUsd: "시가총액", fdvUsd: "FDV",
@@ -218,12 +223,22 @@ export default function CryptoSectors() {
     staleTime: 1000 * 60 * 2,
     refetchOnWindowFocus: false,
   });
+  const tradeFiTable = trpc.tradeFi.getTable.useQuery(undefined, {
+    staleTime: 1000 * 60 * 2,
+    refetchOnWindowFocus: false,
+  });
   const coins = useMemo<CryptoRow[]>(() => (
     cryptoTable.data?.success === true ? cryptoTable.data.coins as CryptoRow[] : []
   ), [cryptoTable.data]);
+  const tradeFiRows = useMemo<TradeFiRow[]>(() => (
+    tradeFiTable.data?.success === true ? tradeFiTable.data.assets as TradeFiRow[] : []
+  ), [tradeFiTable.data]);
   const isLoading = cryptoTable.isLoading || cryptoTable.isFetching;
+  const isTradeFiLoading = tradeFiTable.isLoading || tradeFiTable.isFetching;
   const fetchError = cryptoTable.error?.message
     ?? (cryptoTable.data?.success === false ? cryptoTable.data.error : null);
+  const tradeFiError = tradeFiTable.error?.message
+    ?? (tradeFiTable.data?.success === false ? tradeFiTable.data.error : null);
   const lastUpdated = useMemo(() => {
     if (cryptoTable.data?.success === true && cryptoTable.data.lastUpdated) return cryptoTable.data.lastUpdated;
     return coins
@@ -243,6 +258,11 @@ export default function CryptoSectors() {
     ?? (technicalIndicators.data?.success === false ? technicalIndicators.data.error : null);
 
   const sectors = useMemo(() => Array.from(new Set(coins.map(c => c.sector))), [coins]);
+  const filteredTradeFiRows = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    if (!q) return tradeFiRows;
+    return tradeFiRows.filter(row => `${row.ticker} ${row.name} ${row.assetType} ${row.exchange}`.toLowerCase().includes(q));
+  }, [searchText, tradeFiRows]);
   const filteredRows = useMemo(() => {
     const q = searchText.trim().toLowerCase();
     const scoped = coins.filter(c => {
@@ -282,7 +302,10 @@ export default function CryptoSectors() {
     <button type="button" className={`inline-flex items-center gap-1 whitespace-nowrap font-semibold transition hover:text-slate-950 ${align === "right" ? "justify-end text-right" : ""}`} onClick={() => setSort(key)}>{label}{sortIcon(key)}</button>
   );
 
-  const refetchAll = () => { void cryptoTable.refetch(); };
+  const refetchAll = () => {
+    void cryptoTable.refetch();
+    void tradeFiTable.refetch();
+  };
 
   const priceChartData = useMemo(() => {
     const history = technicalDetail?.priceHistory ?? [];
@@ -317,7 +340,7 @@ export default function CryptoSectors() {
           <div>
             <Badge className="mb-3 bg-slate-950 text-white hover:bg-slate-950">Crypto Futures Sector Dashboard</Badge>
             <h1 className="text-3xl font-black leading-tight tracking-tight sm:text-4xl">크립토 선물 섹터 분석</h1>
-            <p className="mt-2 text-sm text-slate-500">Binance USDT 무기한 선물 전체 종목 · Supabase 캐시 기반 펀딩비·거래대금·OI · 서버 기반 12개 기술적 보조지표 · 장기 차트{lastUpdated ? ` · 갱신 ${fmtDt(lastUpdated)}` : ""}</p>
+            <p className="mt-2 text-sm text-slate-500">Binance USDT 무기한 선물 전체 종목 · Supabase 캐시 기반 펀딩비·거래대금·OI · TradeFi 주식·ETF 별도 시세 · 서버 기반 12개 기술적 보조지표 · 장기 차트{lastUpdated ? ` · 갱신 ${fmtDt(lastUpdated)}` : ""}</p>
           </div>
           <Button variant="outline" size="sm" className="w-fit rounded-full" onClick={refetchAll} disabled={isLoading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />새로고침
@@ -330,9 +353,21 @@ export default function CryptoSectors() {
           </div>
         ) : null}
 
+        {tradeFiError ? (
+          <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
+            TradeFi 주식·ETF 시세를 불러오지 못했습니다. {tradeFiError}
+          </div>
+        ) : null}
+
         {isLoading && coins.length === 0 ? (
           <div className="flex min-h-40 items-center justify-center rounded-[2rem] bg-white text-sm font-semibold text-slate-500 shadow-sm">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Supabase 코인 캐시를 불러오는 중입니다.
+          </div>
+        ) : null}
+
+        {isTradeFiLoading && tradeFiRows.length === 0 ? (
+          <div className="flex min-h-24 items-center justify-center rounded-[2rem] bg-white text-sm font-semibold text-slate-500 shadow-sm">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> TradeFi 주식·ETF 시세를 불러오는 중입니다.
           </div>
         ) : null}
 
@@ -424,6 +459,52 @@ export default function CryptoSectors() {
             {!filteredRows.length ? <div className="py-12 text-center text-sm text-slate-500">검색 조건에 맞는 종목이 없습니다.</div> : null}
           </CardContent>
         </Card>
+
+        {tradeFiRows.length > 0 ? (
+          <Card className="rounded-[2rem] border-0 shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg font-black"><BarChart3 className="h-5 w-5 text-slate-700" /> TradeFi 주식·ETF 별도 섹터</CardTitle>
+              <CardDescription>Binance 선물에 없는 주식·ETF·금속 ETF는 Stooq 시세로 분리 표시합니다. {filteredTradeFiRows.length}개 자산 표시 중</CardDescription>
+            </CardHeader>
+            <CardContent className="overflow-x-auto p-0">
+              <table className="w-full border-separate border-spacing-y-1 px-4 pb-4 text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-slate-500">
+                    <th className="px-4 py-2">순위</th>
+                    <th className="px-4 py-2">티커</th>
+                    <th className="px-4 py-2">종목명</th>
+                    <th className="px-4 py-2">구분</th>
+                    <th className="px-4 py-2">거래소</th>
+                    <th className="px-2 py-2 text-right">가격</th>
+                    <th className="px-2 py-2 text-right">1D</th>
+                    <th className="px-2 py-2 text-right">시가총액</th>
+                    <th className="px-2 py-2 text-right">거래대금</th>
+                    <th className="px-2 py-2 text-right">출처</th>
+                    <th className="px-2 py-2 text-right">갱신</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTradeFiRows.map(row => (
+                    <tr key={row.ticker} className="rounded-2xl bg-white shadow-sm">
+                      <td className="rounded-l-2xl px-4 py-3 text-slate-500">{row.rank}</td>
+                      <td className="px-4 py-3 font-black text-slate-950">{row.ticker}</td>
+                      <td className="px-4 py-3 font-semibold text-slate-800">{row.name}</td>
+                      <td className="px-4 py-3"><Badge variant="secondary" className="rounded-full bg-slate-100 text-slate-700">{row.assetType}</Badge></td>
+                      <td className="px-4 py-3 text-slate-600">{row.exchange}</td>
+                      <td className="px-2 py-3 text-right font-semibold">{fmtPrice(row.price)}</td>
+                      <td className="px-2 py-3 text-right"><Badge className={`rounded-full ${row.change1dPercent >= 0 ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-50" : "bg-red-50 text-red-700 hover:bg-red-50"}`}>{fmtPct(row.change1dPercent)}</Badge></td>
+                      <td className="px-2 py-3 text-right text-slate-700">{fmtUsd(row.marketCapUsd)}</td>
+                      <td className="px-2 py-3 text-right text-slate-700">{fmtUsd(row.turnoverUsd)}</td>
+                      <td className="px-2 py-3 text-right text-slate-500">{row.quoteSource}</td>
+                      <td className="rounded-r-2xl px-2 py-3 text-right text-slate-500">{fmtDt(row.lastUpdated)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!filteredTradeFiRows.length ? <div className="py-12 text-center text-sm text-slate-500">검색 조건에 맞는 TradeFi 자산이 없습니다.</div> : null}
+            </CardContent>
+          </Card>
+        ) : null}
 
         {/* ─── 코인 상세 모달 ─── */}
         <Dialog open={Boolean(selectedCoin)} onOpenChange={open => { if (!open) { setSelectedCoin(null); setSelectedMetricKey(null); setSelectedIndicatorKey(null); } }}>

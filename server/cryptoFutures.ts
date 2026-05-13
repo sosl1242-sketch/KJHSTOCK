@@ -18,7 +18,7 @@ export const CRYPTO_FUTURES_METRICS = [
 
 export type CryptoMetricKey = (typeof CRYPTO_FUTURES_METRICS)[number]["key"];
 
-export type CryptoFuturesSector = "TradeFi" | "Energy" | "L1" | "L2" | "AI" | "DeFi" | "Meme" | "Exchange" | "Payments" | "Infrastructure" | "Other";
+export type CryptoFuturesSector = "Energy" | "L1" | "L2" | "AI" | "DeFi" | "Meme" | "Exchange" | "Payments" | "Infrastructure" | "Other";
 
 export type CryptoFuturesAsset = {
   rank: number;
@@ -173,19 +173,19 @@ const assetNames: Record<string, string> = {
   RSR: "Reserve Rights",
   POWR: "Powerledger",
   GAS: "Gas",
+  SAGA: "Saga",
 };
 
 const sectorSets: Record<Exclude<CryptoFuturesSector, "Other">, Set<string>> = {
-  TradeFi: new Set(["MSTR", "AMZN", "CRCL", "COIN", "PLTR", "TSLA", "META", "NVDA", "GOOGL", "QQQ", "SPY", "EWY", "EWJ", "XAU", "XAG", "ONDO", "PENDLE", "ENA", "OM", "POLYX", "RSR", "MKR"]),
   Energy: new Set(["CL", "BZ", "NATGAS", "POWR", "GAS"]),
   Exchange: new Set(["BNB", "COIN", "OKB", "CRO", "GT", "KCS", "LEO", "BGB", "FTT"]),
   Payments: new Set(["XRP", "XLM", "LTC", "BCH", "CELO", "ACH", "COTI", "DASH", "ZEC"]),
-  L1: new Set(["BTC", "ETH", "SOL", "ADA", "AVAX", "TON", "NEAR", "APT", "SUI", "DOT", "ATOM", "SEI", "TRX", "ETC", "ICP", "KAS", "HBAR", "ALGO", "EGLD", "FIL"]),
+  L1: new Set(["BTC", "ETH", "SOL", "ADA", "AVAX", "TON", "NEAR", "APT", "SUI", "DOT", "ATOM", "SEI", "TRX", "ETC", "ICP", "KAS", "HBAR", "ALGO", "EGLD", "FIL", "SAGA"]),
   L2: new Set(["ARB", "OP", "MATIC", "POL", "STRK", "METIS", "IMX", "MANTA", "ZK", "ZRO"]),
   AI: new Set(["FET", "TAO", "RNDR", "RENDER", "NEAR", "GRT", "WLD", "ARKM", "AI", "AGIX", "OCEAN", "NMR", "PHB", "VIRTUAL", "KAITO"]),
-  DeFi: new Set(["UNI", "AAVE", "LDO", "DYDX", "JUP", "INJ", "RUNE", "CRV", "COMP", "SNX", "SUSHI", "1INCH", "CAKE", "GMX", "WOO", "ZRX"]),
+  DeFi: new Set(["UNI", "AAVE", "LDO", "DYDX", "JUP", "INJ", "RUNE", "CRV", "COMP", "SNX", "SUSHI", "1INCH", "CAKE", "GMX", "WOO", "ZRX", "ONDO", "PENDLE", "ENA", "OM", "RSR", "MKR"]),
   Meme: new Set(["DOGE", "SHIB", "PEPE", "WIF", "BONK", "FLOKI", "MEME", "BRETT", "POPCAT", "PNUT", "MEW", "TURBO"]),
-  Infrastructure: new Set(["LINK", "PYTH", "TIA", "AR", "FIL", "STORJ", "JASMY", "IOTX", "ENS", "API3", "ANKR"]),
+  Infrastructure: new Set(["LINK", "PYTH", "TIA", "AR", "FIL", "STORJ", "JASMY", "IOTX", "ENS", "API3", "ANKR", "POLYX"]),
 };
 
 function round(value: number, digits = 2) {

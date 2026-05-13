@@ -9,6 +9,7 @@ import { ensureStockPriceAutoRefreshJob, getStockPriceAutoRefreshStatus, pauseSt
 import { fetchKoreanStockPrice, refreshAllStoredStockPrices } from "./stockPrice";
 import { fetchTechnicalIndicatorDetail } from "./technicalIndicators";
 import { fetchCryptoFuturesTechnicalDetail, getCryptoFuturesDataStatus, getCryptoFuturesSummary, getCryptoFuturesTable } from "./cryptoFutures";
+import { getTradeFiAssetsSummary, getTradeFiAssetsTable } from "./tradeFiAssets";
 import { fetchUsStockTechnicalDetail, getUsStocksSummary, getUsStocksTable } from "./usStocks";
 
 const sectorSchema = z.enum(stockSectors);
@@ -242,6 +243,27 @@ export const appRouter = router({
           return { success: false, error: message };
         }
       }),
+  }),
+
+  tradeFi: router({
+    getSummary: publicProcedure.query(async () => {
+      try {
+        return { success: true, summary: await getTradeFiAssetsSummary() };
+      } catch (error) {
+        return { success: false, error: "Failed to fetch TradeFi summary" };
+      }
+    }),
+    getTable: publicProcedure.query(async () => {
+      try {
+        const assets = await getTradeFiAssetsTable();
+        const liveQuoteCount = assets.filter(asset => asset.quoteStatus === "live").length;
+        const lastUpdated = assets.map(asset => asset.lastUpdated).sort().at(-1) ?? new Date().toISOString();
+        const warning = liveQuoteCount < assets.length ? `최신 시세는 ${liveQuoteCount}/${assets.length}개 TradeFi 자산에만 반영되었습니다.` : undefined;
+        return { success: true, assets, total: assets.length, lastUpdated, warning };
+      } catch (error) {
+        return { success: false, error: "Failed to fetch TradeFi table" };
+      }
+    }),
   }),
 
   cryptoFutures: router({

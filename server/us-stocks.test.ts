@@ -28,6 +28,7 @@ describe("US stock sector metrics", () => {
     expect(rows.every(row => row.ticker.length > 0 && row.sector.length > 0)).toBe(true);
     expect(rows.every(row => row.quoteSource === "Stooq" || row.quoteSource === "Fallback")).toBe(true);
     expect(rows.every(row => typeof row.lastUpdated === "string" && row.lastUpdated.length > 0)).toBe(true);
+    expect(rows.some(row => row.ticker === "DVLT" && row.name === "Datavault AI")).toBe(true);
   }, 15000);
 
   it("summarizes sector buckets, average valuation and market leaders", async () => {
