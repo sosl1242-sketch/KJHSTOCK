@@ -38,7 +38,7 @@ export const appRouter = router({
   }),
 
   stocks: router({
-    list: protectedProcedure
+    list: publicProcedure
       .input(z.object({ sector: sectorSchema.optional() }).optional())
       .query(({ input }) => listStocks(input?.sector)),
 
@@ -68,11 +68,11 @@ export const appRouter = router({
 
     pauseAutoRefresh: adminProcedure.mutation(() => pauseStockPriceAutoRefreshJob()),
 
-    financialDetail: protectedProcedure
+    financialDetail: publicProcedure
       .input(z.object({ code: z.string().min(5).max(12), name: z.string().max(120).optional(), marketSuffix: z.enum(["KS", "KQ"]).default("KS") }))
       .query(({ input }) => fetchNaverFinancialDetail(input)),
 
-    financialSummaries: protectedProcedure
+    financialSummaries: publicProcedure
       .input(z.object({
         stocks: z.array(z.object({
           code: z.string().min(5).max(12),
@@ -82,7 +82,7 @@ export const appRouter = router({
       }))
       .query(({ input }) => fetchNaverFinancialSummaries(input.stocks)),
 
-    technicalIndicators: protectedProcedure
+    technicalIndicators: publicProcedure
       .input(z.object({ code: z.string().min(5).max(12), name: z.string().max(120).optional(), marketSuffix: z.enum(["KS", "KQ"]).default("KS") }))
       .query(({ input }) => fetchTechnicalIndicatorDetail(input)),
   }),
