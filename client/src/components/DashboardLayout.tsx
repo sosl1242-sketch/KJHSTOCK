@@ -1,4 +1,3 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -19,12 +18,10 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { BarChart3, Bitcoin, Globe2, LogOut, PanelLeft } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import PasswordLogin from "@/pages/PasswordLogin";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
@@ -48,18 +45,10 @@ export default function DashboardLayout({
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
-  const { loading, user } = useAuth();
-  const [isPasswordVerified, setIsPasswordVerified] = useState(() => {
-    return localStorage.getItem("auth_token") === "verified";
-  });
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
-
-   if (loading) {
-    return <DashboardLayoutSkeleton />
-  }
 
   return (
     <SidebarProvider style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>
@@ -82,30 +71,9 @@ export default function DashboardLayout({
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter className="border-t p-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="w-full justify-start gap-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 text-left">
-                  <div className="text-sm font-medium">{user?.name || "User"}</div>
-                  <div className="text-xs text-muted-foreground">{user?.email || ""}</div>
-                </div>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem
-                onClick={() => {
-                  localStorage.removeItem("auth_token");
-                  window.location.href = "/";
-                }}
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                로그아웃
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="text-xs text-muted-foreground text-center">
+            공개 조회 전용
+          </div>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>

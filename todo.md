@@ -177,4 +177,11 @@
 
 - [x] OAuth 로그인 제거 및 공개 접근 활성화
 - [x] 매일 12시(KST) 자동 데이터 갱신 스케줄 작업 설정
-- [ ] 공개 접근 + 자동 갱신 검증 및 체크포인트 저장
+- [x] 모든 주식 데이터 조회 프로시저를 publicProcedure로 변경 (로그인 프롬프트 제거)
+- [x] DashboardLayout에서 useAuth 제거 및 사용자 프로필 드롭다운 제거
+- [x] Home.tsx에서 useAuth 제거 및 isAdmin = false 설정
+- [x] 오너 편집 패널을 {isAdmin ? (...) : null} 조건부 렌더링으로 숨김
+- [x] 관리자 전용 프로시저(adminProcedure) 검증 완료
+- [x] 공개 조회 vs 관리자 수정 API 분리 확인 완료
+- [x] 모든 테스트 37개 통과
+- [x] 공개 접근 + 자동 갱신 최종 검증 및 체크포인트 저장

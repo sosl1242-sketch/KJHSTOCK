@@ -1,4 +1,4 @@
-import { useAuth } from "@/_core/hooks/useAuth";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -431,8 +431,7 @@ const renderIndicatorGauge = (value: number | null, guide?: IndicatorDetailGuide
 };
 
 export default function Home() {
-  const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = false; // 공개 접근 - 오너 편집 패널 숨김
   const [selectedSector, setSelectedSector] = useState<ActiveSector>("all");
   const [sortState, setSortState] = useState<{ key: SortKey; direction: SortDirection } | null>({ key: "marketRank", direction: "asc" });
   const [searchText, setSearchText] = useState("");
@@ -1237,6 +1236,7 @@ export default function Home() {
             </CardContent>
           </Card>
 
+          {isAdmin ? (
           <Card className="rounded-[2rem] border-0 bg-white/90 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-xl font-black">
@@ -1279,6 +1279,7 @@ export default function Home() {
               </div>
             </CardContent>
           </Card>
+          ) : null}
         </div>
 
         {refreshFailures.length > 0 ? (
