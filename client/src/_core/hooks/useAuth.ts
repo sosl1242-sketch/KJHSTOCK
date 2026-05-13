@@ -1,16 +1,14 @@
-import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
+import { supabase } from "@/lib/supabase";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useEffect, useMemo } from "react";
 
 type UseAuthOptions = {
   redirectOnUnauthenticated?: boolean;
-  redirectPath?: string;
 };
 
 export function useAuth(options?: UseAuthOptions) {
-  const { redirectOnUnauthenticated = false, redirectPath = getLoginUrl() } =
-    options ?? {};
+  const { redirectOnUnauthenticated = false } = options ?? {};
   const utils = trpc.useUtils();
 
   const meQuery = trpc.auth.me.useQuery(undefined, {
@@ -26,6 +24,7 @@ export function useAuth(options?: UseAuthOptions) {
 
   const logout = useCallback(async () => {
     try {
+      await supabase.auth.signOut();
       await logoutMutation.mutateAsync();
     } catch (error: unknown) {
       if (
@@ -41,9 +40,26 @@ export function useAuth(options?: UseAuthOptions) {
     }
   }, [logoutMutation, utils]);
 
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange(() => {
+      void utils.auth.me.invalidate();
+    });
+
+    const onAuthRequired = () => {
+      void utils.auth.me.invalidate();
+    };
+
+    window.addEventListener("supabase-auth-required", onAuthRequired);
+
+    return () => {
+      data.subscription.unsubscribe();
+      window.removeEventListener("supabase-auth-required", onAuthRequired);
+    };
+  }, [utils]);
+
   const state = useMemo(() => {
     localStorage.setItem(
-      "manus-runtime-user-info",
+      "supabase-user-info",
       JSON.stringify(meQuery.data)
     );
     return {
@@ -65,12 +81,10 @@ export function useAuth(options?: UseAuthOptions) {
     if (meQuery.isLoading || logoutMutation.isPending) return;
     if (state.user) return;
     if (typeof window === "undefined") return;
-    if (window.location.pathname === redirectPath) return;
 
-    window.location.href = redirectPath
+    window.dispatchEvent(new CustomEvent("supabase-auth-required"));
   }, [
     redirectOnUnauthenticated,
-    redirectPath,
     logoutMutation.isPending,
     meQuery.isLoading,
     state.user,

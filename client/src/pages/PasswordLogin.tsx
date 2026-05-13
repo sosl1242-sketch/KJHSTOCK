@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Lock } from "lucide-react";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { Lock, Mail } from "lucide-react";
 import { useState } from "react";
 
 interface PasswordLoginProps {
@@ -10,36 +11,95 @@ interface PasswordLoginProps {
 }
 
 export default function PasswordLogin({ onVerified }: PasswordLoginProps) {
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = () => {
-    if (password === "5690") {
-      localStorage.setItem("auth_token", "verified");
+  const handleSubmit = async () => {
+    setError("");
+    setMessage("");
+
+    if (!isSupabaseConfigured) {
+      setError("Supabase 환경변수가 아직 설정되지 않았습니다.");
+      return;
+    }
+
+    if (!email.trim() || !password) {
+      setError("이메일과 비밀번호를 입력하세요.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (mode === "signup") {
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            emailRedirectTo: window.location.origin,
+          },
+        });
+        if (error) throw error;
+        if (!data.session) {
+          setMessage("인증 메일을 보냈습니다. 이메일 확인 후 로그인하세요.");
+          setPassword("");
+          return;
+        }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (error) throw error;
+      }
+
       if (onVerified) {
         onVerified();
       } else {
         window.location.href = "/";
       }
-    } else {
-      setError("비밀번호가 틀렸습니다");
-      setPassword("");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "로그인 처리에 실패했습니다.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  const toggleMode = () => {
+    setMode(current => (current === "signin" ? "signup" : "signin"));
+    setError("");
+    setMessage("");
+    setPassword("");
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-slate-950 p-4">
       <Card className="w-full max-w-md rounded-2xl border-0 shadow-2xl">
         <CardHeader className="text-center">
           <div className="mb-4 flex justify-center">
             <div className="rounded-full bg-blue-100 p-3">
-              <Lock className="h-6 w-6 text-blue-600" />
+              {mode === "signin" ? <Lock className="h-6 w-6 text-blue-600" /> : <Mail className="h-6 w-6 text-blue-600" />}
             </div>
           </div>
           <CardTitle className="text-2xl">K-Stock Lab</CardTitle>
-          <CardDescription>비밀번호를 입력하세요</CardDescription>
+          <CardDescription>{mode === "signin" ? "관리자 이메일로 로그인하세요" : "이메일 인증 후 관리자 승인을 받습니다"}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <Input
+            type="email"
+            placeholder="이메일"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setError("");
+            }}
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+            className="rounded-lg"
+            autoFocus
+          />
           <Input
             type="password"
             placeholder="비밀번호"
@@ -48,16 +108,25 @@ export default function PasswordLogin({ onVerified }: PasswordLoginProps) {
               setPassword(e.target.value);
               setError("");
             }}
-            onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
             className="rounded-lg"
-            autoFocus
           />
           {error && <div className="text-sm text-red-500">{error}</div>}
+          {message && <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-700">{message}</div>}
           <Button
-            onClick={handleLogin}
+            onClick={handleSubmit}
+            disabled={isSubmitting}
             className="w-full rounded-lg bg-blue-600 hover:bg-blue-700"
           >
-            입장
+            {isSubmitting ? "처리 중..." : mode === "signin" ? "로그인" : "가입 메일 보내기"}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={toggleMode}
+            className="w-full rounded-lg"
+          >
+            {mode === "signin" ? "계정이 없으면 회원가입" : "이미 계정이 있으면 로그인"}
           </Button>
         </CardContent>
       </Card>

@@ -9,6 +9,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { BarChart3, Bitcoin, Globe2, Lock } from "lucide-react";
 import { CSSProperties, useEffect, useState } from "react";
 import PasswordLogin from "@/pages/PasswordLogin";
@@ -33,22 +34,24 @@ export default function DashboardLayout({
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
 
-  const [isPasswordVerified, setIsPasswordVerified] = useState(() => {
-    return localStorage.getItem("auth_token") === "verified";
-  });
-
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const { user, logout, loading } = useAuth();
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
+
+  useEffect(() => {
+    const openLogin = () => setShowLoginModal(true);
+    window.addEventListener("supabase-auth-required", openLogin);
+    return () => window.removeEventListener("supabase-auth-required", openLogin);
+  }, []);
 
   // 로그인 모달이 열려있으면 표시
   if (showLoginModal) {
     return (
       <PasswordLogin
         onVerified={() => {
-          setIsPasswordVerified(true);
           setShowLoginModal(false);
         }}
       />
@@ -76,23 +79,23 @@ export default function DashboardLayout({
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter className="border-t p-4">
-          {isPasswordVerified && (
+          {user && (
             <Button
               variant="ghost"
               className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
               onClick={() => {
-                localStorage.removeItem("auth_token");
-                setIsPasswordVerified(false);
+                void logout();
               }}
             >
               <Lock className="h-4 w-4" />
               <span>로그아웃</span>
             </Button>
           )}
-          {!isPasswordVerified && (
+          {!user && (
             <Button
               variant="ghost"
               className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
+              disabled={loading}
               onClick={() => setShowLoginModal(true)}
             >
               <Lock className="h-4 w-4" />
@@ -104,7 +107,7 @@ export default function DashboardLayout({
       <SidebarInset>
         <div className="flex-1">
           {/* 비로그인 사용자에게 편집 기능 불가 정보 전달 */}
-          {!isPasswordVerified && (
+          {!user && (
             <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
               조회 기능은 누구나 사용 가능합니다. 편집 기능을 사용하려면 로그인하세요.
             </div>

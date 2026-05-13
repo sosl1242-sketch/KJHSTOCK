@@ -1,9 +1,7 @@
-import { COOKIE_NAME } from "@shared/const";
 import { z } from "zod";
 import { stockSectors } from "../drizzle/schema";
-import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { deleteStock, listStocks, updateStockPrice, upsertStock, getCachedStockFinancial, getCachedPriceHistory } from "./db";
 import { getCacheAutoRefreshStatus, ensureCacheAutoRefreshJob, pauseCacheAutoRefreshJob } from "./cacheAutoRefresh";
 import { fetchNaverFinancialDetail, fetchNaverFinancialSummaries } from "./financials";
@@ -29,9 +27,7 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+    logout: publicProcedure.mutation(() => {
       return {
         success: true,
       } as const;

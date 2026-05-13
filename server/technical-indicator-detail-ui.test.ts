@@ -23,10 +23,10 @@ describe("technical indicator detail drilldown UI contract", () => {
     expect(homeSource).toContain("volumeRatio");
   });
 
-  it("keeps 3 minute screen polling and server auto tracking controls/status copy", () => {
+  it("keeps 3 minute screen polling and Vercel Cron status copy", () => {
     expect(homeSource).toContain("PRICE_AUTO_REFETCH_MS = 1000 * 60 * 3");
     expect(homeSource).toContain("autoRefreshStatus");
-    expect(homeSource).toContain("서버 60초 자동 추적 활성");
+    expect(homeSource).toContain("Vercel Cron 보안 설정됨");
     expect(homeSource).toContain("화면 3분 재조회");
     expect(homeSource).toContain("최근 반영");
   });

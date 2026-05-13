@@ -507,22 +507,6 @@ export default function Home() {
     },
     onError: error => toast.error(`${error.message} 관리자는 현재가를 수동으로 수정할 수 있습니다.`),
   });
-  const enableAutoRefresh = trpc.stocks.enableAutoRefresh.useMutation({
-    onSuccess: async status => {
-      toast.success(status.enabled ? "60초 자동 가격 추적이 활성화되었습니다." : "자동 가격 추적 설정을 확인했습니다.");
-      await autoRefreshStatus.refetch();
-      await utils.stocks.list.invalidate();
-    },
-    onError: error => toast.error(`자동 가격 추적 활성화에 실패했습니다. ${error.message}`),
-  });
-  const pauseAutoRefresh = trpc.stocks.pauseAutoRefresh.useMutation({
-    onSuccess: async () => {
-      toast.info("60초 자동 가격 추적을 일시정지했습니다.");
-      await autoRefreshStatus.refetch();
-    },
-    onError: error => toast.error(`자동 가격 추적 일시정지에 실패했습니다. ${error.message}`),
-  });
-
   const selectedSectorMeta = selectedSector === "all" ? allSectorMeta : sectors.find(sector => sector.key === selectedSector) ?? sectors[0];
   const rows = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
@@ -783,10 +767,10 @@ export default function Home() {
   const serverAutoRefreshText = !isAdmin
     ? "화면 3분 자동 조회"
     : autoRefreshStatus.isLoading
-      ? "서버 자동 추적 확인 중"
+      ? "Vercel Cron 확인 중"
       : autoRefreshStatus.data?.enabled
-        ? "서버 60초 자동 추적 활성"
-        : "서버 자동 추적 비활성";
+        ? "Vercel Cron 보안 설정됨"
+        : "CRON_SECRET 미설정";
   const indicatorStatusClass = (status: string) => {
     if (status === "overheated" || status === "watch_high") return "border-rose-200 bg-rose-50 text-rose-800";
     if (status === "oversold" || status === "watch_low") return "border-blue-200 bg-blue-50 text-blue-800";
@@ -1097,29 +1081,6 @@ export default function Home() {
                 {serverAutoRefreshText} · 화면 3분 재조회 · 최근 반영 {lastClientRefreshText}
               </span>
             </div>
-            {isAdmin ? (
-              autoRefreshStatus.data?.enabled ? (
-                <Button
-                  variant="outline"
-                  disabled={pauseAutoRefresh.isPending}
-                  onClick={() => pauseAutoRefresh.mutate()}
-                  className="rounded-full border-slate-200 bg-white/70 px-5"
-                >
-                  {pauseAutoRefresh.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
-                  자동 추적 일시정지
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  disabled={enableAutoRefresh.isPending}
-                  onClick={() => enableAutoRefresh.mutate()}
-                  className="rounded-full border-emerald-200 bg-white/70 px-5 text-emerald-800 hover:text-emerald-900"
-                >
-                  {enableAutoRefresh.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
-                  60초 자동 추적 활성화
-                </Button>
-              )
-            ) : null}
             <div className="relative min-w-[240px] flex-1 md:flex-none">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input

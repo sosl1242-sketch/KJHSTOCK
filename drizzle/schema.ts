@@ -1,18 +1,20 @@
-import { double, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { doublePrecision, integer, pgEnum, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
+
+export const userRole = pgEnum("role", ["user", "admin"]);
 
 /**
  * Core user table backing auth flow.
  */
-export const users = mysqlTable("users", {
-  id: int("id").autoincrement().primaryKey(),
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+  role: userRole("role").default("user").notNull(),
+  createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull(),
+  lastSignedIn: timestamp("lastSignedIn", { mode: "date" }).defaultNow().notNull(),
 });
 
 export const stockSectors = [
@@ -29,76 +31,76 @@ export const stockSectors = [
   "industrial_business_services",
 ] as const;
 
-export const stocks = mysqlTable("stocks", {
-  id: int("id").autoincrement().primaryKey(),
+export const stocks = pgTable("stocks", {
+  id: serial("id").primaryKey(),
   sector: varchar("sector", { length: 80 }).notNull(),
   name: varchar("name", { length: 120 }).notNull(),
   code: varchar("code", { length: 12 }).notNull().unique(),
   marketSuffix: varchar("marketSuffix", { length: 4 }).default("KS").notNull(),
-  marketRank: int("marketRank"),
-  currentPrice: double("currentPrice").default(0).notNull(),
-  annualEps: double("annualEps").default(0).notNull(),
+  marketRank: integer("marketRank"),
+  currentPrice: doublePrecision("currentPrice").default(0).notNull(),
+  annualEps: doublePrecision("annualEps").default(0).notNull(),
   dataSource: varchar("dataSource", { length: 80 }).default("manual").notNull(),
-  lastPriceFetchedAt: timestamp("lastPriceFetchedAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  lastPriceFetchedAt: timestamp("lastPriceFetchedAt", { mode: "date" }),
+  createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull(),
 });
 
 /**
  * 공개 조회용 캐시 테이블 - 외부 API 호출 제거
  */
-export const stockFinancialCache = mysqlTable("stock_financial_cache", {
-  id: int("id").autoincrement().primaryKey(),
+export const stockFinancialCache = pgTable("stock_financial_cache", {
+  id: serial("id").primaryKey(),
   code: varchar("code", { length: 12 }).notNull().unique(),
   marketSuffix: varchar("marketSuffix", { length: 4 }).default("KS").notNull(),
-  per: double("per"), // Price-to-Earnings Ratio
-  pbr: double("pbr"), // Price-to-Book Ratio
-  marketCapHundredMillionKrw: double("marketCapHundredMillionKrw"),
-  latestOperatingProfitHundredMillionKrw: double("latestOperatingProfitHundredMillionKrw"),
-  cachedAt: timestamp("cachedAt").defaultNow().notNull(),
+  per: doublePrecision("per"), // Price-to-Earnings Ratio
+  pbr: doublePrecision("pbr"), // Price-to-Book Ratio
+  marketCapHundredMillionKrw: doublePrecision("marketCapHundredMillionKrw"),
+  latestOperatingProfitHundredMillionKrw: doublePrecision("latestOperatingProfitHundredMillionKrw"),
+  cachedAt: timestamp("cachedAt", { mode: "date" }).defaultNow().notNull(),
 });
 
-export const usStockCache = mysqlTable("us_stock_cache", {
-  id: int("id").autoincrement().primaryKey(),
+export const usStockCache = pgTable("us_stock_cache", {
+  id: serial("id").primaryKey(),
   ticker: varchar("ticker", { length: 16 }).notNull().unique(),
   name: varchar("name", { length: 120 }),
   sector: varchar("sector", { length: 80 }),
-  price: double("price"),
-  change: double("change"),
-  changePercent: double("changePercent"),
-  marketCapBillion: double("marketCapBillion"),
-  peRatio: double("peRatio"),
-  dividendYield: double("dividendYield"),
-  cachedAt: timestamp("cachedAt").defaultNow().notNull(),
+  price: doublePrecision("price"),
+  change: doublePrecision("change"),
+  changePercent: doublePrecision("changePercent"),
+  marketCapBillion: doublePrecision("marketCapBillion"),
+  peRatio: doublePrecision("peRatio"),
+  dividendYield: doublePrecision("dividendYield"),
+  cachedAt: timestamp("cachedAt", { mode: "date" }).defaultNow().notNull(),
 });
 
-export const priceHistoryCache = mysqlTable("price_history_cache", {
-  id: int("id").autoincrement().primaryKey(),
+export const priceHistoryCache = pgTable("price_history_cache", {
+  id: serial("id").primaryKey(),
   ticker: varchar("ticker", { length: 24 }).notNull(),
   market: varchar("market", { length: 20 }).notNull(), // 'KS', 'KQ', 'US', 'CRYPTO'
   interval: varchar("interval", { length: 10 }).notNull(), // '1d', '1w', '1mo'
   timestamp: varchar("timestamp", { length: 20 }).notNull(), // Unix timestamp as string
-  open: double("open"),
-  high: double("high"),
-  low: double("low"),
-  close: double("close"),
-  volume: double("volume"),
-  cachedAt: timestamp("cachedAt").defaultNow().notNull(),
+  open: doublePrecision("open"),
+  high: doublePrecision("high"),
+  low: doublePrecision("low"),
+  close: doublePrecision("close"),
+  volume: doublePrecision("volume"),
+  cachedAt: timestamp("cachedAt", { mode: "date" }).defaultNow().notNull(),
 });
 
-export const cryptoFuturesCache = mysqlTable("crypto_futures_cache", {
-  id: int("id").autoincrement().primaryKey(),
+export const cryptoFuturesCache = pgTable("crypto_futures_cache", {
+  id: serial("id").primaryKey(),
   symbol: varchar("symbol", { length: 24 }).notNull().unique(),
   name: varchar("name", { length: 120 }),
-  price: double("price"),
-  change24h: double("change24h"),
-  changePercent24h: double("changePercent24h"),
-  high24h: double("high24h"),
-  low24h: double("low24h"),
-  volume24hUsd: double("volume24hUsd"),
-  openInterestUsd: double("openInterestUsd"),
-  fundingRate: double("fundingRate"),
-  cachedAt: timestamp("cachedAt").defaultNow().notNull(),
+  price: doublePrecision("price"),
+  change24h: doublePrecision("change24h"),
+  changePercent24h: doublePrecision("changePercent24h"),
+  high24h: doublePrecision("high24h"),
+  low24h: doublePrecision("low24h"),
+  volume24hUsd: doublePrecision("volume24hUsd"),
+  openInterestUsd: doublePrecision("openInterestUsd"),
+  fundingRate: doublePrecision("fundingRate"),
+  cachedAt: timestamp("cachedAt", { mode: "date" }).defaultNow().notNull(),
 });
 
 export type User = typeof users.$inferSelect;

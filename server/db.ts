@@ -1,5 +1,6 @@
-import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { and, eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { InsertStock, InsertUser, Stock, StockSector, stocks, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { KOSPI_TOP200_STOCKS } from "./kospiSeed";
@@ -7,11 +8,16 @@ import { KOSPI_TOP200_STOCKS } from "./kospiSeed";
 const KOREA_MARKET_CAP_STOCK_LIMIT = 200;
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _sql: ReturnType<typeof postgres> | null = null;
 
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _sql = postgres(process.env.DATABASE_URL, {
+        max: 5,
+        prepare: false,
+      });
+      _db = drizzle(_sql);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -49,7 +55,11 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     if (user.role !== undefined) {
       values.role = user.role;
       updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
+    } else if (
+      user.email &&
+      ENV.supabaseAdminEmail &&
+      user.email.toLowerCase() === ENV.supabaseAdminEmail.toLowerCase()
+    ) {
       values.role = "admin";
       updateSet.role = "admin";
     }
@@ -59,7 +69,11 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     if (Object.keys(updateSet).length === 0) {
       updateSet.lastSignedIn = new Date();
     }
-    await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+    updateSet.updatedAt = new Date();
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
+      set: updateSet,
+    });
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
     throw error;
@@ -112,7 +126,8 @@ export async function seedDefaultStocksIfNeeded() {
   if (existing.length >= seedStocks.length) return;
   for (const seed of seedStocks) {
     const values = normalizeSeedStock(seed);
-    await db.insert(stocks).values(values).onDuplicateKeyUpdate({
+    await db.insert(stocks).values(values).onConflictDoUpdate({
+      target: stocks.code,
       set: {
         sector: values.sector,
         name: values.name,
@@ -122,6 +137,7 @@ export async function seedDefaultStocksIfNeeded() {
         annualEps: values.annualEps,
         dataSource: values.dataSource,
         lastPriceFetchedAt: values.lastPriceFetchedAt,
+        updatedAt: new Date(),
       },
     });
   }
@@ -160,7 +176,7 @@ export async function upsertStock(input: Omit<InsertStock, "id" | "createdAt" | 
     dataSource: input.dataSource ?? "manual",
   };
   if (input.id) {
-    await db.update(stocks).set(values).where(eq(stocks.id, input.id));
+    await db.update(stocks).set({ ...values, updatedAt: new Date() }).where(eq(stocks.id, input.id));
     const updated = await db.select().from(stocks).where(eq(stocks.id, input.id)).limit(1);
     return updated[0] ? stockWithYield(updated[0]) : null;
   }
@@ -181,7 +197,7 @@ export async function updateStockPrice(id: number, currentPrice: number, dataSou
   if (!db) throw new Error("Database is not available");
   await db
     .update(stocks)
-    .set({ currentPrice, dataSource, lastPriceFetchedAt: new Date() })
+    .set({ currentPrice, dataSource, lastPriceFetchedAt: new Date(), updatedAt: new Date() })
     .where(eq(stocks.id, id));
   const updated = await db.select().from(stocks).where(eq(stocks.id, id)).limit(1);
   return updated[0] ? stockWithYield(updated[0]) : null;
@@ -198,7 +214,7 @@ export async function getCachedStockFinancial(code: string, marketSuffix: string
   const result = await db
     .select()
     .from(stockFinancialCache)
-    .where(eq(stockFinancialCache.code, code))
+    .where(and(eq(stockFinancialCache.code, code), eq(stockFinancialCache.marketSuffix, marketSuffix)))
     .limit(1);
   return result.length > 0 ? result[0] : null;
 }
@@ -209,7 +225,8 @@ export async function upsertStockFinancialCache(data: InsertStockFinancialCache)
   await db
     .insert(stockFinancialCache)
     .values(data)
-    .onDuplicateKeyUpdate({
+    .onConflictDoUpdate({
+      target: stockFinancialCache.code,
       set: {
         per: data.per,
         pbr: data.pbr,
@@ -243,7 +260,8 @@ export async function upsertUsStockCache(data: InsertUsStockCache) {
   await db
     .insert(usStockCache)
     .values(data)
-    .onDuplicateKeyUpdate({
+    .onConflictDoUpdate({
+      target: usStockCache.ticker,
       set: {
         name: data.name,
         sector: data.sector,
@@ -265,9 +283,11 @@ export async function getCachedPriceHistory(ticker: string, market: string, inte
     .select()
     .from(priceHistoryCache)
     .where(
-      eq(priceHistoryCache.ticker, ticker) &&
-      eq(priceHistoryCache.market, market) &&
-      eq(priceHistoryCache.interval, interval)
+      and(
+        eq(priceHistoryCache.ticker, ticker),
+        eq(priceHistoryCache.market, market),
+        eq(priceHistoryCache.interval, interval)
+      )
     )
     .orderBy(priceHistoryCache.timestamp);
 }
@@ -276,18 +296,19 @@ export async function upsertPriceHistoryCache(data: InsertPriceHistoryCache[]) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
   if (data.length === 0) return;
-  // 기존 데이터 삭제 후 새로 삽입 (같은 ticker/market/interval)
-  if (data.length > 0) {
+  await db.transaction(async tx => {
     const first = data[0];
-    await db
+    await tx
       .delete(priceHistoryCache)
       .where(
-        eq(priceHistoryCache.ticker, first.ticker) &&
-        eq(priceHistoryCache.market, first.market) &&
-        eq(priceHistoryCache.interval, first.interval)
+        and(
+          eq(priceHistoryCache.ticker, first.ticker),
+          eq(priceHistoryCache.market, first.market),
+          eq(priceHistoryCache.interval, first.interval)
+        )
       );
-  }
-  await db.insert(priceHistoryCache).values(data);
+    await tx.insert(priceHistoryCache).values(data);
+  });
 }
 
 export async function getCachedCryptoFutures(symbol: string) {
@@ -313,7 +334,8 @@ export async function upsertCryptoFuturesCache(data: InsertCryptoFuturesCache) {
   await db
     .insert(cryptoFuturesCache)
     .values(data)
-    .onDuplicateKeyUpdate({
+    .onConflictDoUpdate({
+      target: cryptoFuturesCache.symbol,
       set: {
         name: data.name,
         price: data.price,

@@ -20,7 +20,7 @@ function createContext(user?: Partial<AuthenticatedUser>): TrpcContext {
           openId: "sample-user",
           email: "sample@example.com",
           name: "Sample User",
-          loginMethod: "manus",
+          loginMethod: "email",
           role: "user",
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -32,9 +32,7 @@ function createContext(user?: Partial<AuthenticatedUser>): TrpcContext {
       protocol: "https",
       headers: {},
     } as TrpcContext["req"],
-    res: {
-      clearCookie: () => undefined,
-    } as TrpcContext["res"],
+    res: {} as TrpcContext["res"],
   };
 }
 
