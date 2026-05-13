@@ -68,8 +68,11 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       ENV.supabaseAdminEmail &&
       user.email.toLowerCase() === ENV.supabaseAdminEmail.toLowerCase()
     ) {
-      values.role = "admin";
-      updateSet.role = "admin";
+      const existingAdmin = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin")).limit(1);
+      if (existingAdmin.length === 0) {
+        values.role = "admin";
+        updateSet.role = "admin";
+      }
     }
     if (!values.lastSignedIn) {
       values.lastSignedIn = new Date();

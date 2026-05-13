@@ -12,7 +12,7 @@ function getSupabaseClient() {
   }
 
   if (!serverSupabase) {
-    serverSupabase = createClient(ENV.supabaseUrl, ENV.supabaseServiceRoleKey || ENV.supabaseAnonKey, {
+    serverSupabase = createClient(ENV.supabaseUrl, ENV.supabaseAnonKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
