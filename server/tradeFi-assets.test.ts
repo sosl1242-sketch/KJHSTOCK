@@ -11,6 +11,7 @@ describe("TradeFi stock and ETF assets", () => {
     expect(source).toContain('"SPY"');
     expect(source).toContain('"DVLT"');
     expect(source).toContain('"Commodity ETF"');
+    expect(source).toContain('"YahooFinance"');
     expect(source).toContain('"Stooq"');
   });
 });

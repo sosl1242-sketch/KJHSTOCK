@@ -11,7 +11,7 @@ export type TradeFiAssetRow = {
   marketCapUsd: number | null;
   volume: number | null;
   turnoverUsd: number | null;
-  quoteSource: "Stooq" | "Fallback";
+  quoteSource: "YahooFinance" | "Stooq" | "Fallback";
   quoteStatus: "live" | "fallback";
   lastUpdated: string;
 };
@@ -24,6 +24,36 @@ type StooqQuote = {
   open: number | null;
   volume: number | null;
   updatedAt: string;
+  source: "Stooq";
+};
+
+type YahooChartResponse = {
+  chart?: {
+    result?: Array<{
+      timestamp?: number[];
+      meta?: {
+        symbol?: string;
+        regularMarketPrice?: number;
+        regularMarketTime?: number;
+      };
+      indicators?: {
+        quote?: Array<{
+          open?: Array<number | null>;
+          close?: Array<number | null>;
+          volume?: Array<number | null>;
+        }>;
+      };
+    }>;
+  };
+};
+
+type MarketQuote = StooqQuote | {
+  ticker: string;
+  close: number;
+  open: number | null;
+  volume: number | null;
+  updatedAt: string;
+  source: "YahooFinance";
 };
 
 const nowIso = () => new Date().toISOString();
@@ -62,6 +92,49 @@ function stooqSymbol(ticker: string) {
   return `${ticker.toLowerCase().replace(".", "-")}.us`;
 }
 
+async function fetchYahooQuote(asset: BaseTradeFiAsset): Promise<MarketQuote | null> {
+  const symbol = asset.ticker.replace(".", "-");
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=5d&interval=1d&includeAdjustedClose=true`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6000);
+
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; KoreaStockSectorAnalyzer/1.0)" },
+    });
+    if (!response.ok) return null;
+    const payload = await response.json() as YahooChartResponse;
+    const result = payload.chart?.result?.[0];
+    const timestamps = result?.timestamp ?? [];
+    const quote = result?.indicators?.quote?.[0];
+    if (!timestamps.length || !quote?.close?.length) return null;
+
+    for (let index = quote.close.length - 1; index >= 0; index -= 1) {
+      const close = quote.close[index] ?? result?.meta?.regularMarketPrice;
+      if (typeof close !== "number" || !Number.isFinite(close) || close <= 0) continue;
+      const open = quote.open?.[index] ?? null;
+      const volume = quote.volume?.[index] ?? null;
+      const timestamp = timestamps[index] ?? result?.meta?.regularMarketTime;
+      const updatedAt = timestamp ? new Date(timestamp * 1000).toISOString() : nowIso();
+
+      return {
+        ticker: asset.ticker,
+        close,
+        open: typeof open === "number" && Number.isFinite(open) ? open : null,
+        volume: typeof volume === "number" && Number.isFinite(volume) ? volume : null,
+        updatedAt,
+        source: "YahooFinance",
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function fetchStooqQuote(asset: BaseTradeFiAsset): Promise<StooqQuote | null> {
   const symbol = stooqSymbol(asset.ticker);
   const url = `https://stooq.com/q/l/?s=${encodeURIComponent(symbol)}&f=sd2t2ohlcv&h&e=csv`;
@@ -90,6 +163,7 @@ async function fetchStooqQuote(asset: BaseTradeFiAsset): Promise<StooqQuote | nu
       open: parseNumber(columns[3]),
       volume: parseNumber(columns[7]),
       updatedAt,
+      source: "Stooq",
     };
   } catch {
     return null;
@@ -98,9 +172,13 @@ async function fetchStooqQuote(asset: BaseTradeFiAsset): Promise<StooqQuote | nu
   }
 }
 
+async function fetchMarketQuote(asset: BaseTradeFiAsset): Promise<MarketQuote | null> {
+  return await fetchYahooQuote(asset) ?? await fetchStooqQuote(asset);
+}
+
 export async function getTradeFiAssetsTable(): Promise<TradeFiAssetRow[]> {
-  const settled = await Promise.allSettled(tradeFiAssets.map(asset => fetchStooqQuote(asset)));
-  const quotes = new Map<string, StooqQuote>();
+  const settled = await Promise.allSettled(tradeFiAssets.map(asset => fetchMarketQuote(asset)));
+  const quotes = new Map<string, MarketQuote>();
   for (const result of settled) {
     if (result.status === "fulfilled" && result.value) quotes.set(result.value.ticker, result.value);
   }
@@ -118,7 +196,7 @@ export async function getTradeFiAssetsTable(): Promise<TradeFiAssetRow[]> {
       change1dPercent,
       volume,
       turnoverUsd: volume === null ? null : round(price * volume, 2),
-      quoteSource: quote ? "Stooq" : "Fallback",
+      quoteSource: quote?.source ?? "Fallback",
       quoteStatus: quote ? "live" : "fallback",
       lastUpdated: quote?.updatedAt ?? fallbackUpdatedAt,
     };

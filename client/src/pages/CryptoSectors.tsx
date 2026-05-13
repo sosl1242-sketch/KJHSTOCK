@@ -23,7 +23,7 @@ type CryptoRow = {
 type TradeFiRow = {
   rank: number; ticker: string; name: string; assetType: "Stock" | "ETF" | "Commodity ETF"; exchange: string;
   price: number; change1dPercent: number; marketCapUsd: number | null; volume: number | null;
-  turnoverUsd: number | null; quoteSource: "Stooq" | "Fallback"; quoteStatus: "live" | "fallback"; lastUpdated: string;
+  turnoverUsd: number | null; quoteSource: "YahooFinance" | "Stooq" | "Fallback"; quoteStatus: "live" | "fallback"; lastUpdated: string;
 };
 type SortKey = "rank" | "ticker" | "sector" | "price" | "high24h" | "low24h" | "change24hPercent" | "change7dPercent"
   | "marketCapUsd" | "fdvUsd" | "circulatingSupply" | "baseVolume24h" | "volume24hUsd" | "volumeToMarketCapPercent"
@@ -464,7 +464,7 @@ export default function CryptoSectors() {
           <Card className="rounded-[2rem] border-0 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg font-black"><BarChart3 className="h-5 w-5 text-slate-700" /> TradeFi 주식·ETF 별도 섹터</CardTitle>
-              <CardDescription>Binance 선물에 없는 주식·ETF·금속 ETF는 Stooq 시세로 분리 표시합니다. {filteredTradeFiRows.length}개 자산 표시 중</CardDescription>
+              <CardDescription>Binance 선물에 없는 주식·ETF·금속 ETF는 YahooFinance 우선, Stooq 보조 시세로 분리 표시합니다. {filteredTradeFiRows.length}개 자산 표시 중</CardDescription>
             </CardHeader>
             <CardContent className="overflow-x-auto p-0">
               <table className="w-full border-separate border-spacing-y-1 px-4 pb-4 text-sm">
