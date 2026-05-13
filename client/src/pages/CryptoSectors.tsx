@@ -6,11 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { Activity, ArrowDown, ArrowUp, ArrowUpDown, BarChart3, Bitcoin, Loader2, RefreshCw, Search } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
-type CryptoSector = "L1" | "L2" | "AI" | "DeFi" | "Meme" | "Exchange" | "Payments" | "Infrastructure" | "Other";
+type CryptoSector = "TradeFi" | "Energy" | "L1" | "L2" | "AI" | "DeFi" | "Meme" | "Exchange" | "Payments" | "Infrastructure" | "Other";
 type CryptoRow = {
   rank: number; ticker: string; name: string; baseAsset: string; sector: CryptoSector; contractType: "PERPETUAL";
   price: number; high24h: number; low24h: number; change24hPercent: number; change7dPercent: number | null;
@@ -54,7 +54,7 @@ const fmtDt = (v: string | null | undefined) => {
 const fmtNum = (v: number | null | undefined, d = 2) => typeof v === "number" && Number.isFinite(v) ? v.toLocaleString("ko-KR", { maximumFractionDigits: d }) : "-";
 
 // ─── 레이블 ───────────────────────────────────────────────────────────────────
-const sectorLabels: Record<CryptoSector, string> = { L1: "L1", L2: "L2", AI: "AI", DeFi: "DeFi", Meme: "밈", Exchange: "거래소", Payments: "결제", Infrastructure: "인프라", Other: "기타" };
+const sectorLabels: Record<CryptoSector, string> = { TradeFi: "TradeFi", Energy: "에너지", L1: "L1", L2: "L2", AI: "AI", DeFi: "DeFi", Meme: "밈", Exchange: "거래소", Payments: "결제", Infrastructure: "인프라", Other: "기타" };
 const sortLabels: Record<SortKey, string> = {
   rank: "순위", ticker: "티커", sector: "섹터", price: "가격", high24h: "24h 고가", low24h: "24h 저가",
   change24hPercent: "24h 등락률", change7dPercent: "7d 등락률", marketCapUsd: "시가총액", fdvUsd: "FDV",
@@ -203,37 +203,6 @@ const formatMetricValue = (row: CryptoRow, key: string) => {
   return `${v ?? "-"}`;
 };
 
-// ─── 클라이언트 직접 Binance API 호출 ─────────────────────────────────────────
-const BINANCE_FAPI = "https://fapi.binance.com";
-const ASSET_NAMES: Record<string, string> = {
-  BTC: "Bitcoin", ETH: "Ethereum", BNB: "BNB", SOL: "Solana", XRP: "XRP",
-  DOGE: "Dogecoin", ADA: "Cardano", AVAX: "Avalanche", LINK: "Chainlink",
-  TON: "Toncoin", NEAR: "NEAR Protocol", APT: "Aptos", ARB: "Arbitrum",
-  OP: "Optimism", UNI: "Uniswap", SUI: "Sui", INJ: "Injective",
-  RENDER: "Render", RNDR: "Render", WLD: "Worldcoin", PEPE: "Pepe",
-  SHIB: "Shiba Inu", LTC: "Litecoin", BCH: "Bitcoin Cash", DOT: "Polkadot",
-  ATOM: "Cosmos", FIL: "Filecoin", ETC: "Ethereum Classic", TRX: "TRON",
-  MATIC: "Polygon", POL: "Polygon Ecosystem Token", AAVE: "Aave", MKR: "Maker",
-  LDO: "Lido DAO", DYDX: "dYdX", JUP: "Jupiter", SEI: "Sei",
-  FET: "Artificial Superintelligence Alliance", TAO: "Bittensor",
-  GRT: "The Graph", PYTH: "Pyth Network", ENA: "Ethena", ONDO: "Ondo", PENDLE: "Pendle",
-};
-const SECTOR_SETS: Record<Exclude<CryptoSector, "Other">, Set<string>> = {
-  L1: new Set(["BTC","ETH","BNB","SOL","XRP","ADA","AVAX","TON","NEAR","APT","SUI","DOT","ATOM","SEI","TRX","ETC","LTC","BCH","ICP","KAS","HBAR","ALGO","EGLD","XLM","FIL"]),
-  L2: new Set(["ARB","OP","MATIC","POL","STRK","METIS","IMX","MANTA","ZK","ZRO"]),
-  AI: new Set(["FET","TAO","RNDR","RENDER","NEAR","GRT","WLD","ARKM","AI","AGIX","OCEAN","NMR","PHB","VIRTUAL","KAITO"]),
-  DeFi: new Set(["UNI","AAVE","MKR","LDO","DYDX","JUP","ENA","ONDO","PENDLE","INJ","RUNE","CRV","COMP","SNX","SUSHI","1INCH","CAKE","GMX","WOO","ZRX"]),
-  Meme: new Set(["DOGE","SHIB","PEPE","WIF","BONK","FLOKI","MEME","BRETT","POPCAT","PNUT","MEW","TURBO"]),
-  Exchange: new Set(["BNB","OKB","CRO","GT","KCS","LEO","BGB","FTT"]),
-  Payments: new Set(["BTC","XRP","LTC","BCH","XLM","DASH","ZEC"]),
-  Infrastructure: new Set(["LINK","PYTH","TIA","AR","FIL","STORJ","JASMY","IOTX","ENS","API3","ANKR"]),
-};
-function classifySector(base: string): CryptoSector {
-  const entries = Object.entries(SECTOR_SETS) as Array<[Exclude<CryptoSector, "Other">, Set<string>]>;
-  return entries.find(([, s]) => s.has(base))?.[0] ?? "Other";
-}
-function round2(v: number) { return Math.round(v * 100) / 100; }
-
 // ─── 메인 컴포넌트 ────────────────────────────────────────────────────────────
 export default function CryptoSectors() {
   const [searchText, setSearchText] = useState("");
@@ -245,77 +214,24 @@ export default function CryptoSectors() {
   const [priceChartFrame, setPriceChartFrame] = useState<PriceChartFrame>("daily");
   const [selectedIndicatorKey, setSelectedIndicatorKey] = useState<string | null>(null);
 
-  // 클라이언트 직접 Binance fetch 상태
-  const [coins, setCoins] = useState<CryptoRow[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-
-  const fetchBinanceData = useCallback(async () => {
-    setIsLoading(true);
-    setFetchError(null);
-    try {
-      const [tickers, premiumIndex, exchangeInfo] = await Promise.all([
-        fetch(`${BINANCE_FAPI}/fapi/v1/ticker/24hr`).then(r => r.json()),
-        fetch(`${BINANCE_FAPI}/fapi/v1/premiumIndex`).then(r => r.json()),
-        fetch(`${BINANCE_FAPI}/fapi/v1/exchangeInfo`).then(r => r.json()),
-      ]);
-      const tradable = new Set(
-        (exchangeInfo.symbols ?? []).filter((s: any) => s.quoteAsset === "USDT" && s.contractType === "PERPETUAL" && s.status === "TRADING").map((s: any) => s.symbol)
-      );
-      const premiumMap = new Map((premiumIndex as any[]).map((p: any) => [p.symbol, p]));
-      const filtered = (tickers as any[])
-        .filter((t: any) => tradable.has(t.symbol) && t.symbol.endsWith("USDT") && !t.symbol.includes("_"))
-        .map((t: any) => ({ ...t, _vol: parseFloat(t.quoteVolume) || 0 }))
-        .filter((t: any) => t._vol > 0)
-        .sort((a: any, b: any) => b._vol - a._vol);
-
-      const now = new Date().toISOString();
-      const rows: CryptoRow[] = filtered.map((t: any, i: number) => {
-        const base = t.symbol.endsWith("USDT") ? t.symbol.slice(0, -4) : t.symbol;
-        const premium = premiumMap.get(t.symbol) as any;
-        const price = parseFloat(t.lastPrice) || 0;
-        const vol = parseFloat(t.quoteVolume) || 0;
-        const oi = null; // OI는 별도 API 필요 - 기본값 null
-        return {
-          rank: i + 1,
-          ticker: t.symbol,
-          name: ASSET_NAMES[base] ?? base,
-          baseAsset: base,
-          sector: classifySector(base),
-          contractType: "PERPETUAL" as const,
-          price,
-          high24h: parseFloat(t.highPrice) || 0,
-          low24h: parseFloat(t.lowPrice) || 0,
-          change24hPercent: round2(parseFloat(t.priceChangePercent) || 0),
-          change7dPercent: null,
-          marketCapUsd: null,
-          fdvUsd: null,
-          circulatingSupply: null,
-          baseVolume24h: parseFloat(t.volume) || 0,
-          volume24hUsd: vol,
-          fundingRate: parseFloat(premium?.lastFundingRate ?? "0") || 0,
-          markPrice: premium?.markPrice ? parseFloat(premium.markPrice) : null,
-          nextFundingTime: premium?.nextFundingTime ? new Date(premium.nextFundingTime).toISOString() : null,
-          openInterestUsd: oi,
-          volumeToMarketCapPercent: null,
-          openInterestToMarketCapPercent: null,
-          openInterestToVolumePercent: null,
-          volatility30dPercent: null,
-          longShortRatio: null,
-          lastUpdated: now,
-        };
-      });
-      setCoins(rows);
-      setLastUpdated(now);
-    } catch (e: any) {
-      setFetchError(e?.message ?? "Binance API 호출 실패");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { void fetchBinanceData(); }, [fetchBinanceData]);
+  const cryptoTable = trpc.cryptoFutures.getTable.useQuery(undefined, {
+    staleTime: 1000 * 60 * 2,
+    refetchOnWindowFocus: false,
+  });
+  const coins = useMemo<CryptoRow[]>(() => (
+    cryptoTable.data?.success === true ? cryptoTable.data.coins as CryptoRow[] : []
+  ), [cryptoTable.data]);
+  const isLoading = cryptoTable.isLoading || cryptoTable.isFetching;
+  const fetchError = cryptoTable.error?.message
+    ?? (cryptoTable.data?.success === false ? cryptoTable.data.error : null);
+  const lastUpdated = useMemo(() => {
+    if (cryptoTable.data?.success === true && cryptoTable.data.lastUpdated) return cryptoTable.data.lastUpdated;
+    return coins
+      .map(row => row.lastUpdated)
+      .filter(Boolean)
+      .sort()
+      .at(-1) ?? null;
+  }, [coins, cryptoTable.data]);
 
   // 보조지표는 서버 tRPC 유지 (서버에서 Binance kline 호출)
   const technicalIndicators = trpc.cryptoFutures.technicalIndicators.useQuery(
@@ -363,7 +279,7 @@ export default function CryptoSectors() {
     <button type="button" className={`inline-flex items-center gap-1 whitespace-nowrap font-semibold transition hover:text-slate-950 ${align === "right" ? "justify-end text-right" : ""}`} onClick={() => setSort(key)}>{label}{sortIcon(key)}</button>
   );
 
-  const refetchAll = () => { void fetchBinanceData(); };
+  const refetchAll = () => { void cryptoTable.refetch(); };
 
   const priceChartData = useMemo(() => {
     const history = technicalIndicators.data?.detail?.priceHistory ?? [];
@@ -398,12 +314,24 @@ export default function CryptoSectors() {
           <div>
             <Badge className="mb-3 bg-slate-950 text-white hover:bg-slate-950">Crypto Futures Sector Dashboard</Badge>
             <h1 className="text-3xl font-black leading-tight tracking-tight sm:text-4xl">크립토 선물 섹터 분석</h1>
-            <p className="mt-2 text-sm text-slate-500">Binance USDT 무기한 선물 전체 종목 · 펀딩비·거래대금·OI · 서버 기반 12개 기술적 보조지표 · 장기 차트</p>
+            <p className="mt-2 text-sm text-slate-500">Binance USDT 무기한 선물 전체 종목 · Supabase 캐시 기반 펀딩비·거래대금·OI · 서버 기반 12개 기술적 보조지표 · 장기 차트{lastUpdated ? ` · 갱신 ${fmtDt(lastUpdated)}` : ""}</p>
           </div>
           <Button variant="outline" size="sm" className="w-fit rounded-full" onClick={refetchAll} disabled={isLoading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />새로고침
           </Button>
         </div>
+
+        {fetchError ? (
+          <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
+            코인 캐시를 불러오지 못했습니다. {fetchError}
+          </div>
+        ) : null}
+
+        {isLoading && coins.length === 0 ? (
+          <div className="flex min-h-40 items-center justify-center rounded-[2rem] bg-white text-sm font-semibold text-slate-500 shadow-sm">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Supabase 코인 캐시를 불러오는 중입니다.
+          </div>
+        ) : null}
 
         {/* 섹터 요약 카드 */}
         {coins.length > 0 ? (
@@ -518,7 +446,7 @@ export default function CryptoSectors() {
                     <div>
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div><h3 className="text-lg font-black">선물 핵심 지표 12개</h3><p className="mt-1 text-sm text-slate-500">각 카드를 클릭하면 의미·판단 기준·주의점을 확인합니다.</p></div>
-                        <Badge className="rounded-full bg-slate-950 text-white hover:bg-slate-950">Binance 실시간</Badge>
+                        <Badge className="rounded-full bg-slate-950 text-white hover:bg-slate-950">Supabase 캐시</Badge>
                       </div>
                       <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-4">
                         {metricOrder.map(key => {

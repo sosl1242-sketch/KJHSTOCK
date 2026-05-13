@@ -25,6 +25,22 @@ describe("crypto futures sector metrics", () => {
     expect(source).not.toContain("TOP_N");
   });
 
+  it("classifies Binance TradeFi and energy candidates before broad sectors", () => {
+    const source = readFileSync(resolve(process.cwd(), "server/cryptoFutures.ts"), "utf8");
+    const tradeFiIndex = source.indexOf("TradeFi: new Set");
+    const energyIndex = source.indexOf("Energy: new Set");
+    const l1Index = source.indexOf("L1: new Set");
+    const defiIndex = source.indexOf("DeFi: new Set");
+    expect(tradeFiIndex).toBeGreaterThan(-1);
+    expect(energyIndex).toBeGreaterThan(-1);
+    expect(source).toContain('"MSTR"');
+    expect(source).toContain('"ONDO"');
+    expect(source).toContain('"NATGAS"');
+    expect(tradeFiIndex).toBeLessThan(l1Index);
+    expect(tradeFiIndex).toBeLessThan(defiIndex);
+    expect(energyIndex).toBeLessThan(l1Index);
+  });
+
   // ─── 구조 계약 테스트: 실제 API 없이 반환 타입 계약을 검증 ────────────────────
   it("returns Binance USDT perpetual rows with liquidity and funding fields (contract)", () => {
     // 실제 Binance API 호출 없이 반환 타입 계약을 검증한다.

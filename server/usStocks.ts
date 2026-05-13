@@ -467,6 +467,7 @@ export async function fetchUsStockTechnicalDetail(input: { ticker: string; name?
       symbol: parsed.symbol ?? yahooSymbol,
       candles: parsed.candles,
       source: "YahooFinance",
+      currency: "USD",
     });
   } catch (error) {
     const reason = error instanceof Error ? error.message : "알 수 없는 오류";

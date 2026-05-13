@@ -67,6 +67,7 @@ describe("technical indicators", () => {
 
   it("calculates RSI and returns twelve high-low indicators with fair price estimates", () => {
     const detail = calculateTechnicalIndicators(candles);
+    const usdDetail = calculateTechnicalIndicators(candles, "USD");
 
     expect(calculateRsi(candles.map(candle => candle.close))).toBe(100);
     expect(detail.indicators).toHaveLength(12);
@@ -88,6 +89,9 @@ describe("technical indicators", () => {
     expect(detail.low52Week).toBe(candles[0].low);
     expect(detail.fairPriceMedian).toBeGreaterThan(0);
     expect(detail.indicators.every(indicator => indicator.fairPriceDisplay.endsWith("원"))).toBe(true);
+    const usdFairPrices = usdDetail.indicators.filter(indicator => indicator.fairPrice !== null);
+    expect(usdFairPrices.every(indicator => indicator.fairPriceDisplay.startsWith("$"))).toBe(true);
+    expect(usdFairPrices.every(indicator => !indicator.fairPriceDisplay.endsWith("원"))).toBe(true);
   });
 
   it("requests Yahoo chart history with string query parameters and returns price history", async () => {

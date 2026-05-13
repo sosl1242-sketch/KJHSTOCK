@@ -355,3 +355,27 @@ export async function upsertCryptoFuturesCache(data: InsertCryptoFuturesCache) {
       },
     });
 }
+
+export async function upsertCryptoFuturesCacheRows(data: InsertCryptoFuturesCache[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  if (data.length === 0) return;
+  await db
+    .insert(cryptoFuturesCache)
+    .values(data)
+    .onConflictDoUpdate({
+      target: cryptoFuturesCache.symbol,
+      set: {
+        name: sql`excluded."name"`,
+        price: sql`excluded."price"`,
+        change24h: sql`excluded."change24h"`,
+        changePercent24h: sql`excluded."changePercent24h"`,
+        high24h: sql`excluded."high24h"`,
+        low24h: sql`excluded."low24h"`,
+        volume24hUsd: sql`excluded."volume24hUsd"`,
+        openInterestUsd: sql`excluded."openInterestUsd"`,
+        fundingRate: sql`excluded."fundingRate"`,
+        cachedAt: new Date(),
+      },
+    });
+}

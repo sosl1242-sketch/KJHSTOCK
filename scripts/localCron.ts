@@ -1,9 +1,9 @@
 import "dotenv/config";
 import { closeDb, seedDefaultStocksIfNeeded } from "../server/db";
-import { syncAllPublicQueryCaches } from "../server/cacheSync";
+import { syncAllPublicQueryCaches, syncCryptoFuturesTableCache } from "../server/cacheSync";
 import { refreshStaleStoredStockPrices } from "../server/stockPrice";
 
-type Task = "seed-stocks" | "refresh-prices" | "sync-caches" | "all";
+type Task = "seed-stocks" | "refresh-prices" | "sync-crypto" | "sync-caches" | "all";
 
 function getArgValue(args: string[], name: string) {
   const prefix = `${name}=`;
@@ -50,6 +50,10 @@ async function runTask(task: Task, args: string[]) {
     return syncAllPublicQueryCaches();
   }
 
+  if (task === "sync-crypto") {
+    return syncCryptoFuturesTableCache();
+  }
+
   await seedDefaultStocksIfNeeded();
   const price = await refreshStaleStoredStockPrices({
     batchSize: readBatchSize(args),
@@ -61,7 +65,7 @@ async function runTask(task: Task, args: string[]) {
 
 async function main() {
   const [rawTask = "all", ...args] = process.argv.slice(2);
-  const allowed: Task[] = ["seed-stocks", "refresh-prices", "sync-caches", "all"];
+  const allowed: Task[] = ["seed-stocks", "refresh-prices", "sync-crypto", "sync-caches", "all"];
   if (!allowed.includes(rawTask as Task)) {
     throw new Error(`Unknown task "${rawTask}". Use one of: ${allowed.join(", ")}`);
   }

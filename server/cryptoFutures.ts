@@ -1,4 +1,6 @@
 import { buildTechnicalIndicatorDetailFromCandles, PriceCandle } from "./technicalIndicators";
+import { getAllCachedCryptoFutures } from "./db";
+import type { CryptoFuturesCache } from "../drizzle/schema";
 export const CRYPTO_FUTURES_METRICS = [
   { key: "volume24hUsd", label: "24h 거래대금", description: "바이낸스 USDT 무기한 선물의 최근 24시간 명목 거래대금입니다." },
   { key: "change24hPercent", label: "24h 등락률", description: "바이낸스 선물 티커 기준 하루 가격 변화율입니다." },
@@ -16,7 +18,7 @@ export const CRYPTO_FUTURES_METRICS = [
 
 export type CryptoMetricKey = (typeof CRYPTO_FUTURES_METRICS)[number]["key"];
 
-export type CryptoFuturesSector = "L1" | "L2" | "AI" | "DeFi" | "Meme" | "Exchange" | "Payments" | "Infrastructure" | "Other";
+export type CryptoFuturesSector = "TradeFi" | "Energy" | "L1" | "L2" | "AI" | "DeFi" | "Meme" | "Exchange" | "Payments" | "Infrastructure" | "Other";
 
 export type CryptoFuturesAsset = {
   rank: number;
@@ -89,10 +91,13 @@ type CachedCryptoFutures = {
   rows: CryptoFuturesTableRow[];
   fetchedAt: string;
   warning?: string;
+  source: string;
+  sourceUrl?: string;
 };
 
 const BINANCE_FUTURES_BASE_URL = "https://fapi.binance.com";
 const CACHE_TTL_MS = 1000 * 60 * 3;
+const DB_CACHE_STALE_WARNING_MS = 1000 * 60 * 10;
 const OPEN_INTEREST_DETAIL_LIMIT = 120;
 const REQUEST_TIMEOUT_MS = 30_000;
 
@@ -145,16 +150,37 @@ const assetNames: Record<string, string> = {
   ENA: "Ethena",
   ONDO: "Ondo",
   PENDLE: "Pendle",
+  MSTR: "Strategy",
+  AMZN: "Amazon",
+  CRCL: "Circle",
+  COIN: "Coinbase",
+  PLTR: "Palantir",
+  TSLA: "Tesla",
+  META: "Meta",
+  NVDA: "NVIDIA",
+  GOOGL: "Alphabet",
+  QQQ: "Invesco QQQ",
+  SPY: "SPDR S&P 500 ETF",
+  EWY: "iShares MSCI South Korea ETF",
+  EWJ: "iShares MSCI Japan ETF",
+  NATGAS: "Natural Gas",
+  OM: "Mantra",
+  POLYX: "Polymesh",
+  RSR: "Reserve Rights",
+  POWR: "Powerledger",
+  GAS: "Gas",
 };
 
 const sectorSets: Record<Exclude<CryptoFuturesSector, "Other">, Set<string>> = {
-  L1: new Set(["BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "AVAX", "TON", "NEAR", "APT", "SUI", "DOT", "ATOM", "SEI", "TRX", "ETC", "LTC", "BCH", "ICP", "KAS", "HBAR", "ALGO", "EGLD", "XLM", "FIL"]),
+  TradeFi: new Set(["MSTR", "AMZN", "CRCL", "COIN", "PLTR", "TSLA", "META", "NVDA", "GOOGL", "QQQ", "SPY", "EWY", "EWJ", "ONDO", "PENDLE", "ENA", "OM", "POLYX", "RSR", "MKR"]),
+  Energy: new Set(["NATGAS", "POWR", "GAS"]),
+  Exchange: new Set(["BNB", "COIN", "OKB", "CRO", "GT", "KCS", "LEO", "BGB", "FTT"]),
+  Payments: new Set(["XRP", "XLM", "LTC", "BCH", "CELO", "ACH", "COTI", "DASH", "ZEC"]),
+  L1: new Set(["BTC", "ETH", "SOL", "ADA", "AVAX", "TON", "NEAR", "APT", "SUI", "DOT", "ATOM", "SEI", "TRX", "ETC", "ICP", "KAS", "HBAR", "ALGO", "EGLD", "FIL"]),
   L2: new Set(["ARB", "OP", "MATIC", "POL", "STRK", "METIS", "IMX", "MANTA", "ZK", "ZRO"]),
   AI: new Set(["FET", "TAO", "RNDR", "RENDER", "NEAR", "GRT", "WLD", "ARKM", "AI", "AGIX", "OCEAN", "NMR", "PHB", "VIRTUAL", "KAITO"]),
-  DeFi: new Set(["UNI", "AAVE", "MKR", "LDO", "DYDX", "JUP", "ENA", "ONDO", "PENDLE", "INJ", "RUNE", "CRV", "COMP", "SNX", "SUSHI", "1INCH", "CAKE", "GMX", "WOO", "ZRX"]),
+  DeFi: new Set(["UNI", "AAVE", "LDO", "DYDX", "JUP", "INJ", "RUNE", "CRV", "COMP", "SNX", "SUSHI", "1INCH", "CAKE", "GMX", "WOO", "ZRX"]),
   Meme: new Set(["DOGE", "SHIB", "PEPE", "WIF", "BONK", "FLOKI", "MEME", "BRETT", "POPCAT", "PNUT", "MEW", "TURBO"]),
-  Exchange: new Set(["BNB", "OKB", "CRO", "GT", "KCS", "LEO", "BGB", "FTT"]),
-  Payments: new Set(["BTC", "XRP", "LTC", "BCH", "XLM", "DASH", "ZEC"]),
   Infrastructure: new Set(["LINK", "PYTH", "TIA", "AR", "FIL", "STORJ", "JASMY", "IOTX", "ENS", "API3", "ANKR"]),
 };
 
@@ -290,12 +316,79 @@ async function fetchLiveCryptoFutures(): Promise<CachedCryptoFutures> {
     };
   });
 
-  return { rows, fetchedAt };
+  return { rows, fetchedAt, source: "Binance Futures Public API", sourceUrl: `${BINANCE_FUTURES_BASE_URL}/fapi/v1/ticker/24hr` };
+}
+
+export async function fetchLiveCryptoFuturesTable() {
+  const result = await fetchLiveCryptoFutures();
+  return result.rows;
+}
+
+function mapCachedCryptoFuturesRow(row: CryptoFuturesCache, index: number): CryptoFuturesTableRow {
+  const symbol = row.symbol.toUpperCase();
+  const baseAsset = getBaseAsset(symbol);
+  const price = row.price ?? 0;
+  const volume24hUsd = row.volume24hUsd ?? 0;
+  const openInterestUsd = row.openInterestUsd ?? null;
+  return {
+    rank: index + 1,
+    ticker: symbol,
+    name: row.name ?? assetNames[baseAsset] ?? baseAsset,
+    baseAsset,
+    sector: classifySector(baseAsset),
+    contractType: "PERPETUAL",
+    price,
+    high24h: row.high24h ?? 0,
+    low24h: row.low24h ?? 0,
+    change24hPercent: round(row.changePercent24h ?? row.change24h ?? 0, 2),
+    change7dPercent: null,
+    marketCapUsd: null,
+    fdvUsd: null,
+    circulatingSupply: null,
+    baseVolume24h: 0,
+    volume24hUsd,
+    fundingRate: row.fundingRate ?? 0,
+    markPrice: price || null,
+    nextFundingTime: null,
+    openInterestUsd,
+    volatility30dPercent: null,
+    longShortRatio: null,
+    lastUpdated: row.cachedAt.toISOString(),
+    volumeToMarketCapPercent: null,
+    openInterestToMarketCapPercent: null,
+    openInterestToVolumePercent: openInterestUsd !== null && volume24hUsd > 0 ? round((openInterestUsd / volume24hUsd) * 100, 2) : null,
+  };
+}
+
+async function loadCachedCryptoFutures(): Promise<CachedCryptoFutures | null> {
+  const cachedRows = await getAllCachedCryptoFutures();
+  if (!cachedRows.length) return null;
+  const sorted = [...cachedRows].sort((a, b) => (b.volume24hUsd ?? 0) - (a.volume24hUsd ?? 0));
+  const rows = sorted.map(mapCachedCryptoFuturesRow);
+  const fetchedAt = sorted
+    .map(row => row.cachedAt)
+    .sort((a, b) => b.getTime() - a.getTime())[0]
+    ?.toISOString() ?? nowIso();
+  const cacheAgeMs = Date.now() - new Date(fetchedAt).getTime();
+  return {
+    rows,
+    fetchedAt,
+    source: "Supabase crypto_futures_cache",
+    warning: cacheAgeMs > DB_CACHE_STALE_WARNING_MS
+      ? `로컬 cron Binance 캐시가 ${Math.round(cacheAgeMs / 60000)}분 전 데이터입니다.`
+      : undefined,
+  };
 }
 
 async function loadCryptoFutures(): Promise<CachedCryptoFutures> {
   if (cachedResult && Date.now() - new Date(cachedResult.fetchedAt).getTime() < CACHE_TTL_MS) {
     return cachedResult;
+  }
+
+  const dbCache = await loadCachedCryptoFutures();
+  if (dbCache) {
+    cachedResult = dbCache;
+    return dbCache;
   }
 
   try {
@@ -326,8 +419,8 @@ export async function getCryptoFuturesDataStatus() {
     total: result.rows.length,
     lastUpdated: result.fetchedAt,
     warning: result.warning,
-    source: "Binance Futures Public API",
-    sourceUrl: `${BINANCE_FUTURES_BASE_URL}/fapi/v1/ticker/24hr`,
+    source: result.source,
+    sourceUrl: result.sourceUrl,
   };
 }
 
@@ -398,5 +491,6 @@ export async function fetchCryptoFuturesTechnicalDetail(input: { symbol: string;
     symbol,
     candles: parseKlinesToCandles(klines),
     source: "Binance Futures Public API",
+    currency: "USD",
   });
 }

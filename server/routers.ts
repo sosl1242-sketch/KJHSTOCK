@@ -8,7 +8,7 @@ import { fetchNaverFinancialDetail, fetchNaverFinancialSummaries } from "./finan
 import { ensureStockPriceAutoRefreshJob, getStockPriceAutoRefreshStatus, pauseStockPriceAutoRefreshJob } from "./priceAutoRefresh";
 import { fetchKoreanStockPrice, refreshAllStoredStockPrices } from "./stockPrice";
 import { fetchTechnicalIndicatorDetail } from "./technicalIndicators";
-import { fetchCryptoFuturesTechnicalDetail, getCryptoFuturesSummary, getCryptoFuturesTable } from "./cryptoFutures";
+import { fetchCryptoFuturesTechnicalDetail, getCryptoFuturesDataStatus, getCryptoFuturesSummary, getCryptoFuturesTable } from "./cryptoFutures";
 import { fetchUsStockTechnicalDetail, getUsStocksSummary, getUsStocksTable } from "./usStocks";
 
 const sectorSchema = z.enum(stockSectors);
@@ -255,7 +255,8 @@ export const appRouter = router({
     getTable: publicProcedure.query(async () => {
       try {
         const coins = await getCryptoFuturesTable();
-        return { success: true, coins, total: coins.length, lastUpdated: new Date().toISOString() };
+        const status = await getCryptoFuturesDataStatus();
+        return { success: true, coins, total: coins.length, lastUpdated: status.lastUpdated, warning: status.warning, source: status.source };
       } catch (error) {
         return { success: false, error: "Failed to fetch crypto table" };
       }
@@ -283,6 +284,7 @@ export const appRouter = router({
               symbol: input.symbol,
               candles,
               source: "DB Cache (Binance Futures)",
+              currency: "USD",
             });
             return { success: true, detail };
           }
