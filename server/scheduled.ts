@@ -53,7 +53,7 @@ export async function refreshStockPricesHandler(req: Request, res: Response) {
 
 
 /**
- * 12시간 주기 공개 조회 데이터 캐시 동기화
+ * 일 1회 공개 조회 데이터 캐시 동기화
  * Vercel Cron에서 호출되어 공개 조회 데이터를 DB에 저장
  */
 export async function syncPublicQueryCachesHandler(req: Request, res: Response) {

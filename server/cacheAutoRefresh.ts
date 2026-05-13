@@ -1,8 +1,8 @@
 import { ENV } from "./_core/env";
 
-const CACHE_AUTO_REFRESH_CRON = "0 */12 * * *";
+const CACHE_AUTO_REFRESH_CRON = "0 12 * * *";
 const CALLBACK_PATH = "/api/scheduled/syncPublicQueryCaches";
-const DESCRIPTION = "공개 조회 데이터 캐시는 Vercel Cron이 12시간마다 DB에 동기화합니다.";
+const DESCRIPTION = "공개 조회 데이터 캐시는 Vercel Hobby 제한에 맞춰 하루 1회 DB에 동기화합니다.";
 
 export type CacheAutoRefreshStatus = {
   exists: boolean;

@@ -14,7 +14,7 @@ export type StockPriceAutoRefreshStatus = {
 };
 
 const CALLBACK_PATH = "/api/scheduled/refreshStockPrices";
-const DESCRIPTION = "국내 주식 현재가 캐시는 Vercel Cron이 오래된 종목부터 배치 갱신합니다.";
+const DESCRIPTION = "국내 주식 현재가 캐시는 Vercel Hobby 제한에 맞춰 하루 1회 오래된 종목부터 배치 갱신합니다.";
 
 function toStatus(): StockPriceAutoRefreshStatus {
   return {

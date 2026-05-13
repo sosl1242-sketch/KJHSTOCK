@@ -6,11 +6,11 @@
   "crons": [
     {
       "path": "/api/scheduled/refreshStockPrices",
-      "schedule": "* * * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/scheduled/syncPublicQueryCaches",
-      "schedule": "0 */12 * * *"
+      "schedule": "0 12 * * *"
     }
   ],
   "functions": {

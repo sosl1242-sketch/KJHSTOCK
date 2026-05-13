@@ -13,10 +13,10 @@ This project uses Vercel Cron for scheduled stock/cache refreshes.
 
 | Path | Schedule | Purpose |
 | --- | --- | --- |
-| `/api/scheduled/refreshStockPrices` | `* * * * *` | Refresh stale Korean stock prices in batches. |
-| `/api/scheduled/syncPublicQueryCaches` | `0 */12 * * *` | Sync public financial and technical indicator caches. |
+| `/api/scheduled/refreshStockPrices` | `0 0 * * *` | Refresh stale Korean stock prices in batches. |
+| `/api/scheduled/syncPublicQueryCaches` | `0 12 * * *` | Sync public financial and technical indicator caches. |
 
-Vercel cron expressions are 5-field UTC expressions. Hobby plans may require lowering these to daily schedules; Pro and Enterprise plans support higher-frequency cron jobs.
+Vercel cron expressions are 5-field UTC expressions. Hobby projects are limited to daily schedules; Pro and Enterprise plans support higher-frequency cron jobs.
 
 ## Local Testing
 

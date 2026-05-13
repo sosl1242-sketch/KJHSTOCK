@@ -110,7 +110,7 @@ export const appRouter = router({
               quarterly: [],
               source: "NaverFinance" as const,
               fetchedAt: cached.cachedAt?.toISOString() ?? new Date().toISOString(),
-              note: "캐시된 데이터 (12시간 주기 갱신)",
+              note: "캐시된 데이터 (일 1회 갱신)",
             };
           }
         } catch (error) {
@@ -153,7 +153,7 @@ export const appRouter = router({
                 name: stock.name,
                 marketSuffix: stock.marketSuffix,
                 success: false,
-                error: "캐시 데이터 없음 (12시간 주기 갱신 대기 중)",
+                error: "캐시 데이터 없음 (일 1회 갱신 대기 중)",
                 fetchedAt: new Date().toISOString(),
               });
             }
@@ -204,7 +204,7 @@ export const appRouter = router({
               })),
               source: "YahooFinance" as const,
               fetchedAt: history[0]?.cachedAt?.toISOString() ?? new Date().toISOString(),
-              note: "캐시된 데이터 (12시간 주기 갱신)",
+              note: "캐시된 데이터 (일 1회 갱신)",
             };
           }
         } catch (error) {
