@@ -1,6 +1,6 @@
 /**
  * 공개 조회 데이터 DB 캐싱 동기화
- * 일 1회 Vercel Cron에서 호출되어 외부 API 데이터를 DB에 저장
+ * 로컬 cron에서 호출되어 외부 API 데이터를 DB에 저장
  */
 
 import { fetchNaverFinancialDetail, fetchNaverFinancialSummaries } from "./financials";
@@ -212,7 +212,7 @@ export async function syncCryptoTechnicalCache() {
 }
 
 /**
- * 모든 캐시 동기화 (일 1회 Vercel Cron에서 호출)
+ * 모든 캐시 동기화 (로컬 cron에서 호출)
  */
 export async function syncAllPublicQueryCaches() {
   console.log("[Cache Sync] Starting full cache sync...");

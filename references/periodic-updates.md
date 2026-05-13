@@ -1,30 +1,33 @@
 # Periodic Updates Reference
 
-This project uses Vercel Cron for scheduled stock/cache refreshes.
+This project uses local machine cron for scheduled stock/cache refreshes. Vercel Cron is intentionally not used.
 
 ## Runtime Model
 
-- Vercel invokes cron paths with HTTP `GET` requests against the production deployment.
-- Cron definitions live in `vercel.json`.
-- `CRON_SECRET` must be set in Vercel. Vercel sends it as `Authorization: Bearer <CRON_SECRET>` and the handlers reject requests that do not match.
-- Scheduled handlers are mounted in `server/_core/app.ts` and implemented in `server/scheduled.ts`.
+- Vercel serves the web app and tRPC read/write API.
+- The operating PC runs cron entries from `/home/pyongjoo/Code/00_Refrech_Cron`.
+- Cron executes `pnpm cron:*` scripts inside `/home/pyongjoo/Code/kjhstock`.
+- The scripts connect to Supabase Postgres with `DATABASE_URL` and update cache tables directly.
+- No `/api/scheduled/*` routes are deployed.
 
 ## Configured Jobs
 
-| Path | Schedule | Purpose |
+| Local task | Suggested schedule | Purpose |
 | --- | --- | --- |
-| `/api/scheduled/refreshStockPrices` | `0 0 * * *` | Refresh stale Korean stock prices in batches. |
-| `/api/scheduled/syncPublicQueryCaches` | `0 12 * * *` | Sync public financial and technical indicator caches. |
+| `pnpm cron:prices -- --batch-size 40` | Every minute during Korean market hours | Refresh stale Korean stock prices in batches. |
+| `pnpm cron:caches` | Every 12 hours | Sync public financial and technical indicator caches. |
+| `pnpm cron:seed` | Manual or on install | Ensure the baseline stock list exists. |
 
-Vercel cron expressions are 5-field UTC expressions. Hobby projects are limited to daily schedules; Pro and Enterprise plans support higher-frequency cron jobs.
+The local crontab should set `TZ=Asia/Seoul` so Korean market-hour schedules are easy to read.
 
-## Local Testing
-
-Run the app locally with `CRON_SECRET` set, then call:
+## Manual Testing
 
 ```bash
-curl -H "Authorization: Bearer $CRON_SECRET" \
-  "http://localhost:3000/api/scheduled/refreshStockPrices?batchSize=5"
+cd /home/pyongjoo/Code/kjhstock
+set -a
+. /home/pyongjoo/Code/00_Refrech_Cron/.env
+set +a
+pnpm cron:seed
+pnpm cron:prices -- --batch-size 5
+pnpm cron:caches
 ```
-
-For manual production testing, use the same header against the deployed URL.

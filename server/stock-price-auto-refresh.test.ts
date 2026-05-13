@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("./_core/dataApi", () => ({
-  callDataApi: vi.fn(),
+vi.mock("./yahooFinance", () => ({
+  fetchYahooStockChart: vi.fn(),
 }));
 
 vi.mock("./db", () => ({
@@ -9,13 +9,13 @@ vi.mock("./db", () => ({
   updateStockPrice: vi.fn(),
 }));
 
-import { callDataApi } from "./_core/dataApi";
+import { fetchYahooStockChart } from "./yahooFinance";
 import { listStocks, updateStockPrice } from "./db";
 import { fetchKoreanStockPrice, getKoreaMarketRefreshPolicy, refreshStaleStoredStockPrices } from "./stockPrice";
 
 describe("stock price auto refresh policy", () => {
   beforeEach(() => {
-    vi.mocked(callDataApi).mockReset();
+    vi.mocked(fetchYahooStockChart).mockReset();
     vi.mocked(listStocks).mockReset();
     vi.mocked(updateStockPrice).mockReset();
   });
@@ -38,7 +38,7 @@ describe("stock price auto refresh policy", () => {
   });
 
   it("retries transient price API failures before reporting failure", async () => {
-    vi.mocked(callDataApi)
+    vi.mocked(fetchYahooStockChart)
       .mockRejectedValueOnce(new Error("temporary upstream timeout"))
       .mockResolvedValueOnce({
         chart: { result: [{ meta: { regularMarketPrice: 55500 }, indicators: { quote: [{ close: [55000, 55500] }] } }] },
@@ -47,19 +47,17 @@ describe("stock price auto refresh policy", () => {
     const result = await fetchKoreanStockPrice("005930", "KS", { maxAttempts: 3, retryDelayMs: 0 });
 
     expect(result).toEqual({ price: 55500, symbol: "005930.KS", attempts: 2 });
-    expect(callDataApi).toHaveBeenCalledTimes(2);
-    expect(callDataApi).toHaveBeenLastCalledWith("YahooFinance/get_stock_chart", expect.objectContaining({
-      query: expect.objectContaining({ symbol: "005930.KS", interval: "1d", range: "5d" }),
-    }));
+    expect(fetchYahooStockChart).toHaveBeenCalledTimes(2);
+    expect(fetchYahooStockChart).toHaveBeenLastCalledWith(expect.objectContaining({ symbol: "005930.KS", interval: "1d", range: "5d" }));
   });
 
   it("reports the retry count when all market suffix attempts fail", async () => {
-    vi.mocked(callDataApi).mockRejectedValue(new Error("upstream unavailable"));
+    vi.mocked(fetchYahooStockChart).mockRejectedValue(new Error("upstream unavailable"));
 
     await expect(fetchKoreanStockPrice("005930", "KS", { maxAttempts: 2, retryDelayMs: 0 }))
       .rejects
       .toThrow("재시도 4회 실패");
-    expect(callDataApi).toHaveBeenCalledTimes(4);
+    expect(fetchYahooStockChart).toHaveBeenCalledTimes(4);
   });
 
   it("refreshes the oldest stale stored stocks first in small batches", async () => {
@@ -123,7 +121,7 @@ describe("stock price auto refresh policy", () => {
         updatedAt: now,
       },
     ]);
-    vi.mocked(callDataApi).mockResolvedValue({
+    vi.mocked(fetchYahooStockChart).mockResolvedValue({
       chart: { result: [{ meta: { regularMarketPrice: 2222 }, indicators: { quote: [{ close: [2100, 2222] }] } }] },
     });
     vi.mocked(updateStockPrice).mockResolvedValue({ id: 2, code: "000002", currentPrice: 2222 } as Awaited<ReturnType<typeof updateStockPrice>>);
@@ -136,9 +134,7 @@ describe("stock price auto refresh policy", () => {
     expect(summary.successCount).toBe(1);
     expect(summary.skippedCount).toBe(1);
     expect(summary.results[0]?.attempts).toBe(1);
-    expect(callDataApi).toHaveBeenCalledWith("YahooFinance/get_stock_chart", expect.objectContaining({
-      query: expect.objectContaining({ symbol: "000002.KS", interval: "1d", range: "5d" }),
-    }));
+    expect(fetchYahooStockChart).toHaveBeenCalledWith(expect.objectContaining({ symbol: "000002.KS", interval: "1d", range: "5d" }));
     expect(updateStockPrice).toHaveBeenCalledWith(2, 2222, "YahooFinance:000002.KS");
   });
 });

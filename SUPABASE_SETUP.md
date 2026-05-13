@@ -12,7 +12,7 @@ Create a Supabase project, then copy these values into Vercel project environmen
 | `VITE_SUPABASE_URL` | Same as `SUPABASE_URL` | Client build-time env. |
 | `VITE_SUPABASE_ANON_KEY` | Same as `SUPABASE_ANON_KEY` | Client build-time env. |
 | `SUPABASE_ADMIN_EMAIL` | Your admin login email | First matching email is promoted to local `admin` role on login. |
-| `CRON_SECRET` | Random string, at least 16 chars | Vercel Cron request guard. |
+| `LOCAL_CRON_ENABLED` | `true` after installing the local cron jobs | Display-only status flag for the admin UI. |
 
 `SUPABASE_SERVICE_ROLE_KEY` is optional. Do not expose it as a `VITE_` variable.
 
@@ -36,6 +36,10 @@ DATABASE_URL="postgresql://..." pnpm db:migrate
 The old MySQL migrations were replaced with a clean Postgres baseline in `drizzle/0000_material_vermin.sql`.
 
 The baseline also enables Row Level Security on app tables and revokes direct `anon`/`authenticated` table grants. The browser only uses Supabase Auth; data access flows through the Vercel API and its server-side database connection.
+
+## Local Cron
+
+Vercel Cron is not used. The production app serves pages and API reads, while `/home/pyongjoo/Code/00_Refrech_Cron` runs scheduled sync jobs from this computer against Supabase with `DATABASE_URL`.
 
 ## Capacity Estimate
 

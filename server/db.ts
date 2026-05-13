@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { InsertStock, InsertUser, Stock, StockSector, stocks, users } from "../drizzle/schema";
@@ -24,6 +24,14 @@ export async function getDb() {
     }
   }
   return _db;
+}
+
+export async function closeDb() {
+  if (_sql) {
+    await _sql.end({ timeout: 5 });
+  }
+  _sql = null;
+  _db = null;
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
@@ -124,23 +132,20 @@ export async function seedDefaultStocksIfNeeded() {
   const seedStocks = KOSPI_TOP200_STOCKS.filter(seed => !seed.marketRank || seed.marketRank <= KOREA_MARKET_CAP_STOCK_LIMIT);
   const existing = await db.select({ id: stocks.id }).from(stocks).limit(KOREA_MARKET_CAP_STOCK_LIMIT + 1);
   if (existing.length >= seedStocks.length) return;
-  for (const seed of seedStocks) {
-    const values = normalizeSeedStock(seed);
-    await db.insert(stocks).values(values).onConflictDoUpdate({
-      target: stocks.code,
-      set: {
-        sector: values.sector,
-        name: values.name,
-        marketSuffix: values.marketSuffix,
-        marketRank: values.marketRank,
-        currentPrice: values.currentPrice,
-        annualEps: values.annualEps,
-        dataSource: values.dataSource,
-        lastPriceFetchedAt: values.lastPriceFetchedAt,
-        updatedAt: new Date(),
-      },
-    });
-  }
+  await db.insert(stocks).values(seedStocks.map(normalizeSeedStock)).onConflictDoUpdate({
+    target: stocks.code,
+    set: {
+      sector: sql`excluded."sector"`,
+      name: sql`excluded."name"`,
+      marketSuffix: sql`excluded."marketSuffix"`,
+      marketRank: sql`excluded."marketRank"`,
+      currentPrice: sql`excluded."currentPrice"`,
+      annualEps: sql`excluded."annualEps"`,
+      dataSource: sql`excluded."dataSource"`,
+      lastPriceFetchedAt: sql`excluded."lastPriceFetchedAt"`,
+      updatedAt: new Date(),
+    },
+  });
 }
 
 function sortStocksByRank(rows: Stock[]) {

@@ -16,7 +16,11 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "cron:seed": "tsx scripts/localCron.ts seed-stocks",
+    "cron:prices": "tsx scripts/localCron.ts refresh-prices",
+    "cron:caches": "tsx scripts/localCron.ts sync-caches",
+    "cron:all": "tsx scripts/localCron.ts all"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",

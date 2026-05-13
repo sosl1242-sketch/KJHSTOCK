@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("./_core/dataApi", () => ({
-  callDataApi: vi.fn(),
+vi.mock("./yahooFinance", () => ({
+  fetchYahooStockChart: vi.fn(),
 }));
 import { appRouter } from "./routers";
 import { calculateEarningsYield } from "./db";
 import { extractLatestPrice } from "./stockPrice";
-import { callDataApi } from "./_core/dataApi";
+import { fetchYahooStockChart } from "./yahooFinance";
 import { calculateRsi, calculateTechnicalIndicators, fetchTechnicalIndicatorDetail, type PriceCandle } from "./technicalIndicators";
 import type { TrpcContext } from "./_core/context";
 
@@ -50,7 +50,7 @@ describe("calculateEarningsYield", () => {
 
 describe("technical indicators", () => {
   beforeEach(() => {
-    vi.mocked(callDataApi).mockReset();
+    vi.mocked(fetchYahooStockChart).mockReset();
   });
 
   const candles: PriceCandle[] = Array.from({ length: 60 }, (_, index) => {
@@ -92,7 +92,7 @@ describe("technical indicators", () => {
 
   it("requests Yahoo chart history with string query parameters and returns price history", async () => {
     const timestamps = candles.map((_, index) => Date.UTC(2026, 0, index + 1) / 1000);
-    vi.mocked(callDataApi).mockResolvedValueOnce({
+    vi.mocked(fetchYahooStockChart).mockResolvedValueOnce({
       chart: {
         result: [
           {
@@ -116,15 +116,13 @@ describe("technical indicators", () => {
 
     const detail = await fetchTechnicalIndicatorDetail({ code: "005930", name: "삼성전자", marketSuffix: "KS" });
 
-    expect(callDataApi).toHaveBeenCalledWith("YahooFinance/get_stock_chart", {
-      query: expect.objectContaining({
-        symbol: "005930.KS",
-        region: "KR",
-        interval: "1d",
-        range: "2y",
-        includeAdjustedClose: "true",
-      }),
-    });
+    expect(fetchYahooStockChart).toHaveBeenCalledWith(expect.objectContaining({
+      symbol: "005930.KS",
+      region: "KR",
+      interval: "1d",
+      range: "2y",
+      includeAdjustedClose: true,
+    }));
     expect(detail.symbol).toBe("005930.KS");
     expect(detail.priceHistory).toHaveLength(candles.length);
     expect(detail.priceHistory[0]).toMatchObject({ date: "2026-01-01", close: candles[0].close });

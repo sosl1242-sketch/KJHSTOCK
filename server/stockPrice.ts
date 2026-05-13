@@ -1,9 +1,9 @@
 import { TRPCError } from "@trpc/server";
-import { callDataApi } from "./_core/dataApi";
 import { listStocks, updateStockPrice } from "./db";
+import { fetchYahooStockChart } from "./yahooFinance";
 
 export const PRICE_AUTO_REFRESH_JOB_NAME = "stock-price-refresh-60s";
-export const PRICE_AUTO_REFRESH_CRON = "0 0 * * *";
+export const PRICE_AUTO_REFRESH_CRON = "* 9-14 * * 1-5; 0-30 15 * * 1-5";
 export const PRICE_AUTO_REFRESH_INTERVAL_SECONDS = 60;
 export const REGULAR_MARKET_STALE_MS = PRICE_AUTO_REFRESH_INTERVAL_SECONDS * 1000;
 export const CLOSED_MARKET_STALE_MS = 30 * 60 * 1000;
@@ -130,14 +130,12 @@ export async function fetchKoreanStockPrice(code: string, marketSuffix: "KS" | "
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       totalAttempts += 1;
       try {
-        const payload = await callDataApi("YahooFinance/get_stock_chart", {
-          query: {
-            symbol,
-            region: "KR",
-            interval: "1d",
-            range: "5d",
-            includeAdjustedClose: true,
-          },
+        const payload = await fetchYahooStockChart({
+          symbol,
+          region: "KR",
+          interval: "1d",
+          range: "5d",
+          includeAdjustedClose: true,
         });
         const price = extractLatestPrice(payload);
         if (price) {

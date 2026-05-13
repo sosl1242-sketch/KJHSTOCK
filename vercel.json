@@ -3,16 +3,6 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm build:vercel",
   "outputDirectory": "dist/public",
-  "crons": [
-    {
-      "path": "/api/scheduled/refreshStockPrices",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/scheduled/syncPublicQueryCaches",
-      "schedule": "0 12 * * *"
-    }
-  ],
   "functions": {
     "api/**/*.js": {
       "maxDuration": 30

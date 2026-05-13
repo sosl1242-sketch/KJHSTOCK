@@ -3,7 +3,6 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
-import { refreshStockPricesHandler, syncPublicQueryCachesHandler } from "../scheduled";
 
 export function createApp() {
   const app = express();
@@ -12,11 +11,6 @@ export function createApp() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   registerStorageProxy(app);
-
-  app.get("/api/scheduled/refreshStockPrices", refreshStockPricesHandler);
-  app.post("/api/scheduled/refreshStockPrices", refreshStockPricesHandler);
-  app.get("/api/scheduled/syncPublicQueryCaches", syncPublicQueryCachesHandler);
-  app.post("/api/scheduled/syncPublicQueryCaches", syncPublicQueryCachesHandler);
 
   app.use(
     "/api/trpc",

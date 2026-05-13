@@ -13,20 +13,19 @@ export type StockPriceAutoRefreshStatus = {
   description: string;
 };
 
-const CALLBACK_PATH = "/api/scheduled/refreshStockPrices";
-const DESCRIPTION = "국내 주식 현재가 캐시는 Vercel Hobby 제한에 맞춰 하루 1회 오래된 종목부터 배치 갱신합니다.";
+const DESCRIPTION = "국내 주식 현재가 캐시는 운영 PC의 로컬 cron이 Supabase DB를 직접 배치 갱신합니다.";
 
 function toStatus(): StockPriceAutoRefreshStatus {
   return {
     exists: true,
-    enabled: Boolean(ENV.cronSecret),
+    enabled: ENV.localCronEnabled,
     taskUid: null,
     cronExpression: PRICE_AUTO_REFRESH_CRON,
     intervalSeconds: PRICE_AUTO_REFRESH_INTERVAL_SECONDS,
-    callbackPath: CALLBACK_PATH,
+    callbackPath: "scripts/localCron.ts refresh-prices",
     nextExecutionAt: null,
     lastExecutedAt: null,
-    description: `${DESCRIPTION} CRON_SECRET이 설정되어 있어야 실행 요청이 통과합니다.`,
+    description: `${DESCRIPTION} 앱 서버는 조회만 담당하고 예약 실행은 이 컴퓨터의 crontab이 담당합니다.`,
   };
 }
 

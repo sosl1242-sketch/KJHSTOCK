@@ -63,12 +63,12 @@
 - [x] 캐시 동기화 함수 작성 (server/cacheSync.ts)
 - [x] TypeScript 검사 통과 (36개 테스트 모두 통과)
 
-## 일 1회 Vercel Cron 스케줄 추가 (2026-05-13 #5)
-- [x] 캐시 동기화 라우트 추가 (server/scheduled.ts)
-- [x] 라우트 등록 (server/_core/app.ts)
-- [x] Vercel Cron 상태 함수 작성 (server/cacheAutoRefresh.ts)
+## 로컬 cron 기반 동기화로 전환 (2026-05-13 #5)
+- [x] Vercel scheduled 라우트 제거
+- [x] 로컬 cron runner 추가 (scripts/localCron.ts)
+- [x] 로컬 cron 상태 함수 작성 (server/cacheAutoRefresh.ts)
 - [x] TypeScript 검사 통과 (36개 테스트 모두 통과)
-- [x] 관리자 패널에서 Vercel Cron 상태 확인 기능 추가
+- [x] 관리자 패널에서 로컬 cron 상태 확인 기능 추가
 - [x] 모든 기능 구현 완료 및 테스트 통과
 
 
@@ -80,7 +80,7 @@
 - [x] 상위 15개 크립토 심볼 일 1회 자동 캐싱
 - [x] priceHistoryCache에 크립토 데이터 저장 (market='CRYPTO')
 - [x] TypeScript 검사 통과 (36개 테스트 모두 통과)
-- [x] 크립토 초기 캠닜 데이터 로드: 서버 시작 시 동기적 로드 + 일 1회 Vercel Cron + 관리자 수동 로드
+- [x] 크립토 초기 캠닜 데이터 로드: 서버 시작 시 동기적 로드 + 로컬 cron + 관리자 수동 로드
 
 
 ## 크립토 가격 스케일 오류 버그 (2026-05-13 #7)

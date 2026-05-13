@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { callDataApi } from "./_core/dataApi";
+import { fetchYahooStockChart } from "./yahooFinance";
 
 export type MarketSuffix = "KS" | "KQ";
 
@@ -374,14 +374,12 @@ export async function fetchTechnicalIndicatorDetail(input: { code: string; name?
   for (const suffix of suffixes) {
     const symbol = `${code}.${suffix}`;
     try {
-      const payload = await callDataApi("YahooFinance/get_stock_chart", {
-        query: {
-          symbol,
-          region: "KR",
-          interval: "1d",
-          range: "2y",
-          includeAdjustedClose: "true",
-        },
+      const payload = await fetchYahooStockChart({
+        symbol,
+        region: "KR",
+        interval: "1d",
+        range: "2y",
+        includeAdjustedClose: true,
       });
       const parsed = parseCandles(payload);
       if (parsed.candles.length >= 30) {

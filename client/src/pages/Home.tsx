@@ -767,10 +767,10 @@ export default function Home() {
   const serverAutoRefreshText = !isAdmin
     ? "화면 3분 자동 조회"
     : autoRefreshStatus.isLoading
-      ? "Vercel Cron 확인 중"
+      ? "로컬 cron 확인 중"
       : autoRefreshStatus.data?.enabled
-        ? "Vercel Cron 보안 설정됨"
-        : "CRON_SECRET 미설정";
+        ? "로컬 cron 운영 중"
+        : "로컬 cron 상태 미표시";
   const indicatorStatusClass = (status: string) => {
     if (status === "overheated" || status === "watch_high") return "border-rose-200 bg-rose-50 text-rose-800";
     if (status === "oversold" || status === "watch_low") return "border-blue-200 bg-blue-50 text-blue-800";
