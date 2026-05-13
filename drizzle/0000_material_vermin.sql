@@ -84,3 +84,27 @@ CREATE TABLE "users" (
 	"lastSignedIn" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "users_openId_unique" UNIQUE("openId")
 );
+--> statement-breakpoint
+ALTER TABLE "crypto_futures_cache" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+ALTER TABLE "price_history_cache" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+ALTER TABLE "stock_financial_cache" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+ALTER TABLE "stocks" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+ALTER TABLE "us_stock_cache" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+ALTER TABLE "users" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+REVOKE ALL ON TABLE "crypto_futures_cache" FROM anon, authenticated;
+--> statement-breakpoint
+REVOKE ALL ON TABLE "price_history_cache" FROM anon, authenticated;
+--> statement-breakpoint
+REVOKE ALL ON TABLE "stock_financial_cache" FROM anon, authenticated;
+--> statement-breakpoint
+REVOKE ALL ON TABLE "stocks" FROM anon, authenticated;
+--> statement-breakpoint
+REVOKE ALL ON TABLE "us_stock_cache" FROM anon, authenticated;
+--> statement-breakpoint
+REVOKE ALL ON TABLE "users" FROM anon, authenticated;

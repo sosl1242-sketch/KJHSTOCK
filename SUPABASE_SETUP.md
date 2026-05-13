@@ -35,6 +35,8 @@ DATABASE_URL="postgresql://..." pnpm db:migrate
 
 The old MySQL migrations were replaced with a clean Postgres baseline in `drizzle/0000_material_vermin.sql`.
 
+The baseline also enables Row Level Security on app tables and revokes direct `anon`/`authenticated` table grants. The browser only uses Supabase Auth; data access flows through the Vercel API and its server-side database connection.
+
 ## Capacity Estimate
 
 The app is small for Supabase:

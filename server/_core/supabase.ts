@@ -54,6 +54,10 @@ export async function authenticateSupabaseRequest(req: Request): Promise<User> {
   }
 
   const supabaseUser = data.user;
+  if (!supabaseUser.email_confirmed_at) {
+    throw new Error("Supabase email is not confirmed");
+  }
+
   const email = supabaseUser.email ?? null;
 
   await db.upsertUser({
@@ -71,4 +75,3 @@ export async function authenticateSupabaseRequest(req: Request): Promise<User> {
 
   return user;
 }
-
