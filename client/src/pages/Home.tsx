@@ -35,7 +35,8 @@ type PriceChartFrame = "daily" | "weekly" | "monthly";
 const TABLE_PAGE_SIZE = 25;
 const KOREA_MARKET_CAP_LIMIT = 300;
 const SUMMARY_SORT_KEYS = new Set<SortKey>(["per", "pbr", "marketCapHundredMillionKrw", "latestOperatingProfitHundredMillionKrw"]);
-const PRICE_AUTO_REFETCH_MS = 1000 * 60 * 3;
+const PRICE_AUTO_REFETCH_MS = 1000 * 60 * 60;
+const PRICE_AUTO_REFETCH_LABEL = "화면 1시간 재조회";
 
 type StockForm = {
   id?: number;
@@ -765,7 +766,7 @@ export default function Home() {
   const currentSortLabel = sortState ? `${sortLabels[sortState.key]} ${sortState.direction === "desc" ? "내림차순" : "오름차순"}` : "정렬취소: 기본 표시순";
   const lastClientRefreshText = stocksQuery.dataUpdatedAt ? formatDateTime(new Date(stocksQuery.dataUpdatedAt)) : "대기 중";
   const serverAutoRefreshText = !isAdmin
-    ? "화면 3분 자동 조회"
+    ? "조회 전용"
     : autoRefreshStatus.isLoading
       ? "로컬 cron 확인 중"
       : autoRefreshStatus.data?.enabled
@@ -1078,7 +1079,7 @@ export default function Home() {
             <div className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-900">
               <span className="inline-flex items-center gap-2">
                 <Activity className={`h-3.5 w-3.5 ${stocksQuery.isFetching ? "animate-pulse" : ""}`} />
-                {serverAutoRefreshText} · 화면 3분 재조회 · 최근 반영 {lastClientRefreshText}
+                {serverAutoRefreshText} · {PRICE_AUTO_REFETCH_LABEL} · 화면 갱신 {lastClientRefreshText}
               </span>
             </div>
             <div className="relative min-w-[240px] flex-1 md:flex-none">

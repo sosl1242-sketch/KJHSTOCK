@@ -23,12 +23,12 @@ describe("technical indicator detail drilldown UI contract", () => {
     expect(homeSource).toContain("volumeRatio");
   });
 
-  it("keeps 3 minute screen polling and local cron status copy", () => {
-    expect(homeSource).toContain("PRICE_AUTO_REFETCH_MS = 1000 * 60 * 3");
+  it("keeps relaxed screen polling and local cron status copy", () => {
+    expect(homeSource).toContain("PRICE_AUTO_REFETCH_MS = 1000 * 60 * 60");
+    expect(homeSource).toContain('PRICE_AUTO_REFETCH_LABEL = "화면 1시간 재조회"');
     expect(homeSource).toContain("autoRefreshStatus");
     expect(homeSource).toContain("로컬 cron 운영 중");
-    expect(homeSource).toContain("화면 3분 재조회");
-    expect(homeSource).toContain("최근 반영");
+    expect(homeSource).toContain("화면 갱신");
   });
 
   it("keeps guide coverage for all 12 currently supported indicator keys", () => {

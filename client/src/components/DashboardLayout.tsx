@@ -10,7 +10,7 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { BarChart3, Bitcoin, Globe2, Lock } from "lucide-react";
+import { BarChart3, Bitcoin, Globe2, Loader2, Lock } from "lucide-react";
 import { CSSProperties, useEffect, useState } from "react";
 import PasswordLogin from "@/pages/PasswordLogin";
 import { Button } from "./ui/button";
@@ -35,7 +35,7 @@ export default function DashboardLayout({
   });
 
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const { user, logout, loading } = useAuth();
+  const { user, logout, loading, refresh } = useAuth();
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
@@ -47,12 +47,21 @@ export default function DashboardLayout({
     return () => window.removeEventListener("supabase-auth-required", openLogin);
   }, []);
 
-  // 로그인 모달이 열려있으면 표시
-  if (showLoginModal) {
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-sm font-semibold text-white">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        로그인 상태 확인 중
+      </div>
+    );
+  }
+
+  if (!user || showLoginModal) {
     return (
       <PasswordLogin
         onVerified={() => {
           setShowLoginModal(false);
+          void refresh();
         }}
       />
     );
@@ -106,12 +115,6 @@ export default function DashboardLayout({
       </Sidebar>
       <SidebarInset>
         <div className="flex-1">
-          {/* 비로그인 사용자에게 편집 기능 불가 정보 전달 */}
-          {!user && (
-            <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
-              조회 기능은 누구나 사용 가능합니다. 편집 기능을 사용하려면 로그인하세요.
-            </div>
-          )}
           {children}
         </div>
       </SidebarInset>

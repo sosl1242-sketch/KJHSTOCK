@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { stockSectors } from "../drizzle/schema";
 import { systemRouter } from "./_core/systemRouter";
-import { adminProcedure, publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { deleteStock, listStocks, updateStockPrice, upsertStock, getCachedStockFinancial, getCachedPriceHistory } from "./db";
 import { getCacheAutoRefreshStatus, ensureCacheAutoRefreshJob, pauseCacheAutoRefreshJob } from "./cacheAutoRefresh";
 import { fetchNaverFinancialDetail, fetchNaverFinancialSummaries } from "./financials";
@@ -36,7 +36,7 @@ export const appRouter = router({
   }),
 
   stocks: router({
-    list: publicProcedure
+    list: protectedProcedure
       .input(z.object({ sector: sectorSchema.optional() }).optional())
       .query(({ input }) => listStocks(input?.sector)),
 
@@ -83,7 +83,7 @@ export const appRouter = router({
       }
     }),
 
-    financialDetail: publicProcedure
+    financialDetail: protectedProcedure
       .input(z.object({ code: z.string().min(5).max(12), name: z.string().max(120).optional(), marketSuffix: z.enum(["KS", "KQ"]).default("KS") }))
       .query(async ({ input }) => {
         // DB 캐시에서 먼저 조회 (API 호출 없음)
@@ -121,7 +121,7 @@ export const appRouter = router({
         return fetchNaverFinancialDetail(input);
       }),
 
-    financialSummaries: publicProcedure
+    financialSummaries: protectedProcedure
       .input(z.object({
         stocks: z.array(z.object({
           code: z.string().min(5).max(12),
@@ -173,7 +173,7 @@ export const appRouter = router({
         return results;
       }),
 
-    technicalIndicators: publicProcedure
+    technicalIndicators: protectedProcedure
       .input(z.object({ code: z.string().min(5).max(12), name: z.string().max(120).optional(), marketSuffix: z.enum(["KS", "KQ"]).default("KS") }))
       .query(async ({ input }) => {
         // DB 캐시에서 가격 이력 조회 (API 호출 없음)
@@ -217,7 +217,7 @@ export const appRouter = router({
   }),
 
   globalStocks: router({
-    getSummary: publicProcedure.query(async () => {
+    getSummary: protectedProcedure.query(async () => {
       try {
         const summary = await getUsStocksSummary();
         return { success: true, summary };
@@ -225,7 +225,7 @@ export const appRouter = router({
         return { success: false, error: "Failed to fetch US stock summary" };
       }
     }),
-    getTable: publicProcedure.query(async () => {
+    getTable: protectedProcedure.query(async () => {
       try {
         const stocks = await getUsStocksTable();
         return { success: true, stocks, total: stocks.length, lastUpdated: new Date().toISOString() };
@@ -233,7 +233,7 @@ export const appRouter = router({
         return { success: false, error: "Failed to fetch US stock table" };
       }
     }),
-    technicalIndicators: publicProcedure
+    technicalIndicators: protectedProcedure
       .input(z.object({ ticker: z.string().min(1).max(16), name: z.string().max(120).optional() }))
       .query(async ({ input }) => {
         try {
@@ -246,14 +246,14 @@ export const appRouter = router({
   }),
 
   tradeFi: router({
-    getSummary: publicProcedure.query(async () => {
+    getSummary: protectedProcedure.query(async () => {
       try {
         return { success: true, summary: await getTradeFiAssetsSummary() };
       } catch (error) {
         return { success: false, error: "Failed to fetch TradeFi summary" };
       }
     }),
-    getTable: publicProcedure.query(async () => {
+    getTable: protectedProcedure.query(async () => {
       try {
         const assets = await getTradeFiAssetsTable();
         const liveQuoteCount = assets.filter(asset => asset.quoteStatus === "live").length;
@@ -267,14 +267,14 @@ export const appRouter = router({
   }),
 
   cryptoFutures: router({
-    getSummary: publicProcedure.query(async () => {
+    getSummary: protectedProcedure.query(async () => {
       try {
         return { success: true, summary: await getCryptoFuturesSummary() };
       } catch (error) {
         return { success: false, error: "Failed to fetch crypto summary" };
       }
     }),
-    getTable: publicProcedure.query(async () => {
+    getTable: protectedProcedure.query(async () => {
       try {
         const coins = await getCryptoFuturesTable();
         const status = await getCryptoFuturesDataStatus();
@@ -283,7 +283,7 @@ export const appRouter = router({
         return { success: false, error: "Failed to fetch crypto table" };
       }
     }),
-    technicalIndicators: publicProcedure
+    technicalIndicators: protectedProcedure
       .input(z.object({ symbol: z.string().min(4).max(24), name: z.string().max(120).optional() }))
       .query(async ({ input }) => {
         try {

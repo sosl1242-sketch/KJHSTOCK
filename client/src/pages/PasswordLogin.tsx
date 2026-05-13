@@ -85,7 +85,7 @@ export default function PasswordLogin({ onVerified }: PasswordLoginProps) {
             </div>
           </div>
           <CardTitle className="text-2xl">K-Stock Lab</CardTitle>
-          <CardDescription>{mode === "signin" ? "관리자 이메일로 로그인하세요" : "이메일 인증 후 관리자 승인을 받습니다"}</CardDescription>
+          <CardDescription>{mode === "signin" ? "가입한 이메일로 로그인하세요" : "이메일 인증 후 로그인할 수 있습니다"}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Input

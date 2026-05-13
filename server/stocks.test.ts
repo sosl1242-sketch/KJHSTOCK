@@ -166,6 +166,16 @@ describe("extractLatestPrice", () => {
 });
 
 describe("stocks admin permissions", () => {
+  it("blocks stock reads for unauthenticated users", async () => {
+    const caller = appRouter.createCaller(createContext());
+
+    await expect(caller.stocks.list()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(caller.globalStocks.getTable()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(caller.tradeFi.getTable()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(caller.cryptoFutures.getTable()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(caller.system.health({ timestamp: Date.now() })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+  });
+
   it("blocks stock editing for normal users", async () => {
     const caller = appRouter.createCaller(createContext({ role: "user" }));
 
