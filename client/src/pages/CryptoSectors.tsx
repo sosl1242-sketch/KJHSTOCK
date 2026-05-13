@@ -238,6 +238,9 @@ export default function CryptoSectors() {
     { symbol: selectedCoin?.ticker ?? "BTCUSDT", name: selectedCoin?.name },
     { enabled: Boolean(selectedCoin), retry: 1, staleTime: 1000 * 60 * 5 }
   );
+  const technicalDetail = technicalIndicators.data?.success === true ? technicalIndicators.data.detail : null;
+  const technicalErrorMessage = technicalIndicators.error?.message
+    ?? (technicalIndicators.data?.success === false ? technicalIndicators.data.error : null);
 
   const sectors = useMemo(() => Array.from(new Set(coins.map(c => c.sector))), [coins]);
   const filteredRows = useMemo(() => {
@@ -282,7 +285,7 @@ export default function CryptoSectors() {
   const refetchAll = () => { void cryptoTable.refetch(); };
 
   const priceChartData = useMemo(() => {
-    const history = technicalIndicators.data?.detail?.priceHistory ?? [];
+    const history = technicalDetail?.priceHistory ?? [];
     if (priceChartFrame === "daily") return history.slice(-126).map(c => ({ date: c.date.slice(5), fullDate: c.date, close: c.close }));
     const grouped = new Map<string, { date: string; fullDate: string; close: number }>();
     history.forEach(c => {
@@ -294,14 +297,14 @@ export default function CryptoSectors() {
     });
     const agg = Array.from(grouped.values()).sort((a, b) => a.fullDate.localeCompare(b.fullDate));
     return priceChartFrame === "weekly" ? agg.slice(-104) : agg.slice(-36);
-  }, [technicalIndicators.data?.detail?.priceHistory, priceChartFrame]);
+  }, [technicalDetail?.priceHistory, priceChartFrame]);
 
-  const evidenceData = useMemo(() => buildEvidenceRows(technicalIndicators.data?.detail?.priceHistory ?? []).slice(-120), [technicalIndicators.data?.detail?.priceHistory]);
+  const evidenceData = useMemo(() => buildEvidenceRows(technicalDetail?.priceHistory ?? []).slice(-120), [technicalDetail?.priceHistory]);
 
   const selIndicator = useMemo(() => {
-    if (!selectedIndicatorKey || !technicalIndicators.data?.detail) return null;
-    return technicalIndicators.data.detail.indicators.find(i => i.key === selectedIndicatorKey) ?? null;
-  }, [selectedIndicatorKey, technicalIndicators.data]);
+    if (!selectedIndicatorKey || !technicalDetail) return null;
+    return technicalDetail.indicators.find(i => i.key === selectedIndicatorKey) ?? null;
+  }, [selectedIndicatorKey, technicalDetail]);
   const selGuide = selIndicator ? indicatorDetailGuides[selIndicator.key] : undefined;
   const selMethod = selIndicator ? indicatorMethodGuides[selIndicator.key] : undefined;
   const frameLabels: Record<PriceChartFrame, string> = { daily: "일봉", weekly: "주봉", monthly: "월봉" };
@@ -472,8 +475,8 @@ export default function CryptoSectors() {
                         {technicalIndicators.isLoading ? (
                           <div className="flex h-full items-center justify-center text-sm text-slate-400">가격 이력 로딩 중...</div>
                         ) : (() => {
-                          const hist90 = (technicalIndicators.data?.detail?.priceHistory ?? []).slice(-90).map(c => ({ date: c.date.slice(5), fullDate: c.date, price: c.close }));
-                          if (!hist90.length) return <div className="flex h-full items-center justify-center text-sm text-slate-400">기술적 보조지표 탭을 먼저 열면 90일 가격 이력이 표시됩니다.</div>;
+                          const hist90 = (technicalDetail?.priceHistory ?? []).slice(-90).map(c => ({ date: c.date.slice(5), fullDate: c.date, price: c.close }));
+                          if (!hist90.length) return <div className="flex h-full items-center justify-center text-sm text-slate-400">{technicalErrorMessage ?? "표시할 가격 이력이 없습니다."}</div>;
                           // Y축 범위 동적 계산
                           const prices = hist90.map(h => h.price).filter(p => typeof p === "number" && p > 0);
                           const minPrice = Math.min(...prices);
@@ -519,8 +522,8 @@ export default function CryptoSectors() {
                       </div>
                       {technicalIndicators.isLoading ? (
                         <div className="mt-4 flex min-h-64 items-center justify-center rounded-3xl bg-slate-50 text-slate-500"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> 가격 차트를 불러오는 중입니다.</div>
-                      ) : technicalIndicators.error ? (
-                        <div className="mt-4 rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">가격 차트 데이터를 가져오지 못했습니다. {technicalIndicators.error.message}</div>
+                      ) : technicalErrorMessage ? (
+                        <div className="mt-4 rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">가격 차트 데이터를 가져오지 못했습니다. {technicalErrorMessage}</div>
                       ) : priceChartData.length ? (
                         <div className="mt-4 h-72 rounded-3xl bg-slate-50 p-3">
                           <ResponsiveContainer width="100%" height="100%">
@@ -544,20 +547,20 @@ export default function CryptoSectors() {
                           <h3 className="flex items-center gap-2 text-lg font-black"><Activity className="h-5 w-5 text-amber-500" /> 고점·저점 판단 보조지표 12개</h3>
                           <p className="mt-1 text-sm text-slate-500">최근 가격 이력 기반의 참고 지표입니다. 투자 판단은 펀딩비·수급·뉴스를 함께 확인하세요.</p>
                         </div>
-                        {technicalIndicators.data?.detail ? (
+                        {technicalDetail ? (
                           <Badge variant="outline" className="rounded-full bg-slate-50">
-                            {technicalIndicators.data.detail.indicators.length}개 지표 · 종가 {fmtPrice(technicalIndicators.data.detail.latestClose)} · 적정가 중간값 {technicalIndicators.data.detail.fairPriceMedian ? fmtPrice(technicalIndicators.data.detail.fairPriceMedian) : "자료 없음"}
+                            {technicalDetail.indicators.length}개 지표 · 종가 {fmtPrice(technicalDetail.latestClose)} · 적정가 중간값 {technicalDetail.fairPriceMedian ? fmtPrice(technicalDetail.fairPriceMedian) : "자료 없음"}
                           </Badge>
                         ) : null}
                       </div>
                       {technicalIndicators.isLoading ? (
                         <div className="mt-4 flex min-h-32 items-center justify-center rounded-3xl bg-slate-50 text-slate-500"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> 보조지표를 계산하는 중입니다.</div>
-                      ) : technicalIndicators.error ? (
-                        <div className="mt-4 rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">보조지표 계산에 실패했습니다. {technicalIndicators.error.message}</div>
-                      ) : technicalIndicators.data?.detail ? (
+                      ) : technicalErrorMessage ? (
+                        <div className="mt-4 rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">보조지표 계산에 실패했습니다. {technicalErrorMessage}</div>
+                      ) : technicalDetail ? (
                         <>
                           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                            {technicalIndicators.data.detail.indicators.map(ind => {
+                            {technicalDetail.indicators.map(ind => {
                               const guide = indicatorDetailGuides[ind.key];
                               const isSel = selectedIndicatorKey === ind.key;
                               return (
@@ -588,7 +591,7 @@ export default function CryptoSectors() {
                           ) : (
                             <div className="mt-4 rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">각 보조지표 카드를 클릭하면 의미, 판단 기준, 현재 해석, 주의점과 함께 계산 방식, 가격·이동평균·볼린저밴드·MACD 근거 차트가 상세 분석창으로 열립니다.</div>
                           )}
-                          <p className="mt-3 text-xs text-slate-500">출처: {technicalIndicators.data.detail.source} · 조회 시각: {fmtDt(technicalIndicators.data.detail.fetchedAt)}</p>
+                          <p className="mt-3 text-xs text-slate-500">출처: {technicalDetail.source} · 조회 시각: {fmtDt(technicalDetail.fetchedAt)}</p>
                         </>
                       ) : null}
                     </div>
@@ -649,7 +652,7 @@ export default function CryptoSectors() {
                   <div className="mt-4 grid gap-3 sm:grid-cols-3">
                     <div className="rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-100"><p className="text-xs font-black text-slate-500">지표 종류</p><p className="mt-2 text-sm font-bold leading-6 text-slate-800">{selMethod?.category ?? "가격 이력 기반 보조지표"}</p></div>
                     <div className="rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-100"><p className="text-xs font-black text-slate-500">현재값</p><p className="mt-2 text-xl font-black text-slate-950">{selIndicator.displayValue}</p><p className="mt-1 text-xs text-slate-500">{selIndicator.statusLabel}</p></div>
-                    <div className="rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-100"><p className="text-xs font-black text-slate-500">예상 적정가</p><p className="mt-2 text-xl font-black text-slate-950">{selIndicator.fairPriceDisplay}</p><p className="mt-1 text-xs text-slate-500">종가 {fmtPrice(technicalIndicators.data?.detail?.latestClose)} 기준</p></div>
+                    <div className="rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-100"><p className="text-xs font-black text-slate-500">예상 적정가</p><p className="mt-2 text-xl font-black text-slate-950">{selIndicator.fairPriceDisplay}</p><p className="mt-1 text-xs text-slate-500">종가 {fmtPrice(technicalDetail?.latestClose)} 기준</p></div>
                   </div>
                   <div className="mt-4 rounded-3xl bg-amber-50 p-4 ring-1 ring-amber-100">
                     <p className="text-xs font-black text-amber-700">현재 종목에 대한 상세 분석</p>
@@ -715,7 +718,7 @@ export default function CryptoSectors() {
                   </div>
                 </div>
               </div>
-              <p className="text-xs leading-5 text-slate-500">출처: {technicalIndicators.data?.detail?.source ?? "Binance"} · 조회 시각: {fmtDt(technicalIndicators.data?.detail?.fetchedAt)} · 이 상세 분석은 기술적 보조지표 참고 자료이며 투자 판단을 대체하지 않습니다.</p>
+              <p className="text-xs leading-5 text-slate-500">출처: {technicalDetail?.source ?? "Binance"} · 조회 시각: {fmtDt(technicalDetail?.fetchedAt)} · 이 상세 분석은 기술적 보조지표 참고 자료이며 투자 판단을 대체하지 않습니다.</p>
             </DialogContent>
           </Dialog>
         ) : null}

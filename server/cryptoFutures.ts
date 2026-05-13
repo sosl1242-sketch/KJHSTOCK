@@ -163,6 +163,10 @@ const assetNames: Record<string, string> = {
   SPY: "SPDR S&P 500 ETF",
   EWY: "iShares MSCI South Korea ETF",
   EWJ: "iShares MSCI Japan ETF",
+  XAU: "Gold",
+  XAG: "Silver",
+  CL: "WTI Crude Oil",
+  BZ: "Brent Crude Oil",
   NATGAS: "Natural Gas",
   OM: "Mantra",
   POLYX: "Polymesh",
@@ -172,8 +176,8 @@ const assetNames: Record<string, string> = {
 };
 
 const sectorSets: Record<Exclude<CryptoFuturesSector, "Other">, Set<string>> = {
-  TradeFi: new Set(["MSTR", "AMZN", "CRCL", "COIN", "PLTR", "TSLA", "META", "NVDA", "GOOGL", "QQQ", "SPY", "EWY", "EWJ", "ONDO", "PENDLE", "ENA", "OM", "POLYX", "RSR", "MKR"]),
-  Energy: new Set(["NATGAS", "POWR", "GAS"]),
+  TradeFi: new Set(["MSTR", "AMZN", "CRCL", "COIN", "PLTR", "TSLA", "META", "NVDA", "GOOGL", "QQQ", "SPY", "EWY", "EWJ", "XAU", "XAG", "ONDO", "PENDLE", "ENA", "OM", "POLYX", "RSR", "MKR"]),
+  Energy: new Set(["CL", "BZ", "NATGAS", "POWR", "GAS"]),
   Exchange: new Set(["BNB", "COIN", "OKB", "CRO", "GT", "KCS", "LEO", "BGB", "FTT"]),
   Payments: new Set(["XRP", "XLM", "LTC", "BCH", "CELO", "ACH", "COTI", "DASH", "ZEC"]),
   L1: new Set(["BTC", "ETH", "SOL", "ADA", "AVAX", "TON", "NEAR", "APT", "SUI", "DOT", "ATOM", "SEI", "TRX", "ETC", "ICP", "KAS", "HBAR", "ALGO", "EGLD", "FIL"]),

@@ -20,6 +20,7 @@
     "cron:seed": "tsx scripts/localCron.ts seed-stocks",
     "cron:prices": "tsx scripts/localCron.ts refresh-prices",
     "cron:crypto": "tsx scripts/localCron.ts sync-crypto",
+    "cron:crypto:technical": "tsx scripts/localCron.ts sync-crypto-technical",
     "cron:caches": "tsx scripts/localCron.ts sync-caches",
     "cron:all": "tsx scripts/localCron.ts all"
   },

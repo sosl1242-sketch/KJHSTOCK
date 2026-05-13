@@ -8,6 +8,7 @@ import { fetchTechnicalIndicatorDetail } from "./technicalIndicators";
 import { fetchCryptoFuturesTechnicalDetail, fetchLiveCryptoFuturesTable } from "./cryptoFutures";
 import { listStocks } from "./db";
 import {
+  getAllCachedCryptoFutures,
   upsertStockFinancialCache,
   upsertPriceHistoryCache,
   upsertCryptoFuturesCacheRows,
@@ -177,52 +178,74 @@ export async function syncCryptoFuturesTableCache() {
   }
 }
 
+const CRYPTO_TECHNICAL_TARGETS = [
+  { symbol: "BTCUSDT", name: "Bitcoin" },
+  { symbol: "ETHUSDT", name: "Ethereum" },
+  { symbol: "BNBUSDT", name: "Binance Coin" },
+  { symbol: "SOLUSDT", name: "Solana" },
+  { symbol: "ADAUSDT", name: "Cardano" },
+  { symbol: "XRPUSDT", name: "Ripple" },
+  { symbol: "DOGEUSDT", name: "Dogecoin" },
+  { symbol: "AVAXUSDT", name: "Avalanche" },
+  { symbol: "LINKUSDT", name: "Chainlink" },
+  { symbol: "MATICUSDT", name: "Polygon" },
+  { symbol: "LTCUSDT", name: "Litecoin" },
+  { symbol: "BCHUSDT", name: "Bitcoin Cash" },
+  { symbol: "XLMUSDT", name: "Stellar" },
+  { symbol: "ZECUSDT", name: "Zcash" },
+  { symbol: "DASHUSDT", name: "Dash" },
+  { symbol: "CELOUSDT", name: "Celo" },
+  { symbol: "ACHUSDT", name: "Alchemy Pay" },
+  { symbol: "COTIUSDT", name: "COTI" },
+  { symbol: "UNIUSDT", name: "Uniswap" },
+  { symbol: "ATOMUSDT", name: "Cosmos" },
+  { symbol: "ARBUSDT", name: "Arbitrum" },
+  { symbol: "OPUSDT", name: "Optimism" },
+  { symbol: "ONDOUSDT", name: "Ondo" },
+  { symbol: "PENDLEUSDT", name: "Pendle" },
+  { symbol: "ENAUSDT", name: "Ethena" },
+  { symbol: "OMUSDT", name: "Mantra" },
+  { symbol: "POLYXUSDT", name: "Polymesh" },
+  { symbol: "RSRUSDT", name: "Reserve Rights" },
+  { symbol: "MKRUSDT", name: "Maker" },
+  { symbol: "MSTRUSDT", name: "Strategy" },
+  { symbol: "AMZNUSDT", name: "Amazon" },
+  { symbol: "CRCLUSDT", name: "Circle" },
+  { symbol: "COINUSDT", name: "Coinbase" },
+  { symbol: "PLTRUSDT", name: "Palantir" },
+  { symbol: "TSLAUSDT", name: "Tesla" },
+  { symbol: "METAUSDT", name: "Meta" },
+  { symbol: "NVDAUSDT", name: "NVIDIA" },
+  { symbol: "GOOGLUSDT", name: "Alphabet" },
+  { symbol: "QQQUSDT", name: "Invesco QQQ" },
+  { symbol: "SPYUSDT", name: "SPDR S&P 500 ETF" },
+  { symbol: "EWYUSDT", name: "iShares MSCI South Korea ETF" },
+  { symbol: "EWJUSDT", name: "iShares MSCI Japan ETF" },
+  { symbol: "XAUUSDT", name: "Gold" },
+  { symbol: "XAGUSDT", name: "Silver" },
+  { symbol: "CLUSDT", name: "WTI Crude Oil" },
+  { symbol: "BZUSDT", name: "Brent Crude Oil" },
+  { symbol: "NATGASUSDT", name: "Natural Gas" },
+  { symbol: "POWRUSDT", name: "Powerledger" },
+  { symbol: "GASUSDT", name: "Gas" },
+];
+
+async function getCryptoTechnicalTargets() {
+  const cachedRows = await getAllCachedCryptoFutures();
+  if (cachedRows.length === 0) return CRYPTO_TECHNICAL_TARGETS;
+  const available = new Map(cachedRows.map(row => [row.symbol.toUpperCase(), row.name ?? row.symbol.toUpperCase()]));
+  return CRYPTO_TECHNICAL_TARGETS
+    .filter(target => available.has(target.symbol))
+    .map(target => ({ ...target, name: available.get(target.symbol) ?? target.name }));
+}
+
 /**
  * 상위 크립토 심볼의 기술적 보조지표를 Binance에서 조회하여 DB에 캐싱
  */
 export async function syncCryptoTechnicalCache() {
   try {
     // 주요 코인 + TradeFi/Energy 후보만 캐싱 (차트 이력 API 호출 최소화)
-    const topSymbols = [
-      { symbol: "BTCUSDT", name: "Bitcoin" },
-      { symbol: "ETHUSDT", name: "Ethereum" },
-      { symbol: "BNBUSDT", name: "Binance Coin" },
-      { symbol: "SOLUSDT", name: "Solana" },
-      { symbol: "ADAUSDT", name: "Cardano" },
-      { symbol: "XRPUSDT", name: "Ripple" },
-      { symbol: "DOGEUSDT", name: "Dogecoin" },
-      { symbol: "AVAXUSDT", name: "Avalanche" },
-      { symbol: "LINKUSDT", name: "Chainlink" },
-      { symbol: "MATICUSDT", name: "Polygon" },
-      { symbol: "LTCUSDT", name: "Litecoin" },
-      { symbol: "UNIUSDT", name: "Uniswap" },
-      { symbol: "ATOMUSDT", name: "Cosmos" },
-      { symbol: "ARBUSDT", name: "Arbitrum" },
-      { symbol: "OPUSDT", name: "Optimism" },
-      { symbol: "ONDOUSDT", name: "Ondo" },
-      { symbol: "PENDLEUSDT", name: "Pendle" },
-      { symbol: "ENAUSDT", name: "Ethena" },
-      { symbol: "OMUSDT", name: "Mantra" },
-      { symbol: "POLYXUSDT", name: "Polymesh" },
-      { symbol: "RSRUSDT", name: "Reserve Rights" },
-      { symbol: "MKRUSDT", name: "Maker" },
-      { symbol: "MSTRUSDT", name: "Strategy" },
-      { symbol: "AMZNUSDT", name: "Amazon" },
-      { symbol: "CRCLUSDT", name: "Circle" },
-      { symbol: "COINUSDT", name: "Coinbase" },
-      { symbol: "PLTRUSDT", name: "Palantir" },
-      { symbol: "TSLAUSDT", name: "Tesla" },
-      { symbol: "METAUSDT", name: "Meta" },
-      { symbol: "NVDAUSDT", name: "NVIDIA" },
-      { symbol: "GOOGLUSDT", name: "Alphabet" },
-      { symbol: "QQQUSDT", name: "Invesco QQQ" },
-      { symbol: "SPYUSDT", name: "SPDR S&P 500 ETF" },
-      { symbol: "EWYUSDT", name: "iShares MSCI South Korea ETF" },
-      { symbol: "EWJUSDT", name: "iShares MSCI Japan ETF" },
-      { symbol: "NATGASUSDT", name: "Natural Gas" },
-      { symbol: "POWRUSDT", name: "Powerledger" },
-      { symbol: "GASUSDT", name: "Gas" },
-    ];
+    const topSymbols = await getCryptoTechnicalTargets();
 
     let synced = 0;
     let failed = 0;
