@@ -1,0 +1,32 @@
+{
+  "framework": "vite",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm build:vercel",
+  "outputDirectory": "dist/public",
+  "functions": {
+    "api/**/*.js": {
+      "maxDuration": 30
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/trpc/(.*)",
+      "dest": "/api/trpc.js?procedure=$1"
+    },
+    {
+      "src": "/api/storage/(.*)",
+      "dest": "/api/storage.js?key=$1"
+    },
+    {
+      "src": "/manus-storage/(.*)",
+      "dest": "/api/storage.js?key=$1"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}
