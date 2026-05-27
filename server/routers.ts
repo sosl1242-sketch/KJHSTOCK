@@ -11,9 +11,16 @@ import { fetchTechnicalIndicatorDetail } from "./technicalIndicators";
 import { fetchCryptoFuturesTechnicalDetail, getCryptoFuturesDataStatus, getCryptoFuturesSummary, getCryptoFuturesTable } from "./cryptoFutures";
 import { getTradeFiAssetsSummary, getTradeFiAssetsTable } from "./tradeFiAssets";
 import { fetchUsStockTechnicalDetail, getUsStocksSummary, getUsStocksTable } from "./usStocks";
+import { createConfirmedEmailUser } from "./_core/supabase";
 import { KRX_CODE_PATTERN, normalizeKrxCode } from "./krxCode";
 
 const sectorSchema = z.enum(stockSectors);
+const emailSchema = z.string().trim().email().transform(email => email.toLowerCase());
+const passwordSchema = z.string().min(6, "Password must be at least 6 characters").max(128);
+const signUpInputSchema = z.object({
+  email: emailSchema,
+  password: passwordSchema,
+});
 const krxCodeSchema = z
   .string()
   .transform(normalizeKrxCode)
@@ -33,6 +40,13 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    signUp: publicProcedure.input(signUpInputSchema).mutation(async ({ input }) => {
+      const user = await createConfirmedEmailUser(input);
+      return {
+        success: true,
+        email: user.email,
+      } as const;
+    }),
     logout: publicProcedure.mutation(() => {
       return {
         success: true,

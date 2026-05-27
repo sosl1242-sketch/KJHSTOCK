@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { trpc } from "@/lib/trpc";
 import { Lock, Mail } from "lucide-react";
 import { useState } from "react";
 
@@ -11,6 +12,7 @@ interface PasswordLoginProps {
 }
 
 export default function PasswordLogin({ onVerified }: PasswordLoginProps) {
+  const signUpMutation = trpc.auth.signUp.useMutation();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,27 +36,20 @@ export default function PasswordLogin({ onVerified }: PasswordLoginProps) {
 
     setIsSubmitting(true);
     try {
+      const normalizedEmail = email.trim().toLowerCase();
       if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            emailRedirectTo: window.location.origin,
-          },
-        });
-        if (error) throw error;
-        if (!data.session) {
-          setMessage("인증 메일을 보냈습니다. 이메일 확인 후 로그인하세요.");
-          setPassword("");
-          return;
-        }
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
+        await signUpMutation.mutateAsync({
+          email: normalizedEmail,
           password,
         });
-        if (error) throw error;
+        setMessage("가입 완료. 바로 로그인합니다.");
       }
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      });
+      if (error) throw error;
 
       if (onVerified) {
         onVerified();
@@ -85,7 +80,7 @@ export default function PasswordLogin({ onVerified }: PasswordLoginProps) {
             </div>
           </div>
           <CardTitle className="text-2xl">K-Stock Lab</CardTitle>
-          <CardDescription>{mode === "signin" ? "가입한 이메일로 로그인하세요" : "이메일 인증 후 로그인할 수 있습니다"}</CardDescription>
+          <CardDescription>{mode === "signin" ? "가입한 이메일로 로그인하세요" : "이메일 인증 없이 바로 가입합니다"}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Input
@@ -118,7 +113,7 @@ export default function PasswordLogin({ onVerified }: PasswordLoginProps) {
             disabled={isSubmitting}
             className="w-full rounded-lg bg-blue-600 hover:bg-blue-700"
           >
-            {isSubmitting ? "처리 중..." : mode === "signin" ? "로그인" : "가입 메일 보내기"}
+            {isSubmitting ? "처리 중..." : mode === "signin" ? "로그인" : "바로 가입"}
           </Button>
           <Button
             type="button"
