@@ -1,3 +1,5 @@
+import { assertCompleteKrxCode, normalizeKrxCode } from "./krxCode";
+
 export type QuarterlyFinancial = {
   period: string;
   revenue: number | null;
@@ -265,7 +267,7 @@ async function fetchNaverFinancialDetailWithOptions(
   input: { code: string; name?: string; marketSuffix: "KS" | "KQ" },
   options: { timeoutMs: number; attempts: number; retryDelayMs?: number }
 ) {
-  const code = input.code.padStart(6, "0");
+  const code = assertCompleteKrxCode(input.code);
   const url = `${NAVER_FINANCE_BASE_URL}?code=${encodeURIComponent(code)}`;
   let lastError: unknown;
 
@@ -306,7 +308,7 @@ async function fetchNaverFinancialSummary(input: { code: string; name?: string; 
     };
   } catch (error) {
     return {
-      code: input.code.padStart(6, "0"),
+      code: normalizeKrxCode(input.code),
       name: input.name,
       marketSuffix: input.marketSuffix,
       success: false,

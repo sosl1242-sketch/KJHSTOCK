@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { fetchYahooStockChart } from "./yahooFinance";
+import { isCompleteKrxCode, normalizeKrxCode } from "./krxCode";
 
 export type MarketSuffix = "KS" | "KQ";
 
@@ -401,7 +402,13 @@ function parseCandles(payload: unknown) {
 }
 
 export async function fetchTechnicalIndicatorDetail(input: { code: string; name?: string; marketSuffix: MarketSuffix }): Promise<TechnicalIndicatorDetail> {
-  const code = input.code.padStart(6, "0");
+  const code = normalizeKrxCode(input.code);
+  if (!isCompleteKrxCode(code)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "KRX stock code must be exactly six uppercase alphanumeric characters.",
+    });
+  }
   const suffixes: MarketSuffix[] = Array.from(new Set<MarketSuffix>([input.marketSuffix, input.marketSuffix === "KS" ? "KQ" : "KS"]));
   let lastError: unknown;
 

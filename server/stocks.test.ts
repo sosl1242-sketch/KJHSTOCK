@@ -7,6 +7,7 @@ import { appRouter } from "./routers";
 import { calculateEarningsYield } from "./db";
 import { extractLatestPrice } from "./stockPrice";
 import { fetchYahooStockChart } from "./yahooFinance";
+import { KOSPI_TOP200_STOCKS } from "./kospiSeed";
 import { calculateRsi, calculateTechnicalIndicators, fetchTechnicalIndicatorDetail, type PriceCandle } from "./technicalIndicators";
 import type { TrpcContext } from "./_core/context";
 
@@ -45,6 +46,26 @@ describe("calculateEarningsYield", () => {
   it("returns null when price is not positive or inputs are invalid", () => {
     expect(calculateEarningsYield(5000, 0)).toBeNull();
     expect(calculateEarningsYield(Number.NaN, 100000)).toBeNull();
+  });
+});
+
+describe("KOSPI seed data", () => {
+  it("keeps every listed stock code as a complete six-character KRX code", () => {
+    const invalidCodes = KOSPI_TOP200_STOCKS
+      .filter(stock => !/^[0-9A-Z]{6}$/.test(stock.code))
+      .map(stock => `${stock.name}:${stock.code}`);
+
+    expect(invalidCodes).toEqual([]);
+  });
+
+  it("rejects incomplete KRX codes instead of padding them into another symbol", async () => {
+    vi.mocked(fetchYahooStockChart).mockReset();
+    const caller = appRouter.createCaller(createContext({ role: "admin" }));
+
+    await expect(caller.stocks.refreshPrice({ id: 1, code: "00680", marketSuffix: "KS" })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+    expect(fetchYahooStockChart).not.toHaveBeenCalled();
   });
 });
 
@@ -130,6 +151,43 @@ describe("technical indicators", () => {
     expect(detail.symbol).toBe("005930.KS");
     expect(detail.priceHistory).toHaveLength(candles.length);
     expect(detail.priceHistory[0]).toMatchObject({ date: "2026-01-01", close: candles[0].close });
+  });
+
+  it("keeps alphanumeric KRX codes intact when requesting Yahoo chart history", async () => {
+    const timestamps = candles.map((_, index) => Date.UTC(2026, 0, index + 1) / 1000);
+    vi.mocked(fetchYahooStockChart).mockResolvedValueOnce({
+      chart: {
+        result: [
+          {
+            timestamp: timestamps,
+            meta: { symbol: "0126Z0.KS" },
+            indicators: {
+              quote: [
+                {
+                  open: candles.map(candle => candle.open),
+                  high: candles.map(candle => candle.high),
+                  low: candles.map(candle => candle.low),
+                  close: candles.map(candle => candle.close),
+                  volume: candles.map(candle => candle.volume),
+                },
+              ],
+            },
+          },
+        ],
+      },
+    });
+
+    const detail = await fetchTechnicalIndicatorDetail({ code: "0126z0", name: "삼성에피스홀딩스", marketSuffix: "KS" });
+
+    expect(fetchYahooStockChart).toHaveBeenCalledWith(expect.objectContaining({
+      symbol: "0126Z0.KS",
+      region: "KR",
+      interval: "1d",
+      range: "2y",
+      includeAdjustedClose: true,
+    }));
+    expect(detail.code).toBe("0126Z0");
+    expect(detail.symbol).toBe("0126Z0.KS");
   });
 });
 

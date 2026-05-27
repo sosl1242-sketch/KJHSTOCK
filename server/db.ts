@@ -4,6 +4,7 @@ import postgres from "postgres";
 import { InsertStock, InsertUser, Stock, StockSector, stocks, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { KOSPI_TOP200_STOCKS } from "./kospiSeed";
+import { assertCompleteKrxCode, isCompleteKrxCode, normalizeKrxCode } from "./krxCode";
 
 const KOREA_MARKET_CAP_STOCK_LIMIT = 200;
 
@@ -119,7 +120,7 @@ function normalizeSeedStock(seed: (typeof KOSPI_TOP200_STOCKS)[number]): InsertS
   return {
     sector: seed.sector,
     name: seed.name,
-    code: seed.code,
+    code: assertCompleteKrxCode(seed.code),
     marketSuffix: seed.marketSuffix,
     marketRank: seed.marketRank,
     currentPrice: seed.currentPrice,
@@ -133,8 +134,9 @@ export async function seedDefaultStocksIfNeeded() {
   const db = await getDb();
   if (!db) return;
   const seedStocks = KOSPI_TOP200_STOCKS.filter(seed => !seed.marketRank || seed.marketRank <= KOREA_MARKET_CAP_STOCK_LIMIT);
-  const existing = await db.select({ id: stocks.id }).from(stocks).limit(KOREA_MARKET_CAP_STOCK_LIMIT + 1);
-  if (existing.length >= seedStocks.length) return;
+  const existing = await db.select({ code: stocks.code }).from(stocks);
+  const existingCodes = new Set(existing.map(row => normalizeKrxCode(row.code)));
+  if (seedStocks.every(seed => existingCodes.has(assertCompleteKrxCode(seed.code)))) return;
   await db.insert(stocks).values(seedStocks.map(normalizeSeedStock)).onConflictDoUpdate({
     target: stocks.code,
     set: {
@@ -167,16 +169,17 @@ export async function listStocks(sector?: StockSector) {
   const rows = sector
     ? await db.select().from(stocks).where(eq(stocks.sector, sector))
     : await db.select().from(stocks);
-  return sortStocksByRank(rows).map(stockWithYield);
+  return sortStocksByRank(rows.filter(row => isCompleteKrxCode(row.code))).map(stockWithYield);
 }
 
 export async function upsertStock(input: Omit<InsertStock, "id" | "createdAt" | "updatedAt"> & { id?: number }) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
+  const code = assertCompleteKrxCode(input.code);
   const values = {
     sector: input.sector,
     name: input.name,
-    code: input.code,
+    code,
     marketSuffix: input.marketSuffix,
     marketRank: input.marketRank,
     currentPrice: input.currentPrice,
@@ -189,7 +192,7 @@ export async function upsertStock(input: Omit<InsertStock, "id" | "createdAt" | 
     return updated[0] ? stockWithYield(updated[0]) : null;
   }
   await db.insert(stocks).values(values);
-  const created = await db.select().from(stocks).where(eq(stocks.code, input.code)).limit(1);
+  const created = await db.select().from(stocks).where(eq(stocks.code, code)).limit(1);
   return created[0] ? stockWithYield(created[0]) : null;
 }
 

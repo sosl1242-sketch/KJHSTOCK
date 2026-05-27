@@ -800,7 +800,7 @@ export const KOSPI_TOP200_STOCKS = [
   {
     "sector": "industrial_business_services",
     "name": "삼성에피스홀딩스",
-    "code": "0126",
+    "code": "0126Z0",
     "marketSuffix": "KS",
     "currentPrice": 515000.0,
     "annualEps": 0,
@@ -1944,7 +1944,7 @@ export const KOSPI_TOP200_STOCKS = [
   {
     "sector": "finance_brokerage_insurance",
     "name": "미래에셋증권2우B",
-    "code": "00680",
+    "code": "00680K",
     "marketSuffix": "KS",
     "currentPrice": 22950.0,
     "annualEps": 2154.93,
@@ -2032,7 +2032,7 @@ export const KOSPI_TOP200_STOCKS = [
   {
     "sector": "industrial_business_services",
     "name": "TIGER 머니마켓액티브",
-    "code": "0043",
+    "code": "0043B0",
     "marketSuffix": "KS",
     "currentPrice": 102430.0,
     "annualEps": 0,

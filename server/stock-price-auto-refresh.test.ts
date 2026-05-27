@@ -51,6 +51,17 @@ describe("stock price auto refresh policy", () => {
     expect(fetchYahooStockChart).toHaveBeenLastCalledWith(expect.objectContaining({ symbol: "005930.KS", interval: "1d", range: "5d" }));
   });
 
+  it("uses complete alphanumeric KRX codes without numeric padding", async () => {
+    vi.mocked(fetchYahooStockChart).mockResolvedValueOnce({
+      chart: { result: [{ meta: { regularMarketPrice: 22950 }, indicators: { quote: [{ close: [22900, 22950] }] } }] },
+    });
+
+    const result = await fetchKoreanStockPrice("00680k", "KS", { maxAttempts: 1, retryDelayMs: 0 });
+
+    expect(result).toEqual({ price: 22950, symbol: "00680K.KS", attempts: 1 });
+    expect(fetchYahooStockChart).toHaveBeenCalledWith(expect.objectContaining({ symbol: "00680K.KS" }));
+  });
+
   it("reports the retry count when all market suffix attempts fail", async () => {
     vi.mocked(fetchYahooStockChart).mockRejectedValue(new Error("upstream unavailable"));
 

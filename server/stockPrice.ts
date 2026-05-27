@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { listStocks, updateStockPrice } from "./db";
 import { fetchYahooStockChart } from "./yahooFinance";
+import { isCompleteKrxCode, normalizeKrxCode } from "./krxCode";
 
 export const PRICE_AUTO_REFRESH_JOB_NAME = "stock-price-refresh-60s";
 export const PRICE_AUTO_REFRESH_CRON = "* 9-14 * * 1-5; 0-30 15 * * 1-5";
@@ -118,6 +119,13 @@ export async function fetchKoreanStockPrice(code: string, marketSuffix: "KS" | "
   maxAttempts?: number;
   retryDelayMs?: number;
 } = {}) {
+  const normalizedCode = normalizeKrxCode(code);
+  if (!isCompleteKrxCode(normalizedCode)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "KRX stock code must be exactly six uppercase alphanumeric characters.",
+    });
+  }
   const suffixes = Array.from(new Set([marketSuffix, marketSuffix === "KS" ? "KQ" : "KS"]));
   const maxAttempts = Math.max(1, Math.floor(options.maxAttempts ?? PRICE_FETCH_MAX_ATTEMPTS));
   const retryDelayMs = Math.max(0, options.retryDelayMs ?? PRICE_FETCH_RETRY_DELAY_MS);
@@ -125,7 +133,7 @@ export async function fetchKoreanStockPrice(code: string, marketSuffix: "KS" | "
   let totalAttempts = 0;
 
   for (const suffix of suffixes) {
-    const symbol = `${code}.${suffix}`;
+    const symbol = `${normalizedCode}.${suffix}`;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       totalAttempts += 1;
@@ -155,7 +163,7 @@ export async function fetchKoreanStockPrice(code: string, marketSuffix: "KS" | "
 
   throw new TRPCError({
     code: "BAD_GATEWAY",
-    message: `${code} 종목의 현재가를 외부 데이터 API에서 찾지 못했습니다. 재시도 ${totalAttempts}회 실패: ${failures.join(" | ")}`,
+    message: `${normalizedCode} 종목의 현재가를 외부 데이터 API에서 찾지 못했습니다. 재시도 ${totalAttempts}회 실패: ${failures.join(" | ")}`,
   });
 }
 

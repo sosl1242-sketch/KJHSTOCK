@@ -11,14 +11,19 @@ import { fetchTechnicalIndicatorDetail } from "./technicalIndicators";
 import { fetchCryptoFuturesTechnicalDetail, getCryptoFuturesDataStatus, getCryptoFuturesSummary, getCryptoFuturesTable } from "./cryptoFutures";
 import { getTradeFiAssetsSummary, getTradeFiAssetsTable } from "./tradeFiAssets";
 import { fetchUsStockTechnicalDetail, getUsStocksSummary, getUsStocksTable } from "./usStocks";
+import { KRX_CODE_PATTERN, normalizeKrxCode } from "./krxCode";
 
 const sectorSchema = z.enum(stockSectors);
+const krxCodeSchema = z
+  .string()
+  .transform(normalizeKrxCode)
+  .refine(code => KRX_CODE_PATTERN.test(code), "KRX stock code must be exactly six uppercase alphanumeric characters");
 
 const stockInputSchema = z.object({
   id: z.number().int().positive().optional(),
   sector: sectorSchema,
   name: z.string().min(1).max(120),
-  code: z.string().min(5).max(12),
+  code: krxCodeSchema,
   marketSuffix: z.enum(["KS", "KQ"]).default("KS"),
   currentPrice: z.number().min(0),
   annualEps: z.number(),
@@ -52,7 +57,7 @@ export const appRouter = router({
     ),
 
     refreshPrice: adminProcedure
-      .input(z.object({ id: z.number().int().positive(), code: z.string(), marketSuffix: z.enum(["KS", "KQ"]) }))
+      .input(z.object({ id: z.number().int().positive(), code: krxCodeSchema, marketSuffix: z.enum(["KS", "KQ"]) }))
       .mutation(async ({ input }) => {
         const { price, symbol } = await fetchKoreanStockPrice(input.code, input.marketSuffix);
         return updateStockPrice(input.id, price, `YahooFinance:${symbol}`);
@@ -84,7 +89,7 @@ export const appRouter = router({
     }),
 
     financialDetail: protectedProcedure
-      .input(z.object({ code: z.string().min(5).max(12), name: z.string().max(120).optional(), marketSuffix: z.enum(["KS", "KQ"]).default("KS") }))
+      .input(z.object({ code: krxCodeSchema, name: z.string().max(120).optional(), marketSuffix: z.enum(["KS", "KQ"]).default("KS") }))
       .query(async ({ input }) => {
         // DB 캐시에서 먼저 조회 (API 호출 없음)
         try {
@@ -124,7 +129,7 @@ export const appRouter = router({
     financialSummaries: protectedProcedure
       .input(z.object({
         stocks: z.array(z.object({
-          code: z.string().min(5).max(12),
+          code: krxCodeSchema,
           name: z.string().max(120).optional(),
           marketSuffix: z.enum(["KS", "KQ"]).default("KS"),
         })).min(1).max(25),
@@ -174,7 +179,7 @@ export const appRouter = router({
       }),
 
     technicalIndicators: protectedProcedure
-      .input(z.object({ code: z.string().min(5).max(12), name: z.string().max(120).optional(), marketSuffix: z.enum(["KS", "KQ"]).default("KS") }))
+      .input(z.object({ code: krxCodeSchema, name: z.string().max(120).optional(), marketSuffix: z.enum(["KS", "KQ"]).default("KS") }))
       .query(async ({ input }) => {
         // DB 캐시에서 가격 이력 조회 (API 호출 없음)
         try {

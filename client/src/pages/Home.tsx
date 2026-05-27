@@ -570,7 +570,7 @@ export default function Home() {
     if (!sortState || !SUMMARY_SORT_KEYS.has(sortState.key)) return pagedRows;
 
     const getSummarySortValue = (row: (typeof pagedRows)[number]) => {
-      const summary = summaryByCode.get(row.code.padStart(6, "0"));
+      const summary = summaryByCode.get(row.code);
       if (!summary?.success) return null;
       switch (sortState.key) {
         case "per": return summary.per;
@@ -659,7 +659,7 @@ export default function Home() {
     return pagedRows
       .slice(0, 20)
       .map(row => {
-        const summary = successfulSummaryByCode.get(row.code.padStart(6, "0"));
+        const summary = successfulSummaryByCode.get(row.code);
         const marketCap = summary && "marketCapHundredMillionKrw" in summary && typeof summary.marketCapHundredMillionKrw === "number"
           ? summary.marketCapHundredMillionKrw
           : null;
@@ -718,7 +718,7 @@ export default function Home() {
       id: form.id,
       sector: form.sector,
       name: form.name.trim(),
-      code: form.code.trim(),
+      code: form.code.trim().toUpperCase(),
       marketSuffix: form.marketSuffix,
       currentPrice: Number(form.currentPrice),
       annualEps: Number(form.annualEps),
@@ -1227,7 +1227,7 @@ export default function Home() {
                 </div>
               </div>
               <div className="space-y-2"><Label>종목명</Label><Input disabled={!isAdmin} value={form.name} onChange={event => updateForm("name", event.target.value)} placeholder="예: 삼성전자" /></div>
-              <div className="space-y-2"><Label>종목코드</Label><Input disabled={!isAdmin} value={form.code} onChange={event => updateForm("code", event.target.value)} placeholder="예: 005930" /></div>
+              <div className="space-y-2"><Label>종목코드</Label><Input disabled={!isAdmin} value={form.code} onChange={event => updateForm("code", event.target.value)} placeholder="예: 005930 또는 00680K" /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2"><Label>현재 주가</Label><Input disabled={!isAdmin} type="number" value={form.currentPrice} onChange={event => updateForm("currentPrice", event.target.value)} /></div>
                 <div className="space-y-2"><Label>EPS(참고)</Label><Input disabled={!isAdmin} type="number" value={form.annualEps} onChange={event => updateForm("annualEps", event.target.value)} /></div>
@@ -1293,7 +1293,7 @@ export default function Home() {
               </thead>
               <tbody>
                 {pagedDisplayRows.map(row => {
-                  const summary = summaryByCode.get(row.code.padStart(6, "0"));
+                  const summary = summaryByCode.get(row.code);
                   const summaryLoading = financialSummaries.isLoading || financialSummaries.isFetching;
                   return (
                     <tr key={row.id} className="cursor-pointer rounded-2xl bg-slate-50/80 shadow-sm transition hover:bg-blue-50/80" onClick={() => setSelectedStock(row)}>
