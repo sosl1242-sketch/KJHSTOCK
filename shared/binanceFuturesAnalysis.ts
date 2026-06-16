@@ -14,7 +14,8 @@ export type BinanceFuturesTicker = {
   lowPrice: string;
   priceChangePercent: string;
   volume: string;
-  quoteVolume: string;
+  baseVolume?: string;
+  quoteVolume?: string;
   closeTime: number;
 };
 
@@ -35,13 +36,24 @@ export type FuturesCandle = {
 };
 
 export type FuturesBias = "bullish" | "neutral" | "bearish";
+export type FuturesAssetClass = "crypto" | "tradefi";
+export type FuturesMarketType = "USD-M" | "COIN-M";
+export type FuturesWatchCategory =
+  | "momentum_liquidity"
+  | "volume_leader"
+  | "funding_pressure"
+  | "pullback_liquidity"
+  | "coin_margin_focus";
 
 export type FuturesMarketRow = {
   rank: number;
+  marketType: FuturesMarketType;
+  assetClass: FuturesAssetClass;
   symbol: string;
+  pair: string;
   baseAsset: string;
   quoteAsset: string;
-  contractType: "PERPETUAL";
+  contractType: string;
   price: number;
   high24h: number;
   low24h: number;
@@ -55,6 +67,28 @@ export type FuturesMarketRow = {
   openInterestToVolumePercent: number | null;
   lastUpdated: string;
   signal: FuturesBias;
+};
+
+export type FuturesWatchReportItem = {
+  category: FuturesWatchCategory;
+  title: string;
+  symbol: string;
+  marketType: FuturesMarketType;
+  contractType: string;
+  priorityScore: number;
+  why: string;
+  risk: string;
+  metrics: {
+    change24hPercent: number;
+    volume24hUsd: number;
+    fundingRate: number | null;
+    price: number;
+  };
+};
+
+export type FuturesWatchReport = {
+  generatedAt: string | null;
+  items: FuturesWatchReportItem[];
 };
 
 export type FuturesTechnicalIndicators = {
@@ -90,6 +124,7 @@ export type FuturesSummary = {
 };
 
 export type BuildFuturesRowsInput = {
+  marketType: FuturesMarketType;
   symbols: BinanceFuturesSymbol[];
   tickers: BinanceFuturesTicker[];
   premiumIndex: BinancePremiumIndex[];
@@ -111,6 +146,16 @@ const round = (value: number, digits = 2) => {
   return Math.round(value * factor) / factor;
 };
 
+const formatUsd = (value: number) => {
+  if (Math.abs(value) >= 1e9) return `$${round(value / 1e9, 2)}B`;
+  if (Math.abs(value) >= 1e6) return `$${round(value / 1e6, 2)}M`;
+  return `$${round(value, 2)}`;
+};
+
+const formatPercent = (value: number, digits = 2) => `${value > 0 ? "+" : ""}${round(value, digits)}%`;
+
+const formatFunding = (value: number | null) => value === null ? "-" : `${round(value * 100, 4)}%`;
+
 const isoFromMillis = (value: number | null | undefined) => {
   if (!value || !Number.isFinite(value)) return null;
   return new Date(value).toISOString();
@@ -126,27 +171,72 @@ const signalFromRow = (change24hPercent: number, fundingRate: number | null, ope
   return "neutral";
 };
 
+const tradeFiBaseAssets = new Set([
+  "MSTR",
+  "AMZN",
+  "CRCL",
+  "COIN",
+  "PLTR",
+  "TSLA",
+  "META",
+  "NVDA",
+  "GOOGL",
+  "QQQ",
+  "SPY",
+  "IWM",
+  "EWY",
+  "EWJ",
+  "XAU",
+  "XAG",
+  "CL",
+  "BZ",
+  "NATGAS",
+  "HYUNDAI",
+  "INTC",
+  "NVO",
+  "DKNG",
+  "SPCX",
+  "XLE",
+  "COHR",
+  "CRWV",
+]);
+
+function classifyAsset(symbolInfo: BinanceFuturesSymbol): FuturesAssetClass {
+  if (symbolInfo.contractType.includes("TRADIFI")) return "tradefi";
+  return tradeFiBaseAssets.has(symbolInfo.baseAsset.toUpperCase()) ? "tradefi" : "crypto";
+}
+
 function compareByVolume(a: FuturesMarketRow, b: FuturesMarketRow) {
   return b.volume24hUsd - a.volume24hUsd || a.symbol.localeCompare(b.symbol);
 }
 
+function getVolume24hUsd(marketType: FuturesMarketType, ticker: BinanceFuturesTicker) {
+  const price = numberOrZero(ticker.lastPrice);
+  const quoteVolume = parseNumber(ticker.quoteVolume);
+  const baseVolume = parseNumber(ticker.baseVolume);
+
+  if (marketType === "USD-M") {
+    return quoteVolume ?? (baseVolume !== null ? baseVolume * price : numberOrZero(ticker.volume));
+  }
+
+  return baseVolume !== null ? baseVolume * price : quoteVolume ?? numberOrZero(ticker.volume);
+}
+
 export function buildFuturesRows(input: BuildFuturesRowsInput): FuturesMarketRow[] {
-  const tradablePerpetuals = new Map(
+  const tradableContracts = new Map(
     input.symbols
       .filter(item => item.status === "TRADING")
-      .filter(item => item.contractType === "PERPETUAL")
-      .filter(item => !item.symbol.includes("_"))
       .map(item => [item.symbol, item]),
   );
   const premiumBySymbol = new Map(input.premiumIndex.map(item => [item.symbol, item]));
 
   const rows = input.tickers
-    .filter(ticker => tradablePerpetuals.has(ticker.symbol))
+    .filter(ticker => tradableContracts.has(ticker.symbol))
     .map((ticker): FuturesMarketRow => {
-      const symbolInfo = tradablePerpetuals.get(ticker.symbol);
+      const symbolInfo = tradableContracts.get(ticker.symbol);
       if (!symbolInfo) throw new Error(`Missing exchange info for ${ticker.symbol}`);
       const premium = premiumBySymbol.get(ticker.symbol);
-      const volume24hUsd = numberOrZero(ticker.quoteVolume);
+      const volume24hUsd = getVolume24hUsd(input.marketType, ticker);
       const fundingRate = parseNumber(premium?.lastFundingRate);
       const openInterestUsd = input.openInterestBySymbol.get(ticker.symbol) ?? null;
       const openInterestToVolumePercent =
@@ -155,10 +245,13 @@ export function buildFuturesRows(input: BuildFuturesRowsInput): FuturesMarketRow
 
       return {
         rank: 0,
+        marketType: input.marketType,
+        assetClass: classifyAsset(symbolInfo),
         symbol: ticker.symbol,
+        pair: symbolInfo.pair ?? `${symbolInfo.baseAsset}${symbolInfo.quoteAsset}`,
         baseAsset: symbolInfo.baseAsset,
         quoteAsset: symbolInfo.quoteAsset,
-        contractType: "PERPETUAL",
+        contractType: symbolInfo.contractType,
         price: numberOrZero(ticker.lastPrice),
         high24h: numberOrZero(ticker.highPrice),
         low24h: numberOrZero(ticker.lowPrice),
@@ -184,7 +277,7 @@ export function applyTickerUpdates(rows: FuturesMarketRow[], updates: BinanceFut
   const merged = rows.map(row => {
     const update = updateBySymbol.get(row.symbol);
     if (!update) return row;
-    const volume24hUsd = numberOrZero(update.quoteVolume);
+    const volume24hUsd = getVolume24hUsd(row.marketType, update);
     const openInterestToVolumePercent =
       row.openInterestUsd !== null && volume24hUsd > 0 ? round((row.openInterestUsd / volume24hUsd) * 100, 2) : null;
     const change24hPercent = round(numberOrZero(update.priceChangePercent), 2);
@@ -204,6 +297,130 @@ export function applyTickerUpdates(rows: FuturesMarketRow[], updates: BinanceFut
   }).sort(compareByVolume);
 
   return merged.map((row, index) => ({ ...row, rank: index + 1 }));
+}
+
+function scoreLogVolume(value: number) {
+  return Math.log10(Math.max(value, 1));
+}
+
+function makeWatchItem(
+  category: FuturesWatchCategory,
+  row: FuturesMarketRow,
+  title: string,
+  priorityScore: number,
+  why: string,
+  risk: string,
+): FuturesWatchReportItem {
+  return {
+    category,
+    title,
+    symbol: row.symbol,
+    marketType: row.marketType,
+    contractType: row.contractType,
+    priorityScore: round(clamp(priorityScore, 0, 100), 1),
+    why,
+    risk,
+    metrics: {
+      change24hPercent: row.change24hPercent,
+      volume24hUsd: row.volume24hUsd,
+      fundingRate: row.fundingRate,
+      price: row.price,
+    },
+  };
+}
+
+function pushUnique(items: FuturesWatchReportItem[], item: FuturesWatchReportItem | null) {
+  if (!item) return;
+  if (items.some(existing => existing.symbol === item.symbol && existing.category === item.category)) return;
+  items.push(item);
+}
+
+export function buildFuturesWatchReport(rows: FuturesMarketRow[]): FuturesWatchReport {
+  const cryptoRows = rows.filter(row => row.assetClass === "crypto");
+  const liquidRows = (cryptoRows.length ? cryptoRows : rows).filter(row => row.volume24hUsd > 0);
+  const items: FuturesWatchReportItem[] = [];
+
+  const momentum = [...liquidRows]
+    .filter(row => row.change24hPercent > 0)
+    .sort((a, b) => (b.change24hPercent * 1.2 + scoreLogVolume(b.volume24hUsd) * 5) - (a.change24hPercent * 1.2 + scoreLogVolume(a.volume24hUsd) * 5))[0];
+  if (momentum) {
+    pushUnique(items, makeWatchItem(
+      "momentum_liquidity",
+      momentum,
+      "거래대금이 동반된 상승 모멘텀",
+      momentum.change24hPercent * 1.2 + scoreLogVolume(momentum.volume24hUsd) * 5,
+      `${momentum.marketType} ${momentum.contractType}에서 24h ${formatPercent(momentum.change24hPercent)}, 거래대금 ${formatUsd(momentum.volume24hUsd)}로 가격 움직임과 유동성이 같이 붙었습니다.`,
+      "급등 직후에는 되돌림과 청산 변동성이 커질 수 있어 펀딩비와 다음 캔들 거래량 확인이 필요합니다.",
+    ));
+  }
+
+  const volumeLeader = [...liquidRows].sort(compareByVolume)[0];
+  if (volumeLeader) {
+    pushUnique(items, makeWatchItem(
+      "volume_leader",
+      volumeLeader,
+      "시장 관심이 가장 크게 몰린 유동성 리더",
+      scoreLogVolume(volumeLeader.volume24hUsd) * 8 + Math.abs(volumeLeader.change24hPercent),
+      volumeLeader === momentum
+        ? `${volumeLeader.symbol}는 상승 후보이면서 전체 거래대금도 ${formatUsd(volumeLeader.volume24hUsd)}로 최상위권이라 추세 지속 여부를 볼 가치가 있습니다.`
+        : `${volumeLeader.symbol}는 24h 거래대금 ${formatUsd(volumeLeader.volume24hUsd)}로 시장 자금 회전이 가장 큰 축에 있어 방향 전환 신호가 빠르게 나타날 수 있습니다.`,
+      "거래대금 1위가 항상 방향성을 뜻하지는 않습니다. 가격 등락률과 펀딩비가 엇갈리면 관망 신호일 수 있습니다.",
+    ));
+  }
+
+  const fundingPressure = [...liquidRows]
+    .filter(row => row.fundingRate !== null)
+    .sort((a, b) => Math.abs(b.fundingRate ?? 0) - Math.abs(a.fundingRate ?? 0))[0];
+  if (fundingPressure) {
+    const side = (fundingPressure.fundingRate ?? 0) > 0 ? "롱 비용 부담" : "숏 비용 부담";
+    pushUnique(items, makeWatchItem(
+      "funding_pressure",
+      fundingPressure,
+      "펀딩비 압력이 큰 과열 후보",
+      Math.abs(fundingPressure.fundingRate ?? 0) * 20000 + scoreLogVolume(fundingPressure.volume24hUsd) * 2,
+      `${fundingPressure.symbol}는 펀딩비 ${formatFunding(fundingPressure.fundingRate)}로 ${side}이 두드러지고, 거래대금은 ${formatUsd(fundingPressure.volume24hUsd)}입니다.`,
+      "펀딩비 극단값은 추세 지속과 반대 청산 압력을 모두 만들 수 있어 단독 매수·매도 근거로 쓰면 위험합니다.",
+    ));
+  }
+
+  const pullback = [...liquidRows]
+    .filter(row => row.change24hPercent < 0)
+    .sort((a, b) => (Math.abs(b.change24hPercent) * 1.3 + scoreLogVolume(b.volume24hUsd) * 4) - (Math.abs(a.change24hPercent) * 1.3 + scoreLogVolume(a.volume24hUsd) * 4))[0];
+  if (pullback) {
+    pushUnique(items, makeWatchItem(
+      "pullback_liquidity",
+      pullback,
+      "큰 하락과 유동성이 겹친 변동성 후보",
+      Math.abs(pullback.change24hPercent) * 1.3 + scoreLogVolume(pullback.volume24hUsd) * 4,
+      `${pullback.symbol}는 24h ${formatPercent(pullback.change24hPercent)} 하락에도 거래대금 ${formatUsd(pullback.volume24hUsd)}가 붙어 매도 압력과 반등 시도를 함께 관찰할 만합니다.`,
+      "하락 중 거래량 증가는 저점 확인이 아니라 추가 청산 흐름일 수 있으므로 저가 갱신 여부를 먼저 봐야 합니다.",
+    ));
+  }
+
+  const coinMargin = [...liquidRows]
+    .filter(row => row.marketType === "COIN-M")
+    .sort(compareByVolume)[0];
+  if (coinMargin) {
+    pushUnique(items, makeWatchItem(
+      "coin_margin_focus",
+      coinMargin,
+      "COIN-M 시장 대표 관찰 후보",
+      scoreLogVolume(coinMargin.volume24hUsd) * 7 + Math.abs(coinMargin.change24hPercent) * 2,
+      `${coinMargin.symbol}는 COIN-M ${coinMargin.contractType} 중 거래대금 ${formatUsd(coinMargin.volume24hUsd)}가 가장 커서 USD-M과 다른 담보 시장의 포지션 흐름을 비교하기 좋습니다.`,
+      "COIN-M은 담보와 손익 구조가 USD-M과 달라 같은 심볼이라도 변동성 체감과 리스크가 다를 수 있습니다.",
+    ));
+  }
+
+  const generatedAt = rows
+    .map(row => row.lastUpdated)
+    .filter(Boolean)
+    .sort()
+    .at(-1) ?? null;
+
+  return {
+    generatedAt,
+    items: items.sort((a, b) => b.priorityScore - a.priorityScore),
+  };
 }
 
 function sma(values: number[], period: number): number | null {

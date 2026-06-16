@@ -7,11 +7,14 @@ import {
   type BinancePremiumIndex,
   type FuturesCandle,
   type FuturesMarketRow,
+  type FuturesMarketType,
   type FuturesTechnicalIndicators,
 } from "@shared/binanceFuturesAnalysis";
 
-const FUTURES_REST_BASE = "https://fapi.binance.com";
-const FUTURES_WS_URL = "wss://fstream.binance.com/ws/!ticker@arr";
+const USD_M_REST_BASE = "https://fapi.binance.com";
+const COIN_M_REST_BASE = "https://dapi.binance.com";
+const USD_M_WS_URL = "wss://fstream.binance.com/ws/!ticker@arr";
+const COIN_M_WS_URL = "wss://dstream.binance.com/ws/!ticker@arr";
 
 type ExchangeInfoResponse = {
   symbols: BinanceFuturesSymbol[];
@@ -43,40 +46,63 @@ type BinanceTickerStreamItem = {
   E: number;
 };
 
-async function fetchJson<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(`${FUTURES_REST_BASE}${path}`, { signal });
+async function fetchJson<T>(baseUrl: string, path: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`${baseUrl}${path}`, { signal });
   if (!response.ok) {
     throw new Error(`Binance API ${path} returned ${response.status}`);
   }
   return response.json() as Promise<T>;
 }
 
-export async function fetchUsdMFuturesRows(signal?: AbortSignal): Promise<FuturesMarketRow[]> {
+function coinMTickerToUnified(ticker: BinanceFuturesTicker): BinanceFuturesTicker {
+  return {
+    ...ticker,
+    baseVolume: ticker.baseVolume ?? ticker.quoteVolume,
+    quoteVolume: undefined,
+  };
+}
+
+async function fetchMarketRows(marketType: FuturesMarketType, signal?: AbortSignal): Promise<FuturesMarketRow[]> {
+  const baseUrl = marketType === "USD-M" ? USD_M_REST_BASE : COIN_M_REST_BASE;
   const [exchangeInfo, tickers, premiumIndex] = await Promise.all([
-    fetchJson<ExchangeInfoResponse>("/fapi/v1/exchangeInfo", signal),
-    fetchJson<BinanceFuturesTicker[]>("/fapi/v1/ticker/24hr", signal),
-    fetchJson<BinancePremiumIndex[]>("/fapi/v1/premiumIndex", signal),
+    fetchJson<ExchangeInfoResponse>(baseUrl, marketType === "USD-M" ? "/fapi/v1/exchangeInfo" : "/dapi/v1/exchangeInfo", signal),
+    fetchJson<BinanceFuturesTicker[]>(baseUrl, marketType === "USD-M" ? "/fapi/v1/ticker/24hr" : "/dapi/v1/ticker/24hr", signal),
+    fetchJson<BinancePremiumIndex[]>(baseUrl, marketType === "USD-M" ? "/fapi/v1/premiumIndex" : "/dapi/v1/premiumIndex", signal),
   ]);
 
   return buildFuturesRows({
+    marketType,
     symbols: exchangeInfo.symbols,
-    tickers,
+    tickers: marketType === "COIN-M" ? tickers.map(coinMTickerToUnified) : tickers,
     premiumIndex,
     openInterestBySymbol: new Map(),
     nowIso: new Date().toISOString(),
   });
 }
 
-export function subscribeUsdMFuturesTicker(
-  onRowsUpdate: (updater: (rows: FuturesMarketRow[]) => FuturesMarketRow[]) => void,
-  onStatusChange: (status: "connecting" | "live" | "closed" | "error") => void,
-) {
-  onStatusChange("connecting");
-  const socket = new WebSocket(FUTURES_WS_URL);
+export async function fetchAllFuturesRows(signal?: AbortSignal): Promise<FuturesMarketRow[]> {
+  const [usdMRows, coinMRows] = await Promise.all([
+    fetchMarketRows("USD-M", signal),
+    fetchMarketRows("COIN-M", signal),
+  ]);
 
-  socket.addEventListener("open", () => onStatusChange("live"));
-  socket.addEventListener("close", () => onStatusChange("closed"));
-  socket.addEventListener("error", () => onStatusChange("error"));
+  return [...usdMRows, ...coinMRows]
+    .sort((a, b) => b.volume24hUsd - a.volume24hUsd || a.symbol.localeCompare(b.symbol))
+    .map((row, index) => ({ ...row, rank: index + 1 }));
+}
+
+function subscribeTickerStream(
+  marketType: FuturesMarketType,
+  url: string,
+  onRowsUpdate: (updater: (rows: FuturesMarketRow[]) => FuturesMarketRow[]) => void,
+  onStatusChange: (marketType: FuturesMarketType, status: "connecting" | "live" | "closed" | "error") => void,
+) {
+  onStatusChange(marketType, "connecting");
+  const socket = new WebSocket(url);
+
+  socket.addEventListener("open", () => onStatusChange(marketType, "live"));
+  socket.addEventListener("close", () => onStatusChange(marketType, "closed"));
+  socket.addEventListener("error", () => onStatusChange(marketType, "error"));
   socket.addEventListener("message", event => {
     try {
       const payload = JSON.parse(String(event.data)) as BinanceTickerStreamItem[];
@@ -88,12 +114,13 @@ export function subscribeUsdMFuturesTicker(
         lowPrice: item.l,
         priceChangePercent: item.P,
         volume: item.v,
-        quoteVolume: item.q,
+        baseVolume: marketType === "COIN-M" ? item.q : undefined,
+        quoteVolume: marketType === "USD-M" ? item.q : undefined,
         closeTime: item.E,
       }));
       onRowsUpdate(rows => applyTickerUpdates(rows, updates));
     } catch {
-      onStatusChange("error");
+      onStatusChange(marketType, "error");
     }
   });
 
@@ -102,9 +129,24 @@ export function subscribeUsdMFuturesTicker(
   };
 }
 
-export async function fetchFuturesCandles(symbol: string, interval: string, signal?: AbortSignal): Promise<FuturesCandle[]> {
+export function subscribeAllFuturesTicker(
+  onRowsUpdate: (updater: (rows: FuturesMarketRow[]) => FuturesMarketRow[]) => void,
+  onStatusChange: (marketType: FuturesMarketType, status: "connecting" | "live" | "closed" | "error") => void,
+) {
+  const closeUsdM = subscribeTickerStream("USD-M", USD_M_WS_URL, onRowsUpdate, onStatusChange);
+  const closeCoinM = subscribeTickerStream("COIN-M", COIN_M_WS_URL, onRowsUpdate, onStatusChange);
+
+  return () => {
+    closeUsdM();
+    closeCoinM();
+  };
+}
+
+export async function fetchFuturesCandles(symbol: string, marketType: FuturesMarketType, interval: string, signal?: AbortSignal): Promise<FuturesCandle[]> {
+  const baseUrl = marketType === "USD-M" ? USD_M_REST_BASE : COIN_M_REST_BASE;
   const klines = await fetchJson<BinanceKline[]>(
-    `/fapi/v1/klines?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&limit=240`,
+    baseUrl,
+    `${marketType === "USD-M" ? "/fapi" : "/dapi"}/v1/klines?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&limit=240`,
     signal,
   );
   return klines.map(kline => ({
@@ -119,10 +161,11 @@ export async function fetchFuturesCandles(symbol: string, interval: string, sign
 
 export async function fetchFuturesTechnicalDetail(
   symbol: string,
+  marketType: FuturesMarketType,
   interval: string,
   signal?: AbortSignal,
 ): Promise<{ candles: FuturesCandle[]; indicators: FuturesTechnicalIndicators }> {
-  const candles = await fetchFuturesCandles(symbol, interval, signal);
+  const candles = await fetchFuturesCandles(symbol, marketType, interval, signal);
   return {
     candles,
     indicators: calculateTechnicalIndicators(candles),
