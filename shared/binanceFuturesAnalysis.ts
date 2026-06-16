@@ -84,11 +84,23 @@ export type FuturesWatchReportItem = {
     fundingRate: number | null;
     price: number;
   };
+  technical?: FuturesWatchTechnicalSnapshot;
 };
 
 export type FuturesWatchReport = {
   generatedAt: string | null;
   items: FuturesWatchReportItem[];
+};
+
+export type FuturesWatchTechnicalSnapshot = {
+  score: number;
+  bias: FuturesBias;
+  rsi14: number;
+  ema20: number;
+  ema50: number;
+  macdHistogram: number;
+  atrPercent: number;
+  volume20Ratio: number;
 };
 
 export type FuturesTechnicalIndicators = {
@@ -162,6 +174,12 @@ const reportCategoryName: Record<FuturesWatchCategory, string> = {
   funding_pressure: "펀딩 과열",
   pullback_liquidity: "하락 변동성",
   coin_margin_focus: "COIN-M 관찰",
+};
+
+const biasName: Record<FuturesBias, string> = {
+  bullish: "강세",
+  neutral: "중립",
+  bearish: "약세",
 };
 
 const isoFromMillis = (value: number | null | undefined) => {
@@ -463,6 +481,18 @@ export function buildFuturesWatchReportMarkdown(report: FuturesWatchReport): str
       `- 왜 주목: ${item.why}`,
       `- 리스크: ${item.risk}`,
     );
+
+    if (item.technical) {
+      const emaTrend = item.technical.ema20 >= item.technical.ema50 ? "EMA20 우위" : "EMA50 우위";
+      lines.push(
+        `- 기술 점수: ${item.technical.score} (${biasName[item.technical.bias]})`,
+        `- RSI 14: ${round(item.technical.rsi14, 2)}`,
+        `- EMA 20/50: ${formatUsd(item.technical.ema20)} / ${formatUsd(item.technical.ema50)} (${emaTrend})`,
+        `- MACD Histogram: ${round(item.technical.macdHistogram, 8)}`,
+        `- ATR %: ${round(item.technical.atrPercent, 2)}%`,
+        `- Volume / 20: ${round(item.technical.volume20Ratio, 2)}%`,
+      );
+    }
   });
 
   return lines.join("\n");

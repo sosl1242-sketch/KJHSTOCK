@@ -21,6 +21,7 @@ import {
   type FuturesMarketType,
   type FuturesTechnicalIndicators,
   type FuturesWatchReportItem,
+  type FuturesWatchTechnicalSnapshot,
 } from "@shared/binanceFuturesAnalysis";
 import {
   Activity,
@@ -53,6 +54,7 @@ type SortDirection = "asc" | "desc";
 type WsStatus = "idle" | "connecting" | "live" | "closed" | "error";
 
 type FuturesSelectionKey = `${FuturesMarketType}:${string}`;
+type ReportTechnicalByKey = Partial<Record<FuturesSelectionKey, FuturesWatchTechnicalSnapshot>>;
 
 const sortOptions: Array<{ value: SortKey; label: string; direction: SortDirection }> = [
   { value: "volume24hUsd", label: "거래대금", direction: "desc" },
@@ -156,6 +158,19 @@ function rowSelectionKey(row: Pick<FuturesMarketRow, "marketType" | "symbol">): 
   return `${row.marketType}:${row.symbol}`;
 }
 
+function technicalSnapshotFromIndicators(indicators: FuturesTechnicalIndicators): FuturesWatchTechnicalSnapshot {
+  return {
+    score: indicators.score,
+    bias: indicators.bias,
+    rsi14: indicators.rsi14,
+    ema20: indicators.ema20,
+    ema50: indicators.ema50,
+    macdHistogram: indicators.macdHistogram,
+    atrPercent: indicators.atrPercent,
+    volume20Ratio: indicators.volume20Ratio,
+  };
+}
+
 async function copyTextToClipboard(text: string) {
   if (navigator.clipboard?.writeText) {
     try {
@@ -242,12 +257,14 @@ function IndicatorRow({ label, value, tone = "default" }: { label: string; value
 function WatchReport({
   items,
   markdown,
+  technicalLoading,
   onSelect,
   onCopyReport,
   onDownloadReport,
 }: {
   items: FuturesWatchReportItem[];
   markdown: string;
+  technicalLoading: boolean;
   onSelect: (key: FuturesSelectionKey) => void;
   onCopyReport: () => void;
   onDownloadReport: () => void;
@@ -304,6 +321,36 @@ function WatchReport({
             <p className="mt-3 text-sm font-black text-slate-800">{item.title}</p>
             <p className="mt-2 text-xs leading-5 text-slate-600">{item.why}</p>
             <p className="mt-3 border-t border-slate-200 pt-3 text-xs leading-5 text-rose-700">{item.risk}</p>
+            <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 text-xs">
+              {item.technical ? (
+                <>
+                  <div>
+                    <p className="font-bold text-slate-400">TA 점수</p>
+                    <p className="mt-0.5 font-black text-slate-900">
+                      {item.technical.score} · {signalMeta[item.technical.bias].label}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-400">RSI</p>
+                    <p className="mt-0.5 font-black text-slate-900">{item.technical.rsi14.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-400">MACD</p>
+                    <p className={cn("mt-0.5 font-black", item.technical.macdHistogram >= 0 ? "text-emerald-700" : "text-rose-700")}>
+                      {item.technical.macdHistogram.toLocaleString("ko-KR", { maximumFractionDigits: 6 })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-400">ATR</p>
+                    <p className="mt-0.5 font-black text-slate-900">{item.technical.atrPercent.toFixed(2)}%</p>
+                  </div>
+                </>
+              ) : (
+                <p className="col-span-2 font-semibold text-slate-500">
+                  {technicalLoading ? "기술 지표 계산 중" : "기술 지표 대기"}
+                </p>
+              )}
+            </div>
           </button>
         ))}
       </div>
@@ -486,6 +533,8 @@ export default function BinanceFutures() {
   const [technicalLoading, setTechnicalLoading] = useState(false);
   const [technicalError, setTechnicalError] = useState<string | null>(null);
   const [technical, setTechnical] = useState<{ candles: FuturesCandle[]; indicators: FuturesTechnicalIndicators } | null>(null);
+  const [reportTechnicalByKey, setReportTechnicalByKey] = useState<ReportTechnicalByKey>({});
+  const [reportTechnicalLoading, setReportTechnicalLoading] = useState(false);
 
   const reload = useCallback(async () => {
     setRefreshing(true);
@@ -541,13 +590,52 @@ export default function BinanceFutures() {
 
   const summary = useMemo(() => summarizeFuturesRows(rows), [rows]);
   const report = useMemo(() => buildFuturesWatchReport(rows), [rows]);
-  const reportMarkdown = useMemo(() => buildFuturesWatchReportMarkdown(report), [report]);
+  const reportCandidates = useMemo(() => report.items.slice(0, 5), [report]);
+  const reportCandidateSignature = useMemo(() => reportCandidates.map(item => rowSelectionKey(item)).join("|"), [reportCandidates]);
+  const reportWithTechnical = useMemo(() => ({
+    ...report,
+    items: report.items.map(item => ({
+      ...item,
+      technical: reportTechnicalByKey[rowSelectionKey(item)],
+    })),
+  }), [report, reportTechnicalByKey]);
+  const reportMarkdown = useMemo(() => buildFuturesWatchReportMarkdown(reportWithTechnical), [reportWithTechnical]);
   const quoteAssets = useMemo(() => Array.from(new Set(rows.map(row => row.quoteAsset))).sort(), [rows]);
   const marketCounts = useMemo(() => {
     const usdM = rows.filter(row => row.marketType === "USD-M").length;
     const coinM = rows.filter(row => row.marketType === "COIN-M").length;
     return { usdM, coinM };
   }, [rows]);
+
+  useEffect(() => {
+    if (!reportCandidates.length) {
+      setReportTechnicalByKey({});
+      setReportTechnicalLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const candidates = reportCandidates;
+    setReportTechnicalLoading(true);
+
+    Promise.all(candidates.map(async item => {
+      try {
+        const detail = await fetchFuturesTechnicalDetail(item.symbol, item.marketType, interval, controller.signal);
+        return [rowSelectionKey(item), technicalSnapshotFromIndicators(detail.indicators)] as const;
+      } catch {
+        return null;
+      }
+    }))
+      .then(entries => {
+        if (controller.signal.aborted) return;
+        setReportTechnicalByKey(Object.fromEntries(entries.filter(entry => entry !== null)));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setReportTechnicalLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [reportCandidateSignature, interval]);
 
   const copyReport = useCallback(() => {
     void copyTextToClipboard(reportMarkdown)
@@ -639,8 +727,9 @@ export default function BinanceFutures() {
 
         <div className="mt-5">
           <WatchReport
-            items={report.items}
+            items={reportWithTechnical.items}
             markdown={reportMarkdown}
+            technicalLoading={reportTechnicalLoading}
             onSelect={setSelectedKey}
             onCopyReport={copyReport}
             onDownloadReport={downloadReport}

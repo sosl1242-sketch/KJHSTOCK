@@ -270,12 +270,33 @@ describe("binance futures analysis", () => {
       nowIso: "2026-06-17T00:00:00.000Z",
     });
 
-    const markdown = buildFuturesWatchReportMarkdown(buildFuturesWatchReport(rows));
+    const report = buildFuturesWatchReport(rows);
+    const markdown = buildFuturesWatchReportMarkdown({
+      ...report,
+      items: report.items.map((item, index) => index === 0
+        ? {
+            ...item,
+            technical: {
+              score: 72.5,
+              bias: "bullish",
+              rsi14: 61.25,
+              ema20: 101.5,
+              ema50: 98.2,
+              macdHistogram: 0.01234567,
+              atrPercent: 4.8,
+              volume20Ratio: 145.2,
+            },
+          }
+        : item),
+    });
 
     expect(markdown).toContain("# Binance Futures Watch Report");
     expect(markdown).toContain("BRUSDT");
     expect(markdown).toContain("왜 주목");
     expect(markdown).toContain("리스크");
+    expect(markdown).toContain("기술 점수: 72.5 (강세)");
+    expect(markdown).toContain("RSI 14: 61.25");
+    expect(markdown).toContain("MACD Histogram: 0.01234567");
     expect(markdown).toContain("투자 조언이 아니며");
   });
 });
