@@ -156,6 +156,14 @@ const formatPercent = (value: number, digits = 2) => `${value > 0 ? "+" : ""}${r
 
 const formatFunding = (value: number | null) => value === null ? "-" : `${round(value * 100, 4)}%`;
 
+const reportCategoryName: Record<FuturesWatchCategory, string> = {
+  momentum_liquidity: "모멘텀 + 유동성",
+  volume_leader: "거래대금 리더",
+  funding_pressure: "펀딩 과열",
+  pullback_liquidity: "하락 변동성",
+  coin_margin_focus: "COIN-M 관찰",
+};
+
 const isoFromMillis = (value: number | null | undefined) => {
   if (!value || !Number.isFinite(value)) return null;
   return new Date(value).toISOString();
@@ -421,6 +429,43 @@ export function buildFuturesWatchReport(rows: FuturesMarketRow[]): FuturesWatchR
     generatedAt,
     items: items.sort((a, b) => b.priorityScore - a.priorityScore),
   };
+}
+
+export function buildFuturesWatchReportMarkdown(report: FuturesWatchReport): string {
+  const generatedAt = report.generatedAt ?? new Date().toISOString();
+  const lines = [
+    "# Binance Futures Watch Report",
+    "",
+    `- 생성 시각: ${generatedAt}`,
+    "- 범위: Binance USD-M 및 COIN-M 선물 공개 데이터",
+    "- 목적: 현재 주목할 만한 선물 계약과 관찰 이유를 빠르게 정리",
+    "- 주의: 이 리포트는 투자 조언이 아니며, 데이터는 지연되거나 누락될 수 있습니다.",
+    "",
+    "## 주목 후보",
+  ];
+
+  if (report.items.length === 0) {
+    lines.push("", "현재 조건에서 주목 후보를 만들 수 있는 충분한 데이터가 없습니다.");
+    return lines.join("\n");
+  }
+
+  report.items.forEach((item, index) => {
+    lines.push(
+      "",
+      `### ${index + 1}. ${item.symbol} (${item.marketType} / ${item.contractType})`,
+      "",
+      `- 분류: ${reportCategoryName[item.category]}`,
+      `- 우선 점수: ${item.priorityScore}`,
+      `- 가격: ${formatUsd(item.metrics.price)}`,
+      `- 24h 등락률: ${formatPercent(item.metrics.change24hPercent)}`,
+      `- 24h 거래대금: ${formatUsd(item.metrics.volume24hUsd)}`,
+      `- 펀딩비: ${formatFunding(item.metrics.fundingRate)}`,
+      `- 왜 주목: ${item.why}`,
+      `- 리스크: ${item.risk}`,
+    );
+  });
+
+  return lines.join("\n");
 }
 
 function sma(values: number[], period: number): number | null {

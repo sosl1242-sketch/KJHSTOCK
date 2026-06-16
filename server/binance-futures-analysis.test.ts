@@ -3,6 +3,7 @@ import {
   applyTickerUpdates,
   buildFuturesRows,
   buildFuturesWatchReport,
+  buildFuturesWatchReportMarkdown,
   calculateTechnicalIndicators,
   summarizeFuturesRows,
 type BinanceFuturesTicker,
@@ -251,5 +252,30 @@ describe("binance futures analysis", () => {
     expect(rows.find(row => row.symbol === "SPYUSDT")).toMatchObject({ assetClass: "tradefi" });
     expect(report.items.map(item => item.symbol)).not.toContain("SPYUSDT");
     expect(report.items.map(item => item.symbol)).toContain("BRUSDT");
+  });
+
+  it("formats the watch report as portable markdown with reasons and risk notes", () => {
+    const rows = buildFuturesRows({
+      marketType: "USD-M",
+      symbols: [
+        { symbol: "BRUSDT", baseAsset: "BR", quoteAsset: "USDT", contractType: "PERPETUAL", status: "TRADING" },
+        { symbol: "ETHUSDT", baseAsset: "ETH", quoteAsset: "USDT", contractType: "PERPETUAL", status: "TRADING" },
+      ],
+      tickers: [
+        ticker("BRUSDT", { quoteVolume: "200000000", priceChangePercent: "30" }),
+        ticker("ETHUSDT", { quoteVolume: "9000000000", priceChangePercent: "2" }),
+      ],
+      premiumIndex: [{ symbol: "BRUSDT", markPrice: "100", lastFundingRate: "0.0002", nextFundingTime: 1_780_001_000_000 }],
+      openInterestBySymbol: new Map(),
+      nowIso: "2026-06-17T00:00:00.000Z",
+    });
+
+    const markdown = buildFuturesWatchReportMarkdown(buildFuturesWatchReport(rows));
+
+    expect(markdown).toContain("# Binance Futures Watch Report");
+    expect(markdown).toContain("BRUSDT");
+    expect(markdown).toContain("왜 주목");
+    expect(markdown).toContain("리스크");
+    expect(markdown).toContain("투자 조언이 아니며");
   });
 });

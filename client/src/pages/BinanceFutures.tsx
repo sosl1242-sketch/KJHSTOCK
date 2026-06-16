@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import {
   fetchAllFuturesRows,
   fetchFuturesTechnicalDetail,
@@ -12,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   buildFuturesWatchReport,
+  buildFuturesWatchReportMarkdown,
   summarizeFuturesRows,
   type FuturesBias,
   type FuturesCandle,
@@ -27,7 +29,9 @@ import {
   BarChart3,
   Bitcoin,
   Clock3,
+  Clipboard,
   DatabaseZap,
+  Download,
   Gauge,
   LineChart as LineChartIcon,
   Loader2,
@@ -42,6 +46,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { toast } from "sonner";
 
 type SortKey = "rank" | "marketType" | "symbol" | "price" | "change24hPercent" | "volume24hUsd" | "fundingRate" | "signal";
 type SortDirection = "asc" | "desc";
@@ -145,6 +150,30 @@ function buildChartRows(candles: FuturesCandle[]) {
   }));
 }
 
+async function copyTextToClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Fall back to selection-based copy when the browser blocks async clipboard access.
+    }
+  }
+
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.setAttribute("readonly", "true");
+  textArea.style.position = "fixed";
+  textArea.style.left = "-9999px";
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  textArea.setSelectionRange(0, text.length);
+  const copied = document.execCommand("copy");
+  textArea.remove();
+  if (!copied) throw new Error("Clipboard copy failed");
+}
+
 function SummaryCard({
   title,
   value,
@@ -206,11 +235,19 @@ function IndicatorRow({ label, value, tone = "default" }: { label: string; value
 
 function WatchReport({
   items,
+  markdown,
   onSelect,
+  onCopyReport,
+  onDownloadReport,
 }: {
   items: FuturesWatchReportItem[];
+  markdown: string;
   onSelect: (symbol: string) => void;
+  onCopyReport: () => void;
+  onDownloadReport: () => void;
 }) {
+  const hasItems = items.length > 0;
+
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -221,9 +258,19 @@ function WatchReport({
           </h2>
           <p className="mt-1 text-xs text-slate-500">거래대금, 24h 변동, 펀딩비, COIN-M 흐름을 조합한 관찰 후보입니다.</p>
         </div>
-        <Badge variant="outline" className="w-fit rounded-md bg-slate-50 text-slate-600">
-          투자 조언 아님
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="outline" size="sm" className="h-9 rounded-md bg-white" onClick={onCopyReport} disabled={!hasItems}>
+            <Clipboard className="mr-2 h-4 w-4" />
+            리포트 복사
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="h-9 rounded-md bg-white" onClick={onDownloadReport} disabled={!hasItems}>
+            <Download className="mr-2 h-4 w-4" />
+            MD 저장
+          </Button>
+          <Badge variant="outline" className="h-9 w-fit rounded-md bg-slate-50 px-3 text-slate-600">
+            투자 조언 아님
+          </Badge>
+        </div>
       </div>
       <div className="mt-4 grid gap-3 lg:grid-cols-2 2xl:grid-cols-5">
         {items.slice(0, 5).map(item => (
@@ -254,6 +301,15 @@ function WatchReport({
           </button>
         ))}
       </div>
+      <details className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <summary className="cursor-pointer text-sm font-black text-slate-700">Markdown 리포트 원문</summary>
+        <Textarea
+          readOnly
+          value={markdown}
+          className="mt-3 min-h-64 resize-y rounded-md bg-white font-mono text-xs leading-5 text-slate-700"
+          onFocus={event => event.currentTarget.select()}
+        />
+      </details>
     </section>
   );
 }
@@ -479,12 +535,33 @@ export default function BinanceFutures() {
 
   const summary = useMemo(() => summarizeFuturesRows(rows), [rows]);
   const report = useMemo(() => buildFuturesWatchReport(rows), [rows]);
+  const reportMarkdown = useMemo(() => buildFuturesWatchReportMarkdown(report), [report]);
   const quoteAssets = useMemo(() => Array.from(new Set(rows.map(row => row.quoteAsset))).sort(), [rows]);
   const marketCounts = useMemo(() => {
     const usdM = rows.filter(row => row.marketType === "USD-M").length;
     const coinM = rows.filter(row => row.marketType === "COIN-M").length;
     return { usdM, coinM };
   }, [rows]);
+
+  const copyReport = useCallback(() => {
+    void copyTextToClipboard(reportMarkdown)
+      .then(() => toast.success("주목 후보 리포트를 복사했습니다."))
+      .catch(() => toast.error("클립보드 복사에 실패했습니다."));
+  }, [reportMarkdown]);
+
+  const downloadReport = useCallback(() => {
+    const generatedDate = (report.generatedAt ?? new Date().toISOString()).slice(0, 10);
+    const blob = new Blob([reportMarkdown], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `binance-futures-watch-report-${generatedDate}.md`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    toast.success("Markdown 리포트를 저장했습니다.");
+  }, [report.generatedAt, reportMarkdown]);
 
   const visibleRows = useMemo(() => {
     const normalizedQuery = query.trim().toUpperCase();
@@ -555,7 +632,13 @@ export default function BinanceFutures() {
         </section>
 
         <div className="mt-5">
-          <WatchReport items={report.items} onSelect={setSelectedSymbol} />
+          <WatchReport
+            items={report.items}
+            markdown={reportMarkdown}
+            onSelect={setSelectedSymbol}
+            onCopyReport={copyReport}
+            onDownloadReport={downloadReport}
+          />
         </div>
 
         <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
