@@ -1,3 +1,4 @@
+import { useAuth } from "@/_core/hooks/useAuth";
 import {
   Sidebar,
   SidebarContent,
@@ -9,16 +10,16 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from "@/components/ui/sidebar";
-import { useAuth } from "@/_core/hooks/useAuth";
-import { BarChart3, Bitcoin, Globe2, Loader2, Lock } from "lucide-react";
-import { CSSProperties, useEffect, useState } from "react";
 import PasswordLogin from "@/pages/PasswordLogin";
+import { BarChart3, Bitcoin, Globe2, Loader2, Lock, RadioTower } from "lucide-react";
+import { CSSProperties, useEffect, useState } from "react";
 import { Button } from "./ui/button";
 
 const menuItems = [
   { icon: BarChart3, label: "국내주식 섹터분석", path: "/" },
   { icon: Globe2, label: "해외주식 섹터분석", path: "/global-stocks" },
   { icon: Bitcoin, label: "크립토 섹터분석", path: "/crypto-sectors" },
+  { icon: RadioTower, label: "Binance Futures Live", path: "/binance-futures" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -114,9 +115,7 @@ export default function DashboardLayout({
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <div className="flex-1">
-          {children}
-        </div>
+        <div className="flex-1">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );

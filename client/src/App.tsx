@@ -8,8 +8,9 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import GlobalStocks from "./pages/GlobalStocks";
 import CryptoSectors from "./pages/CryptoSectors";
+import BinanceFutures from "./pages/BinanceFutures";
 
-function Router() {
+function AuthenticatedRoutes() {
   return (
     <DashboardLayout>
       <Switch>
@@ -20,6 +21,15 @@ function Router() {
         <Route component={NotFound} />
       </Switch>
     </DashboardLayout>
+  );
+}
+
+function Router() {
+  return (
+    <Switch>
+      <Route path={"/binance-futures"} component={BinanceFutures} />
+      <Route component={AuthenticatedRoutes} />
+    </Switch>
   );
 }
 
