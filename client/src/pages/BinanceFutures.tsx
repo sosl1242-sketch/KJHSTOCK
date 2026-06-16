@@ -56,6 +56,8 @@ type WsStatus = "idle" | "connecting" | "live" | "closed" | "error";
 type FuturesSelectionKey = `${FuturesMarketType}:${string}`;
 type ReportTechnicalByKey = Partial<Record<FuturesSelectionKey, FuturesWatchTechnicalSnapshot>>;
 
+const REPORT_TECHNICAL_REFRESH_MS = 120_000;
+
 const sortOptions: Array<{ value: SortKey; label: string; direction: SortDirection }> = [
   { value: "volume24hUsd", label: "거래대금", direction: "desc" },
   { value: "change24hPercent", label: "24h 등락률", direction: "desc" },
@@ -258,6 +260,7 @@ function WatchReport({
   items,
   markdown,
   technicalLoading,
+  technicalUpdatedAt,
   onSelect,
   onCopyReport,
   onDownloadReport,
@@ -265,6 +268,7 @@ function WatchReport({
   items: FuturesWatchReportItem[];
   markdown: string;
   technicalLoading: boolean;
+  technicalUpdatedAt: string | null;
   onSelect: (key: FuturesSelectionKey) => void;
   onCopyReport: () => void;
   onDownloadReport: () => void;
@@ -292,6 +296,10 @@ function WatchReport({
           </Button>
           <Badge variant="outline" className="h-9 w-fit rounded-md bg-slate-50 px-3 text-slate-600">
             투자 조언 아님
+          </Badge>
+          <Badge variant="outline" className="h-9 w-fit rounded-md bg-slate-50 px-3 text-slate-600">
+            {technicalLoading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Gauge className="mr-1 h-3.5 w-3.5" />}
+            {technicalLoading ? "TA 갱신 중" : technicalUpdatedAt ? `TA ${formatDateTime(technicalUpdatedAt)}` : "TA 대기"}
           </Badge>
         </div>
       </div>
@@ -535,6 +543,8 @@ export default function BinanceFutures() {
   const [technical, setTechnical] = useState<{ candles: FuturesCandle[]; indicators: FuturesTechnicalIndicators } | null>(null);
   const [reportTechnicalByKey, setReportTechnicalByKey] = useState<ReportTechnicalByKey>({});
   const [reportTechnicalLoading, setReportTechnicalLoading] = useState(false);
+  const [reportTechnicalUpdatedAt, setReportTechnicalUpdatedAt] = useState<string | null>(null);
+  const [reportTechnicalRefreshTick, setReportTechnicalRefreshTick] = useState(0);
 
   const reload = useCallback(async () => {
     setRefreshing(true);
@@ -567,6 +577,13 @@ export default function BinanceFutures() {
       setWsStatus(previous => ({ ...previous, [marketType]: status }));
     });
   }, [rows.length]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setReportTechnicalRefreshTick(current => current + 1);
+    }, REPORT_TECHNICAL_REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const selectedRow = useMemo(() => rows.find(row => rowSelectionKey(row) === selectedKey), [rows, selectedKey]);
 
@@ -611,6 +628,7 @@ export default function BinanceFutures() {
     if (!reportCandidates.length) {
       setReportTechnicalByKey({});
       setReportTechnicalLoading(false);
+      setReportTechnicalUpdatedAt(null);
       return;
     }
 
@@ -628,14 +646,18 @@ export default function BinanceFutures() {
     }))
       .then(entries => {
         if (controller.signal.aborted) return;
-        setReportTechnicalByKey(Object.fromEntries(entries.filter(entry => entry !== null)));
+        const nextTechnicalByKey = Object.fromEntries(entries.filter(entry => entry !== null));
+        setReportTechnicalByKey(nextTechnicalByKey);
+        if (Object.keys(nextTechnicalByKey).length > 0) {
+          setReportTechnicalUpdatedAt(new Date().toISOString());
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setReportTechnicalLoading(false);
       });
 
     return () => controller.abort();
-  }, [reportCandidateSignature, interval]);
+  }, [reportCandidateSignature, interval, reportTechnicalRefreshTick]);
 
   const copyReport = useCallback(() => {
     void copyTextToClipboard(reportMarkdown)
@@ -730,6 +752,7 @@ export default function BinanceFutures() {
             items={reportWithTechnical.items}
             markdown={reportMarkdown}
             technicalLoading={reportTechnicalLoading}
+            technicalUpdatedAt={reportTechnicalUpdatedAt}
             onSelect={setSelectedKey}
             onCopyReport={copyReport}
             onDownloadReport={downloadReport}
