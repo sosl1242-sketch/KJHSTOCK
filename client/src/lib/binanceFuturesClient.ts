@@ -15,6 +15,8 @@ const USD_M_REST_BASE = "https://fapi.binance.com";
 const COIN_M_REST_BASE = "https://dapi.binance.com";
 const USD_M_WS_URL = "wss://fstream.binance.com/ws/!ticker@arr";
 const COIN_M_WS_URL = "wss://dstream.binance.com/ws/!ticker@arr";
+const WS_RECONNECT_BASE_DELAY_MS = 1_500;
+const WS_RECONNECT_MAX_DELAY_MS = 30_000;
 
 type ExchangeInfoResponse = {
   symbols: BinanceFuturesSymbol[];
@@ -97,35 +99,71 @@ function subscribeTickerStream(
   onRowsUpdate: (updater: (rows: FuturesMarketRow[]) => FuturesMarketRow[]) => void,
   onStatusChange: (marketType: FuturesMarketType, status: "connecting" | "live" | "closed" | "error") => void,
 ) {
-  onStatusChange(marketType, "connecting");
-  const socket = new WebSocket(url);
+  let socket: WebSocket | null = null;
+  let reconnectTimer: number | null = null;
+  let closedByClient = false;
+  let retryCount = 0;
 
-  socket.addEventListener("open", () => onStatusChange(marketType, "live"));
-  socket.addEventListener("close", () => onStatusChange(marketType, "closed"));
-  socket.addEventListener("error", () => onStatusChange(marketType, "error"));
-  socket.addEventListener("message", event => {
-    try {
-      const payload = JSON.parse(String(event.data)) as BinanceTickerStreamItem[];
-      if (!Array.isArray(payload)) return;
-      const updates: BinanceFuturesTicker[] = payload.map(item => ({
-        symbol: item.s,
-        lastPrice: item.c,
-        highPrice: item.h,
-        lowPrice: item.l,
-        priceChangePercent: item.P,
-        volume: item.v,
-        baseVolume: marketType === "COIN-M" ? item.q : undefined,
-        quoteVolume: marketType === "USD-M" ? item.q : undefined,
-        closeTime: item.E,
-      }));
-      onRowsUpdate(rows => applyTickerUpdates(rows, updates));
-    } catch {
+  const clearReconnectTimer = () => {
+    if (!reconnectTimer) return;
+    window.clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  };
+
+  const scheduleReconnect = () => {
+    if (closedByClient || reconnectTimer) return;
+    const delay = Math.min(WS_RECONNECT_BASE_DELAY_MS * 2 ** retryCount, WS_RECONNECT_MAX_DELAY_MS);
+    retryCount += 1;
+    reconnectTimer = window.setTimeout(() => {
+      reconnectTimer = null;
+      connect();
+    }, delay);
+  };
+
+  const connect = () => {
+    onStatusChange(marketType, "connecting");
+    socket = new WebSocket(url);
+
+    socket.addEventListener("open", () => {
+      retryCount = 0;
+      onStatusChange(marketType, "live");
+    });
+    socket.addEventListener("close", () => {
+      socket = null;
+      onStatusChange(marketType, "closed");
+      scheduleReconnect();
+    });
+    socket.addEventListener("error", () => {
       onStatusChange(marketType, "error");
-    }
-  });
+    });
+    socket.addEventListener("message", event => {
+      try {
+        const payload = JSON.parse(String(event.data)) as BinanceTickerStreamItem[];
+        if (!Array.isArray(payload)) return;
+        const updates: BinanceFuturesTicker[] = payload.map(item => ({
+          symbol: item.s,
+          lastPrice: item.c,
+          highPrice: item.h,
+          lowPrice: item.l,
+          priceChangePercent: item.P,
+          volume: item.v,
+          baseVolume: marketType === "COIN-M" ? item.q : undefined,
+          quoteVolume: marketType === "USD-M" ? item.q : undefined,
+          closeTime: item.E,
+        }));
+        onRowsUpdate(rows => applyTickerUpdates(rows, updates));
+      } catch {
+        onStatusChange(marketType, "error");
+      }
+    });
+  };
+
+  connect();
 
   return () => {
-    socket.close();
+    closedByClient = true;
+    clearReconnectTimer();
+    socket?.close();
   };
 }
 
