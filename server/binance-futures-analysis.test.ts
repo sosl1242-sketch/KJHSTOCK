@@ -299,4 +299,41 @@ describe("binance futures analysis", () => {
     expect(markdown).toContain("MACD Histogram: 0.01234567");
     expect(markdown).toContain("투자 조언이 아니며");
   });
+
+  it("keeps sub-cent prices readable in the markdown report", () => {
+    const markdown = buildFuturesWatchReportMarkdown({
+      generatedAt: "2026-06-17T00:00:00.000Z",
+      items: [{
+        category: "funding_pressure",
+        title: "펀딩비 압력이 큰 과열 후보",
+        symbol: "SPELLUSDT",
+        marketType: "USD-M",
+        contractType: "PERPETUAL",
+        priorityScore: 100,
+        why: "펀딩비가 극단적으로 벌어져 포지션 비용 압력을 확인할 필요가 있습니다.",
+        risk: "초저가 계약은 호가 단위와 청산 변동성이 커질 수 있습니다.",
+        metrics: {
+          change24hPercent: 2.22,
+          volume24hUsd: 6_630_000,
+          fundingRate: -0.007033,
+          price: 0.0001335,
+        },
+        technical: {
+          score: 77.6,
+          bias: "bullish",
+          rsi14: 57.06,
+          ema20: 0.0001354,
+          ema50: 0.0001321,
+          macdHistogram: 0.00000042,
+          atrPercent: 2.08,
+          volume20Ratio: 3,
+        },
+      }],
+    });
+
+    expect(markdown).toContain("가격: $0.0001335");
+    expect(markdown).toContain("EMA 20/50: $0.0001354 / $0.0001321");
+    expect(markdown).not.toContain("가격: $0\n");
+    expect(markdown).not.toContain("EMA 20/50: $0 / $0");
+  });
 });

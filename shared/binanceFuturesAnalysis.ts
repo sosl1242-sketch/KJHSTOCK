@@ -165,6 +165,18 @@ const formatUsd = (value: number) => {
   return `$${round(value, 2)}`;
 };
 
+const trimFixed = (value: string) => value.replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "");
+
+const formatPriceUsd = (value: number) => {
+  const absValue = Math.abs(value);
+  const digits = absValue >= 1000 ? 2 : absValue >= 1 ? 4 : absValue >= 0.0001 ? 8 : 10;
+  const formatted = Number(value.toFixed(digits)).toLocaleString("en-US", {
+    maximumFractionDigits: digits,
+    minimumFractionDigits: 0,
+  });
+  return `$${trimFixed(formatted)}`;
+};
+
 const formatPercent = (value: number, digits = 2) => `${value > 0 ? "+" : ""}${round(value, digits)}%`;
 
 const formatFunding = (value: number | null) => value === null ? "-" : `${round(value * 100, 4)}%`;
@@ -479,7 +491,7 @@ export function buildFuturesWatchReportMarkdown(report: FuturesWatchReport): str
       "",
       `- 분류: ${reportCategoryName[item.category]}`,
       `- 우선 점수: ${item.priorityScore}`,
-      `- 가격: ${formatUsd(item.metrics.price)}`,
+      `- 가격: ${formatPriceUsd(item.metrics.price)}`,
       `- 24h 등락률: ${formatPercent(item.metrics.change24hPercent)}`,
       `- 24h 거래대금: ${formatUsd(item.metrics.volume24hUsd)}`,
       `- 펀딩비: ${formatFunding(item.metrics.fundingRate)}`,
@@ -492,7 +504,7 @@ export function buildFuturesWatchReportMarkdown(report: FuturesWatchReport): str
       lines.push(
         `- 기술 점수: ${item.technical.score} (${biasName[item.technical.bias]})`,
         `- RSI 14: ${round(item.technical.rsi14, 2)}`,
-        `- EMA 20/50: ${formatUsd(item.technical.ema20)} / ${formatUsd(item.technical.ema50)} (${emaTrend})`,
+        `- EMA 20/50: ${formatPriceUsd(item.technical.ema20)} / ${formatPriceUsd(item.technical.ema50)} (${emaTrend})`,
         `- MACD Histogram: ${round(item.technical.macdHistogram, 8)}`,
         `- ATR %: ${round(item.technical.atrPercent, 2)}%`,
         `- Volume / 20: ${round(item.technical.volume20Ratio, 2)}%`,
