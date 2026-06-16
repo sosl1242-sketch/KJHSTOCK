@@ -52,6 +52,8 @@ type SortKey = "rank" | "marketType" | "symbol" | "price" | "change24hPercent" |
 type SortDirection = "asc" | "desc";
 type WsStatus = "idle" | "connecting" | "live" | "closed" | "error";
 
+type FuturesSelectionKey = `${FuturesMarketType}:${string}`;
+
 const sortOptions: Array<{ value: SortKey; label: string; direction: SortDirection }> = [
   { value: "volume24hUsd", label: "거래대금", direction: "desc" },
   { value: "change24hPercent", label: "24h 등락률", direction: "desc" },
@@ -150,6 +152,10 @@ function buildChartRows(candles: FuturesCandle[]) {
   }));
 }
 
+function rowSelectionKey(row: Pick<FuturesMarketRow, "marketType" | "symbol">): FuturesSelectionKey {
+  return `${row.marketType}:${row.symbol}`;
+}
+
 async function copyTextToClipboard(text: string) {
   if (navigator.clipboard?.writeText) {
     try {
@@ -242,7 +248,7 @@ function WatchReport({
 }: {
   items: FuturesWatchReportItem[];
   markdown: string;
-  onSelect: (symbol: string) => void;
+  onSelect: (key: FuturesSelectionKey) => void;
   onCopyReport: () => void;
   onDownloadReport: () => void;
 }) {
@@ -277,7 +283,7 @@ function WatchReport({
           <button
             key={`${item.category}-${item.symbol}`}
             type="button"
-            onClick={() => onSelect(item.symbol)}
+            onClick={() => onSelect(rowSelectionKey(item))}
             className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-left transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950"
           >
             <div className="flex items-start justify-between gap-3">
@@ -464,7 +470,7 @@ function TechnicalPanel({
 
 export default function BinanceFutures() {
   const [rows, setRows] = useState<FuturesMarketRow[]>([]);
-  const [selectedSymbol, setSelectedSymbol] = useState<string>("");
+  const [selectedKey, setSelectedKey] = useState<FuturesSelectionKey | "">("");
   const [query, setQuery] = useState("");
   const [assetFilter, setAssetFilter] = useState("crypto");
   const [marketFilter, setMarketFilter] = useState("all");
@@ -487,12 +493,12 @@ export default function BinanceFutures() {
     try {
       const nextRows = await fetchAllFuturesRows();
       setRows(nextRows);
-      setSelectedSymbol(previous => {
-        if (previous && nextRows.some(row => row.symbol === previous)) return previous;
-        return nextRows.find(row => row.symbol === "BTCUSDT")?.symbol
-          ?? nextRows.find(row => row.symbol === "BTCUSD_PERP")?.symbol
-          ?? nextRows[0]?.symbol
-          ?? "";
+      setSelectedKey(previous => {
+        if (previous && nextRows.some(row => rowSelectionKey(row) === previous)) return previous;
+        const fallback = nextRows.find(row => row.symbol === "BTCUSDT")
+          ?? nextRows.find(row => row.symbol === "BTCUSD_PERP")
+          ?? nextRows[0];
+        return fallback ? rowSelectionKey(fallback) : "";
       });
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Binance 데이터를 불러오지 못했습니다.");
@@ -513,7 +519,7 @@ export default function BinanceFutures() {
     });
   }, [rows.length]);
 
-  const selectedRow = useMemo(() => rows.find(row => row.symbol === selectedSymbol), [rows, selectedSymbol]);
+  const selectedRow = useMemo(() => rows.find(row => rowSelectionKey(row) === selectedKey), [rows, selectedKey]);
 
   useEffect(() => {
     if (!selectedRow) return;
@@ -635,7 +641,7 @@ export default function BinanceFutures() {
           <WatchReport
             items={report.items}
             markdown={reportMarkdown}
-            onSelect={setSelectedSymbol}
+            onSelect={setSelectedKey}
             onCopyReport={copyReport}
             onDownloadReport={downloadReport}
           />
@@ -761,13 +767,13 @@ export default function BinanceFutures() {
                   </TableHeader>
                   <TableBody>
                     {visibleRows.map(row => {
-                      const selected = row.symbol === selectedSymbol;
+                      const selected = rowSelectionKey(row) === selectedKey;
                       return (
                         <TableRow
                           key={`${row.marketType}-${row.symbol}`}
                           data-state={selected ? "selected" : undefined}
                           className={cn("border-slate-100", selected && "bg-cyan-50/70 hover:bg-cyan-50")}
-                          onClick={() => setSelectedSymbol(row.symbol)}
+                          onClick={() => setSelectedKey(rowSelectionKey(row))}
                         >
                           <TableCell className="text-right text-xs font-bold text-slate-400">{row.rank}</TableCell>
                           <TableCell>
