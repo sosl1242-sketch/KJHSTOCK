@@ -75,9 +75,9 @@ describe("binance futures analysis", () => {
     const rows = buildFuturesRows({
       marketType: "COIN-M",
       symbols: [
-        { symbol: "BTCUSD_PERP", pair: "BTCUSD", baseAsset: "BTC", quoteAsset: "USD", contractType: "PERPETUAL", status: "TRADING" },
-        { symbol: "BTCUSD_260626", pair: "BTCUSD", baseAsset: "BTC", quoteAsset: "USD", contractType: "CURRENT_QUARTER", status: "TRADING" },
-        { symbol: "ETHUSD_PERP", pair: "ETHUSD", baseAsset: "ETH", quoteAsset: "USD", contractType: "PERPETUAL", status: "TRADING" },
+        { symbol: "BTCUSD_PERP", pair: "BTCUSD", baseAsset: "BTC", quoteAsset: "USD", contractType: "PERPETUAL", contractStatus: "TRADING" },
+        { symbol: "BTCUSD_260626", pair: "BTCUSD", baseAsset: "BTC", quoteAsset: "USD", contractType: "CURRENT_QUARTER", contractStatus: "TRADING" },
+        { symbol: "ETHUSD_PERP", pair: "ETHUSD", baseAsset: "ETH", quoteAsset: "USD", contractType: "PERPETUAL", contractStatus: "TRADING" },
       ],
       tickers: [
         ticker("BTCUSD_PERP", { lastPrice: "65000", baseVolume: "100", quoteVolume: undefined }),
@@ -130,7 +130,7 @@ describe("binance futures analysis", () => {
   it("recalculates COIN-M websocket volume from base volume and last price", () => {
     const rows = buildFuturesRows({
       marketType: "COIN-M",
-      symbols: [{ symbol: "BTCUSD_PERP", pair: "BTCUSD", baseAsset: "BTC", quoteAsset: "USD", contractType: "PERPETUAL", status: "TRADING" }],
+      symbols: [{ symbol: "BTCUSD_PERP", pair: "BTCUSD", baseAsset: "BTC", quoteAsset: "USD", contractType: "PERPETUAL", contractStatus: "TRADING" }],
       tickers: [ticker("BTCUSD_PERP", { lastPrice: "65000", baseVolume: "100", quoteVolume: undefined })],
       premiumIndex: [],
       openInterestBySymbol: new Map(),

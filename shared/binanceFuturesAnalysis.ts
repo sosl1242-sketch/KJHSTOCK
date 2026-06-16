@@ -4,7 +4,8 @@ export type BinanceFuturesSymbol = {
   baseAsset: string;
   quoteAsset: string;
   contractType: string;
-  status: string;
+  status?: string;
+  contractStatus?: string;
 };
 
 export type BinanceFuturesTicker = {
@@ -236,6 +237,10 @@ function compareByVolume(a: FuturesMarketRow, b: FuturesMarketRow) {
   return b.volume24hUsd - a.volume24hUsd || a.symbol.localeCompare(b.symbol);
 }
 
+function getFuturesSymbolStatus(symbolInfo: BinanceFuturesSymbol) {
+  return symbolInfo.status ?? symbolInfo.contractStatus ?? "";
+}
+
 function getVolume24hUsd(marketType: FuturesMarketType, ticker: BinanceFuturesTicker) {
   const price = numberOrZero(ticker.lastPrice);
   const quoteVolume = parseNumber(ticker.quoteVolume);
@@ -251,7 +256,7 @@ function getVolume24hUsd(marketType: FuturesMarketType, ticker: BinanceFuturesTi
 export function buildFuturesRows(input: BuildFuturesRowsInput): FuturesMarketRow[] {
   const tradableContracts = new Map(
     input.symbols
-      .filter(item => item.status === "TRADING")
+      .filter(item => getFuturesSymbolStatus(item) === "TRADING")
       .map(item => [item.symbol, item]),
   );
   const premiumBySymbol = new Map(input.premiumIndex.map(item => [item.symbol, item]));

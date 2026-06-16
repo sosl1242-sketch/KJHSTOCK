@@ -56,6 +56,7 @@ type WsStatus = "idle" | "connecting" | "live" | "closed" | "error";
 type FuturesSelectionKey = `${FuturesMarketType}:${string}`;
 type ReportTechnicalByKey = Partial<Record<FuturesSelectionKey, FuturesWatchTechnicalSnapshot>>;
 
+const MARKET_METADATA_REFRESH_MS = 300_000;
 const REPORT_TECHNICAL_REFRESH_MS = 120_000;
 
 const sortOptions: Array<{ value: SortKey; label: string; direction: SortDirection }> = [
@@ -537,6 +538,7 @@ export default function BinanceFutures() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [metadataLastRefreshedAt, setMetadataLastRefreshedAt] = useState<string | null>(null);
   const [wsStatus, setWsStatus] = useState<Record<FuturesMarketType, WsStatus>>({ "USD-M": "idle", "COIN-M": "idle" });
   const [technicalLoading, setTechnicalLoading] = useState(false);
   const [technicalError, setTechnicalError] = useState<string | null>(null);
@@ -546,12 +548,13 @@ export default function BinanceFutures() {
   const [reportTechnicalUpdatedAt, setReportTechnicalUpdatedAt] = useState<string | null>(null);
   const [reportTechnicalRefreshTick, setReportTechnicalRefreshTick] = useState(0);
 
-  const reload = useCallback(async () => {
-    setRefreshing(true);
+  const reload = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    if (!silent) setRefreshing(true);
     setError(null);
     try {
       const nextRows = await fetchAllFuturesRows();
       setRows(nextRows);
+      setMetadataLastRefreshedAt(new Date().toISOString());
       setSelectedKey(previous => {
         if (previous && nextRows.some(row => rowSelectionKey(row) === previous)) return previous;
         const fallback = nextRows.find(row => row.symbol === "BTCUSDT")
@@ -563,7 +566,7 @@ export default function BinanceFutures() {
       setError(loadError instanceof Error ? loadError.message : "Binance 데이터를 불러오지 못했습니다.");
     } finally {
       setLoading(false);
-      setRefreshing(false);
+      if (!silent) setRefreshing(false);
     }
   }, []);
 
@@ -577,6 +580,14 @@ export default function BinanceFutures() {
       setWsStatus(previous => ({ ...previous, [marketType]: status }));
     });
   }, [rows.length]);
+
+  useEffect(() => {
+    if (!rows.length) return;
+    const timer = window.setInterval(() => {
+      void reload({ silent: true });
+    }, MARKET_METADATA_REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, [reload, rows.length]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -723,6 +734,10 @@ export default function BinanceFutures() {
             <Badge variant="outline" className="rounded-md px-3 py-1.5 text-slate-600">
               <Clock3 className="mr-1 h-3.5 w-3.5" />
               {formatDateTime(summary.lastUpdated)}
+            </Badge>
+            <Badge variant="outline" className="rounded-md px-3 py-1.5 text-slate-600">
+              <DatabaseZap className="mr-1 h-3.5 w-3.5" />
+              REST {formatDateTime(metadataLastRefreshedAt)}
             </Badge>
             <Button className="rounded-md" variant="outline" onClick={() => void reload()} disabled={refreshing}>
               {refreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
