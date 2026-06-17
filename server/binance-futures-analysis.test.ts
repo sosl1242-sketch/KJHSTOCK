@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   applyTickerUpdates,
+  buildFuturesFinalJudgmentReport,
   buildFuturesRows,
   buildFuturesWatchReport,
   buildFuturesWatchReportMarkdown,
@@ -373,5 +374,121 @@ describe("binance futures analysis", () => {
     expect(markdown).toContain("EMA 20/50: $0.0001354 / $0.0001321");
     expect(markdown).not.toContain("가격: $0\n");
     expect(markdown).not.toContain("EMA 20/50: $0 / $0");
+  });
+
+  it("builds a final aggregate judgment from all report candidates and technical snapshots", () => {
+    const finalJudgment = buildFuturesFinalJudgmentReport({
+      generatedAt: "2026-06-17T00:00:00.000Z",
+      items: [
+        {
+          category: "momentum_liquidity",
+          title: "거래대금이 동반된 상승 모멘텀",
+          symbol: "ALPHAUSDT",
+          marketType: "USD-M",
+          contractType: "PERPETUAL",
+          priorityScore: 88,
+          why: "24h 상승과 거래대금이 동시에 붙었습니다.",
+          risk: "단기 과열 가능성은 확인해야 합니다.",
+          watchPoints: ["고점 돌파 유지", "거래대금 유지"],
+          metrics: { change24hPercent: 8.2, volume24hUsd: 1_500_000_000, fundingRate: 0.0002, price: 12.4 },
+          technical: {
+            score: 78,
+            bias: "bullish",
+            rsi14: 66,
+            ema20: 12.1,
+            ema50: 11.3,
+            macdHistogram: 0.18,
+            atrPercent: 4.2,
+            volume20Ratio: 168,
+          },
+        },
+        {
+          category: "volume_leader",
+          title: "시장 관심이 크게 몰린 유동성 리더",
+          symbol: "BETAUSDT",
+          marketType: "USD-M",
+          contractType: "PERPETUAL",
+          priorityScore: 72,
+          why: "거래대금 기준 상위권입니다.",
+          risk: "방향성이 둔화될 수 있습니다.",
+          watchPoints: ["가격 방향 확인", "펀딩비 확인"],
+          metrics: { change24hPercent: 3.1, volume24hUsd: 2_200_000_000, fundingRate: 0.0004, price: 44.8 },
+          technical: {
+            score: 68,
+            bias: "bullish",
+            rsi14: 58,
+            ema20: 44.1,
+            ema50: 43,
+            macdHistogram: 0.09,
+            atrPercent: 3.8,
+            volume20Ratio: 132,
+          },
+        },
+        {
+          category: "funding_pressure",
+          title: "펀딩비 과열 후보",
+          symbol: "GAMMAUSDT",
+          marketType: "USD-M",
+          contractType: "PERPETUAL",
+          priorityScore: 61,
+          why: "펀딩비가 높아 포지션 쏠림이 있습니다.",
+          risk: "청산 변동성이 커질 수 있습니다.",
+          watchPoints: ["펀딩비 완화", "가격 추세 유지"],
+          metrics: { change24hPercent: -1.4, volume24hUsd: 700_000_000, fundingRate: 0.0017, price: 2.1 },
+          technical: {
+            score: 47,
+            bias: "neutral",
+            rsi14: 72,
+            ema20: 2.08,
+            ema50: 2.09,
+            macdHistogram: -0.01,
+            atrPercent: 7.8,
+            volume20Ratio: 91,
+          },
+        },
+      ],
+    });
+
+    expect(finalJudgment.primarySymbol).toBe("ALPHAUSDT");
+    expect(finalJudgment.label).toBe("강한 주목");
+    expect(finalJudgment.score).toBeGreaterThanOrEqual(70);
+    expect(finalJudgment.evidence.averageTechnicalScore).toBe(64.3);
+    expect(finalJudgment.evidence.bullishTechnicalCount).toBe(2);
+    expect(finalJudgment.strengths.join(" ")).toContain("ALPHAUSDT");
+    expect(finalJudgment.risks.join(" ")).toContain("과열");
+    expect(finalJudgment.actionPlan.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("adds the final aggregate judgment to the bottom of the markdown report", () => {
+    const markdown = buildFuturesWatchReportMarkdown({
+      generatedAt: "2026-06-17T00:00:00.000Z",
+      items: [{
+        category: "momentum_liquidity",
+        title: "거래대금이 동반된 상승 모멘텀",
+        symbol: "ALPHAUSDT",
+        marketType: "USD-M",
+        contractType: "PERPETUAL",
+        priorityScore: 88,
+        why: "24h 상승과 거래대금이 동시에 붙었습니다.",
+        risk: "단기 과열 가능성은 확인해야 합니다.",
+        watchPoints: ["고점 돌파 유지", "거래대금 유지"],
+        metrics: { change24hPercent: 8.2, volume24hUsd: 1_500_000_000, fundingRate: 0.0002, price: 12.4 },
+        technical: {
+          score: 78,
+          bias: "bullish",
+          rsi14: 66,
+          ema20: 12.1,
+          ema50: 11.3,
+          macdHistogram: 0.18,
+          atrPercent: 4.2,
+          volume20Ratio: 168,
+        },
+      }],
+    });
+
+    expect(markdown).toContain("## 최종 종합판단");
+    expect(markdown).toContain("- 최종 판정: 강한 주목");
+    expect(markdown).toContain("- 1순위 후보: ALPHAUSDT");
+    expect(markdown.trim().endsWith("투자 판단 전에는 반드시 본인 기준의 손절가와 포지션 크기를 먼저 정합니다.")).toBe(true);
   });
 });

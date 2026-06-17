@@ -12,6 +12,7 @@ import {
 } from "@/lib/binanceFuturesClient";
 import { cn } from "@/lib/utils";
 import {
+  buildFuturesFinalJudgmentReport,
   buildFuturesWatchReport,
   buildFuturesWatchReportMarkdown,
   summarizeFuturesRows,
@@ -20,6 +21,7 @@ import {
   type FuturesMarketRow,
   type FuturesMarketType,
   type FuturesTechnicalIndicators,
+  type FuturesFinalJudgmentReport,
   type FuturesWatchReportItem,
   type FuturesWatchTechnicalSnapshot,
 } from "@shared/binanceFuturesAnalysis";
@@ -926,6 +928,147 @@ function WatchReport({
   );
 }
 
+const finalJudgmentToneClass: Record<FuturesFinalJudgmentReport["tone"], string> = {
+  strong_watch: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  selective_watch: "border-cyan-200 bg-cyan-50 text-cyan-800",
+  neutral_watch: "border-slate-200 bg-slate-50 text-slate-700",
+  risk_first: "border-rose-200 bg-rose-50 text-rose-800",
+};
+
+function FinalJudgmentReport({
+  judgment,
+  technicalLoading,
+  technicalUpdatedAt,
+}: {
+  judgment: FuturesFinalJudgmentReport;
+  technicalLoading: boolean;
+  technicalUpdatedAt: string | null;
+}) {
+  return (
+    <section className="mt-5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Final Decision Report</p>
+          <h2 className="mt-1 flex items-center gap-2 text-xl font-black text-slate-950">
+            <Sparkles className="h-5 w-5 text-amber-500" />
+            최종 종합판단
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{judgment.headline}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className={cn("h-9 rounded-md px-3 text-sm font-black", finalJudgmentToneClass[judgment.tone])}>
+            {judgment.label}
+          </Badge>
+          <Badge variant="outline" className="h-9 rounded-md bg-slate-950 px-3 text-sm font-black text-white">
+            종합 {judgment.score}
+          </Badge>
+          <Badge variant="outline" className="h-9 rounded-md bg-slate-50 px-3 text-slate-600">
+            {technicalLoading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Gauge className="mr-1 h-3.5 w-3.5" />}
+            {technicalLoading ? "TA 갱신 중" : technicalUpdatedAt ? `TA ${formatDateTime(technicalUpdatedAt)}` : "TA 대기"}
+          </Badge>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-black text-slate-400">1순위 후보</p>
+              <p className="mt-1 text-3xl font-black text-slate-950">{judgment.primarySymbol ?? "자료 부족"}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{judgment.summary}</p>
+            </div>
+            <Badge variant="outline" className="w-fit rounded-md bg-white px-3 py-1.5 text-slate-700">
+              {judgment.primaryMarketType ?? "대기"}
+            </Badge>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="rounded-md bg-white p-3">
+              <p className="text-[11px] font-black text-slate-400">후보 수</p>
+              <p className="mt-1 text-lg font-black text-slate-950">{judgment.evidence.candidateCount}</p>
+            </div>
+            <div className="rounded-md bg-white p-3">
+              <p className="text-[11px] font-black text-slate-400">TA 확보</p>
+              <p className="mt-1 text-lg font-black text-slate-950">{judgment.evidence.technicalCount}/{judgment.evidence.candidateCount}</p>
+            </div>
+            <div className="rounded-md bg-white p-3">
+              <p className="text-[11px] font-black text-slate-400">평균 TA</p>
+              <p className="mt-1 text-lg font-black text-slate-950">{judgment.evidence.averageTechnicalScore ?? "-"}</p>
+            </div>
+            <div className="rounded-md bg-white p-3">
+              <p className="text-[11px] font-black text-slate-400">강세 TA</p>
+              <p className="mt-1 text-lg font-black text-emerald-700">{judgment.evidence.bullishTechnicalCount}</p>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="rounded-md bg-white p-3">
+              <p className="text-[11px] font-black text-slate-400">24h 거래대금</p>
+              <p className="mt-1 text-sm font-black text-slate-950">{formatUsd(judgment.evidence.totalVolume24hUsd)}</p>
+            </div>
+            <div className="rounded-md bg-white p-3">
+              <p className="text-[11px] font-black text-slate-400">평균 24h</p>
+              <p className={cn("mt-1 text-sm font-black", judgment.evidence.averageChange24hPercent >= 0 ? "text-emerald-700" : "text-rose-700")}>
+                {formatPercent(judgment.evidence.averageChange24hPercent)}
+              </p>
+            </div>
+            <div className="rounded-md bg-white p-3">
+              <p className="text-[11px] font-black text-slate-400">과열</p>
+              <p className="mt-1 text-sm font-black text-amber-700">{judgment.evidence.overboughtCount}</p>
+            </div>
+            <div className="rounded-md bg-white p-3">
+              <p className="text-[11px] font-black text-slate-400">펀딩 쏠림</p>
+              <p className="mt-1 text-sm font-black text-rose-700">{judgment.evidence.extremeFundingCount}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3">
+          <div className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-4">
+            <h3 className="text-sm font-black text-emerald-900">종합 근거</h3>
+            <ul className="mt-3 space-y-2 text-sm leading-6 text-emerald-950">
+              {judgment.strengths.map(item => (
+                <li key={item} className="flex gap-2">
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-lg border border-rose-100 bg-rose-50/70 p-4">
+            <h3 className="text-sm font-black text-rose-900">주의 리스크</h3>
+            <ul className="mt-3 space-y-2 text-sm leading-6 text-rose-950">
+              {judgment.risks.map(item => (
+                <li key={item} className="flex gap-2">
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 rounded-lg border border-slate-200 bg-slate-950 p-4 text-white">
+        <h3 className="flex items-center gap-2 text-sm font-black">
+          <Target className="h-4 w-4 text-cyan-300" />
+          실행 체크
+        </h3>
+        <ol className="mt-3 grid gap-2 text-sm leading-6 text-slate-200 lg:grid-cols-2">
+          {judgment.actionPlan.map((item, index) => (
+            <li key={item} className="flex gap-2">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white text-[11px] font-black text-slate-950">{index + 1}</span>
+              <span>{item}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <p className="mt-3 text-xs leading-5 text-slate-500">
+        Binance USD-M 및 COIN-M 공개 API와 확보된 기술 지표 기준입니다. 데이터는 지연되거나 누락될 수 있으며, 표시된 점수와 리포트는 투자 조언이 아닙니다.
+      </p>
+    </section>
+  );
+}
+
 function TechnicalPanel({
   row,
   interval,
@@ -1223,6 +1366,7 @@ export default function BinanceFutures() {
       technical: reportTechnicalByKey[rowSelectionKey(item)],
     })),
   }), [report, reportTechnicalByKey]);
+  const finalJudgment = useMemo(() => buildFuturesFinalJudgmentReport(reportWithTechnical), [reportWithTechnical]);
   const reportMarkdown = useMemo(() => buildFuturesWatchReportMarkdown(reportWithTechnical), [reportWithTechnical]);
   const quoteAssets = useMemo(() => Array.from(new Set(rows.map(row => row.quoteAsset))).sort(), [rows]);
   const marketCounts = useMemo(() => {
@@ -1556,9 +1700,11 @@ export default function BinanceFutures() {
           />
         </section>
 
-        <section className="mt-5 rounded-lg border border-slate-200 bg-white p-4 text-xs leading-5 text-slate-500 shadow-sm">
-          Binance USD-M 및 COIN-M 공개 API 기준입니다. 데이터는 지연되거나 누락될 수 있으며, 표시된 점수와 리포트는 투자 조언이 아닙니다.
-        </section>
+        <FinalJudgmentReport
+          judgment={finalJudgment}
+          technicalLoading={reportTechnicalLoading}
+          technicalUpdatedAt={reportTechnicalUpdatedAt}
+        />
       </main>
     </div>
   );

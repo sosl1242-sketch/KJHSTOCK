@@ -94,6 +94,36 @@ export type FuturesWatchReport = {
   items: FuturesWatchReportItem[];
 };
 
+export type FuturesFinalJudgmentTone = "strong_watch" | "selective_watch" | "neutral_watch" | "risk_first";
+
+export type FuturesFinalJudgmentReport = {
+  generatedAt: string | null;
+  label: string;
+  tone: FuturesFinalJudgmentTone;
+  score: number;
+  headline: string;
+  summary: string;
+  primarySymbol: string | null;
+  primaryMarketType: FuturesMarketType | null;
+  evidence: {
+    candidateCount: number;
+    technicalCount: number;
+    averagePriorityScore: number;
+    averageTechnicalScore: number | null;
+    bullishTechnicalCount: number;
+    bearishTechnicalCount: number;
+    overboughtCount: number;
+    highVolatilityCount: number;
+    volumeExpansionCount: number;
+    extremeFundingCount: number;
+    totalVolume24hUsd: number;
+    averageChange24hPercent: number;
+  };
+  strengths: string[];
+  risks: string[];
+  actionPlan: string[];
+};
+
 export type FuturesWatchTechnicalSnapshot = {
   score: number;
   bias: FuturesBias;
@@ -494,6 +524,133 @@ export function buildFuturesWatchReport(rows: FuturesMarketRow[]): FuturesWatchR
   };
 }
 
+function average(values: number[]) {
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+}
+
+export function buildFuturesFinalJudgmentReport(report: FuturesWatchReport): FuturesFinalJudgmentReport {
+  const items = report.items;
+  const technicalItems = items.filter(item => item.technical);
+  const primary = [...items].sort((a, b) => b.priorityScore - a.priorityScore)[0] ?? null;
+  const priorityAverage = round(average(items.map(item => item.priorityScore)), 1);
+  const technicalAverage = technicalItems.length
+    ? round(average(technicalItems.map(item => item.technical?.score ?? 0)), 1)
+    : null;
+  const totalVolume24hUsd = round(items.reduce((sum, item) => sum + item.metrics.volume24hUsd, 0), 2);
+  const averageChange24hPercent = round(average(items.map(item => item.metrics.change24hPercent)), 2);
+  const bullishTechnicalCount = technicalItems.filter(item => item.technical?.bias === "bullish" || (item.technical?.score ?? 0) >= 60).length;
+  const bearishTechnicalCount = technicalItems.filter(item => item.technical?.bias === "bearish" || (item.technical?.score ?? 100) <= 40).length;
+  const overboughtCount = technicalItems.filter(item => (item.technical?.rsi14 ?? 0) >= 70).length;
+  const highVolatilityCount = technicalItems.filter(item => (item.technical?.atrPercent ?? 0) >= 7).length;
+  const volumeExpansionCount = technicalItems.filter(item => (item.technical?.volume20Ratio ?? 0) >= 120).length;
+  const extremeFundingCount = items.filter(item => Math.abs(item.metrics.fundingRate ?? 0) >= 0.001).length;
+  const marketScore = clamp(50 + averageChange24hPercent * 2 + scoreLogVolume(totalVolume24hUsd) * 2, 0, 100);
+  const technicalScore = technicalAverage ?? 50;
+  const breadthBonus = bullishTechnicalCount * 2 + volumeExpansionCount * 1.5;
+  const riskPenalty = bearishTechnicalCount * 3 + overboughtCount * 1.5 + highVolatilityCount * 1.5 + extremeFundingCount;
+  const score = round(clamp(priorityAverage * 0.4 + technicalScore * 0.4 + marketScore * 0.2 + breadthBonus - riskPenalty, 0, 100), 1);
+
+  const tone: FuturesFinalJudgmentTone = score >= 70 && bullishTechnicalCount >= bearishTechnicalCount
+    ? "strong_watch"
+    : score >= 58
+      ? "selective_watch"
+      : score >= 45
+        ? "neutral_watch"
+        : "risk_first";
+  const labelByTone: Record<FuturesFinalJudgmentTone, string> = {
+    strong_watch: "강한 주목",
+    selective_watch: "선별 주목",
+    neutral_watch: "관망",
+    risk_first: "리스크 우선",
+  };
+  const headlineByTone: Record<FuturesFinalJudgmentTone, string> = {
+    strong_watch: "시장 점수와 기술 지표가 같은 방향으로 모여 있습니다.",
+    selective_watch: "좋은 후보는 있으나 확인해야 할 리스크가 남아 있습니다.",
+    neutral_watch: "방향성이 충분히 쌓일 때까지 관찰이 우선입니다.",
+    risk_first: "진입 후보보다 리스크 관리 신호가 더 큽니다.",
+  };
+
+  const strengths: string[] = [];
+  if (primary) {
+    strengths.push(`${primary.symbol}이 우선 점수 ${primary.priorityScore}로 가장 앞섭니다.`);
+  }
+  if (technicalAverage !== null) {
+    strengths.push(`기술 지표 평균 점수는 ${technicalAverage}점이며 강세 판정 ${bullishTechnicalCount}개가 포함됩니다.`);
+  }
+  if (volumeExpansionCount > 0) {
+    strengths.push(`거래량 확장 지표가 ${volumeExpansionCount}개 후보에서 확인됩니다.`);
+  }
+  if (totalVolume24hUsd > 0) {
+    strengths.push(`상위 후보 합산 24h 거래대금은 ${formatUsd(totalVolume24hUsd)}입니다.`);
+  }
+  if (!strengths.length) {
+    strengths.push("아직 최종 판단을 만들 만큼 강한 근거가 부족합니다.");
+  }
+
+  const risks: string[] = [];
+  if (overboughtCount > 0) {
+    risks.push(`과열 신호: RSI 70 이상 후보가 ${overboughtCount}개 있습니다.`);
+  }
+  if (highVolatilityCount > 0) {
+    risks.push(`변동성 리스크: ATR 7% 이상 후보가 ${highVolatilityCount}개 있습니다.`);
+  }
+  if (extremeFundingCount > 0) {
+    risks.push(`펀딩비 쏠림: 절대 펀딩비 0.1% 이상 후보가 ${extremeFundingCount}개 있습니다.`);
+  }
+  if (technicalItems.length < items.length) {
+    risks.push(`기술 지표 미확보 후보가 ${items.length - technicalItems.length}개 있어 판단 신뢰도가 낮아질 수 있습니다.`);
+  }
+  if (!risks.length) {
+    risks.push("뚜렷한 과열 신호는 적지만 실시간 선물 데이터 특성상 급변 가능성은 남아 있습니다.");
+  }
+
+  const summary = primary
+    ? `${labelByTone[tone]}: ${primary.symbol}을 1순위로 두되, 기술 점수와 과열 리스크를 함께 확인해야 합니다.`
+    : "자료 부족: 주목 후보와 기술 지표가 충분히 쌓인 뒤 최종 판단을 갱신합니다.";
+  const actionPlan = primary
+    ? [
+        `1순위 후보는 ${primary.symbol}입니다. 현재가 ${formatPriceUsd(primary.metrics.price)}, 24h ${formatPercent(primary.metrics.change24hPercent)}, 거래대금 ${formatUsd(primary.metrics.volume24hUsd)}를 기준으로 관찰합니다.`,
+        technicalAverage !== null
+          ? `기술 지표 평균 ${technicalAverage}점이 60점 위를 유지하는지 확인합니다. 50점 아래로 내려가면 관망으로 낮춥니다.`
+          : "기술 지표 계산이 끝날 때까지 시장 데이터만으로 추격하지 않습니다.",
+        "새 캔들이 고점 돌파와 거래대금 유지를 동시에 보여줄 때만 관심도를 높입니다.",
+        "투자 판단 전에는 반드시 본인 기준의 손절가와 포지션 크기를 먼저 정합니다.",
+      ]
+    : [
+        "추천 후보가 충분하지 않으면 새 데이터 갱신 후 다시 판단합니다.",
+        "기술 지표 계산이 끝나기 전까지는 관망을 기본값으로 둡니다.",
+        "투자 판단 전에는 반드시 본인 기준의 손절가와 포지션 크기를 먼저 정합니다.",
+      ];
+
+  return {
+    generatedAt: report.generatedAt,
+    label: labelByTone[tone],
+    tone,
+    score,
+    headline: headlineByTone[tone],
+    summary,
+    primarySymbol: primary?.symbol ?? null,
+    primaryMarketType: primary?.marketType ?? null,
+    evidence: {
+      candidateCount: items.length,
+      technicalCount: technicalItems.length,
+      averagePriorityScore: priorityAverage,
+      averageTechnicalScore: technicalAverage,
+      bullishTechnicalCount,
+      bearishTechnicalCount,
+      overboughtCount,
+      highVolatilityCount,
+      volumeExpansionCount,
+      extremeFundingCount,
+      totalVolume24hUsd,
+      averageChange24hPercent,
+    },
+    strengths,
+    risks,
+    actionPlan,
+  };
+}
+
 export function buildFuturesWatchReportMarkdown(report: FuturesWatchReport): string {
   const generatedAt = report.generatedAt ?? new Date().toISOString();
   const lines = [
@@ -540,6 +697,31 @@ export function buildFuturesWatchReportMarkdown(report: FuturesWatchReport): str
       );
     }
   });
+
+  const finalJudgment = buildFuturesFinalJudgmentReport(report);
+  lines.push(
+    "",
+    "## 최종 종합판단",
+    "",
+    `- 최종 판정: ${finalJudgment.label}`,
+    `- 종합 점수: ${finalJudgment.score}`,
+    `- 1순위 후보: ${finalJudgment.primarySymbol ?? "자료 부족"}`,
+    `- 후보 수: ${finalJudgment.evidence.candidateCount}`,
+    `- 기술 지표 확보: ${finalJudgment.evidence.technicalCount}/${finalJudgment.evidence.candidateCount}`,
+    `- 평균 기술 점수: ${finalJudgment.evidence.averageTechnicalScore ?? "대기"}`,
+    `- 합산 24h 거래대금: ${formatUsd(finalJudgment.evidence.totalVolume24hUsd)}`,
+    `- 평균 24h 등락률: ${formatPercent(finalJudgment.evidence.averageChange24hPercent)}`,
+    `- 핵심 요약: ${finalJudgment.summary}`,
+    "",
+    "### 근거",
+    ...finalJudgment.strengths.map(strength => `- ${strength}`),
+    "",
+    "### 리스크",
+    ...finalJudgment.risks.map(risk => `- ${risk}`),
+    "",
+    "### 실행 체크",
+    ...finalJudgment.actionPlan.map(action => `- ${action}`),
+  );
 
   return lines.join("\n");
 }
