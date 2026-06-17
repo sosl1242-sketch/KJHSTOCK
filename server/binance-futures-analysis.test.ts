@@ -230,6 +230,38 @@ describe("binance futures analysis", () => {
     expect(report.items.every(item => item.why.length > 20 && item.risk.length > 10 && item.watchPoints.length >= 2)).toBe(true);
   });
 
+  it("keeps recommended symbols unique across report categories", () => {
+    const rows = buildFuturesRows({
+      marketType: "USD-M",
+      symbols: [
+        { symbol: "MOMOUSDT", baseAsset: "MOMO", quoteAsset: "USDT", contractType: "PERPETUAL", status: "TRADING" },
+        { symbol: "FLOWUSDT", baseAsset: "FLOW", quoteAsset: "USDT", contractType: "PERPETUAL", status: "TRADING" },
+        { symbol: "FUNDUSDT", baseAsset: "FUND", quoteAsset: "USDT", contractType: "PERPETUAL", status: "TRADING" },
+        { symbol: "DROPUSDT", baseAsset: "DROP", quoteAsset: "USDT", contractType: "PERPETUAL", status: "TRADING" },
+      ],
+      tickers: [
+        ticker("MOMOUSDT", { lastPrice: "10", quoteVolume: "2000000000", priceChangePercent: "40" }),
+        ticker("FLOWUSDT", { lastPrice: "5", quoteVolume: "1500000000", priceChangePercent: "2" }),
+        ticker("FUNDUSDT", { lastPrice: "2", quoteVolume: "500000000", priceChangePercent: "3" }),
+        ticker("DROPUSDT", { lastPrice: "1", quoteVolume: "700000000", priceChangePercent: "-18" }),
+      ],
+      premiumIndex: [
+        { symbol: "MOMOUSDT", markPrice: "10", lastFundingRate: "0.0001", nextFundingTime: 1_780_001_000_000 },
+        { symbol: "FUNDUSDT", markPrice: "2", lastFundingRate: "0.0016", nextFundingTime: 1_780_001_000_000 },
+        { symbol: "DROPUSDT", markPrice: "1", lastFundingRate: "-0.0003", nextFundingTime: 1_780_001_000_000 },
+      ],
+      openInterestBySymbol: new Map(),
+      nowIso: "2026-06-17T00:00:00.000Z",
+    });
+
+    const report = buildFuturesWatchReport(rows);
+    const reportKeys = report.items.map(item => `${item.marketType}:${item.symbol}`);
+
+    expect(new Set(reportKeys).size).toBe(reportKeys.length);
+    expect(report.items.find(item => item.category === "momentum_liquidity")?.symbol).toBe("MOMOUSDT");
+    expect(report.items.find(item => item.category === "volume_leader")?.symbol).toBe("FLOWUSDT");
+  });
+
   it("keeps TradeFi futures out of the crypto watch report", () => {
     const rows = buildFuturesRows({
       marketType: "USD-M",

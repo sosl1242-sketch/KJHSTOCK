@@ -377,8 +377,12 @@ function makeWatchItem(
 
 function pushUnique(items: FuturesWatchReportItem[], item: FuturesWatchReportItem | null) {
   if (!item) return;
-  if (items.some(existing => existing.symbol === item.symbol && existing.category === item.category)) return;
+  if (items.some(existing => existing.symbol === item.symbol && existing.marketType === item.marketType)) return;
   items.push(item);
+}
+
+function alreadyRecommended(items: FuturesWatchReportItem[], row: FuturesMarketRow) {
+  return items.some(item => item.symbol === row.symbol && item.marketType === row.marketType);
 }
 
 export function buildFuturesWatchReport(rows: FuturesMarketRow[]): FuturesWatchReport {
@@ -404,16 +408,14 @@ export function buildFuturesWatchReport(rows: FuturesMarketRow[]): FuturesWatchR
     ));
   }
 
-  const volumeLeader = [...liquidRows].sort(compareByVolume)[0];
+  const volumeLeader = [...liquidRows].sort(compareByVolume).find(row => !alreadyRecommended(items, row));
   if (volumeLeader) {
     pushUnique(items, makeWatchItem(
       "volume_leader",
       volumeLeader,
       "시장 관심이 가장 크게 몰린 유동성 리더",
       scoreLogVolume(volumeLeader.volume24hUsd) * 8 + Math.abs(volumeLeader.change24hPercent),
-      volumeLeader === momentum
-        ? `${volumeLeader.symbol}는 상승 후보이면서 전체 거래대금도 ${formatUsd(volumeLeader.volume24hUsd)}로 최상위권이라 추세 지속 여부를 볼 가치가 있습니다.`
-        : `${volumeLeader.symbol}는 24h 거래대금 ${formatUsd(volumeLeader.volume24hUsd)}로 시장 자금 회전이 가장 큰 축에 있어 방향 전환 신호가 빠르게 나타날 수 있습니다.`,
+      `${volumeLeader.symbol}는 24h 거래대금 ${formatUsd(volumeLeader.volume24hUsd)}로 시장 자금 회전이 가장 큰 축에 있어 방향 전환 신호가 빠르게 나타날 수 있습니다.`,
       "거래대금 1위가 항상 방향성을 뜻하지는 않습니다. 가격 등락률과 펀딩비가 엇갈리면 관망 신호일 수 있습니다.",
       [
         "거래대금 증가가 가격 방향성과 함께 움직이는지 확인",
@@ -424,7 +426,8 @@ export function buildFuturesWatchReport(rows: FuturesMarketRow[]): FuturesWatchR
 
   const fundingPressure = [...liquidRows]
     .filter(row => row.fundingRate !== null)
-    .sort((a, b) => Math.abs(b.fundingRate ?? 0) - Math.abs(a.fundingRate ?? 0))[0];
+    .sort((a, b) => Math.abs(b.fundingRate ?? 0) - Math.abs(a.fundingRate ?? 0))
+    .find(row => !alreadyRecommended(items, row));
   if (fundingPressure) {
     const side = (fundingPressure.fundingRate ?? 0) > 0 ? "롱 비용 부담" : "숏 비용 부담";
     pushUnique(items, makeWatchItem(
@@ -443,7 +446,8 @@ export function buildFuturesWatchReport(rows: FuturesMarketRow[]): FuturesWatchR
 
   const pullback = [...liquidRows]
     .filter(row => row.change24hPercent < 0)
-    .sort((a, b) => (Math.abs(b.change24hPercent) * 1.3 + scoreLogVolume(b.volume24hUsd) * 4) - (Math.abs(a.change24hPercent) * 1.3 + scoreLogVolume(a.volume24hUsd) * 4))[0];
+    .sort((a, b) => (Math.abs(b.change24hPercent) * 1.3 + scoreLogVolume(b.volume24hUsd) * 4) - (Math.abs(a.change24hPercent) * 1.3 + scoreLogVolume(a.volume24hUsd) * 4))
+    .find(row => !alreadyRecommended(items, row));
   if (pullback) {
     pushUnique(items, makeWatchItem(
       "pullback_liquidity",
@@ -461,7 +465,8 @@ export function buildFuturesWatchReport(rows: FuturesMarketRow[]): FuturesWatchR
 
   const coinMargin = [...liquidRows]
     .filter(row => row.marketType === "COIN-M")
-    .sort(compareByVolume)[0];
+    .sort(compareByVolume)
+    .find(row => !alreadyRecommended(items, row));
   if (coinMargin) {
     pushUnique(items, makeWatchItem(
       "coin_margin_focus",
