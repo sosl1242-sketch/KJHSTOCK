@@ -55,6 +55,14 @@ type WsStatus = "idle" | "connecting" | "live" | "closed" | "error";
 
 type FuturesSelectionKey = `${FuturesMarketType}:${string}`;
 type ReportTechnicalByKey = Partial<Record<FuturesSelectionKey, FuturesWatchTechnicalSnapshot>>;
+type IndicatorJudgmentTone = "buy" | "watch" | "avoid" | "high" | "low";
+type IndicatorJudgment = {
+  label: string;
+  value: string;
+  verdict: string;
+  detail: string;
+  tone: IndicatorJudgmentTone;
+};
 
 const MARKET_METADATA_REFRESH_MS = 300_000;
 const REPORT_TECHNICAL_REFRESH_MS = 120_000;
@@ -161,6 +169,34 @@ function rowSelectionKey(row: Pick<FuturesMarketRow, "marketType" | "symbol">): 
   return `${row.marketType}:${row.symbol}`;
 }
 
+function mergeRowsWithoutLayoutShift(previousRows: FuturesMarketRow[], nextRows: FuturesMarketRow[]) {
+  if (!previousRows.length) return nextRows;
+
+  const nextByKey = new Map(nextRows.map(row => [rowSelectionKey(row), row]));
+  const usedKeys = new Set<string>();
+  const mergedRows = previousRows
+    .map(previousRow => {
+      const key = rowSelectionKey(previousRow);
+      const nextRow = nextByKey.get(key);
+      if (!nextRow) return null;
+      usedKeys.add(key);
+      return {
+        ...nextRow,
+        rank: previousRow.rank,
+      };
+    })
+    .filter((row): row is FuturesMarketRow => row !== null);
+
+  const appendedRows = nextRows
+    .filter(row => !usedKeys.has(rowSelectionKey(row)))
+    .map((row, index) => ({
+      ...row,
+      rank: mergedRows.length + index + 1,
+    }));
+
+  return [...mergedRows, ...appendedRows];
+}
+
 function technicalSnapshotFromIndicators(indicators: FuturesTechnicalIndicators): FuturesWatchTechnicalSnapshot {
   return {
     score: indicators.score,
@@ -239,22 +275,136 @@ function StatusBadge({ label, status }: { label: FuturesMarketType; status: WsSt
   );
 }
 
-function IndicatorRow({ label, value, tone = "default" }: { label: string; value: string; tone?: "default" | "good" | "bad" }) {
+const indicatorToneClass: Record<IndicatorJudgmentTone, string> = {
+  buy: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  watch: "border-slate-200 bg-slate-50 text-slate-700",
+  avoid: "border-rose-200 bg-rose-50 text-rose-800",
+  high: "border-amber-200 bg-amber-50 text-amber-800",
+  low: "border-cyan-200 bg-cyan-50 text-cyan-800",
+};
+
+function IndicatorCard({ indicator }: { indicator: IndicatorJudgment }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-slate-100 py-2 last:border-b-0">
-      <span className="text-sm font-medium text-slate-500">{label}</span>
-      <span
-        className={cn(
-          "text-sm font-black tabular-nums",
-          tone === "good" && "text-emerald-700",
-          tone === "bad" && "text-rose-700",
-          tone === "default" && "text-slate-950",
-        )}
-      >
-        {value}
-      </span>
+    <div className="min-h-[124px] rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs font-black text-slate-500">{indicator.label}</p>
+        <Badge variant="outline" className={cn("shrink-0 rounded-md px-2 py-0.5 text-[10px] font-black", indicatorToneClass[indicator.tone])}>
+          {indicator.verdict}
+        </Badge>
+      </div>
+      <p className="mt-2 break-words text-lg font-black tabular-nums text-slate-950">{indicator.value}</p>
+      <p className="mt-2 text-xs leading-5 text-slate-500">{indicator.detail}</p>
     </div>
   );
+}
+
+function indicatorValue(value: number, digits = 2) {
+  return value.toLocaleString("ko-KR", { maximumFractionDigits: digits });
+}
+
+function buildIndicatorJudgments(indicators: FuturesTechnicalIndicators, row: FuturesMarketRow | undefined): IndicatorJudgment[] {
+  const latestClose = indicators.latestClose;
+  const bollingerWidthPercent = indicators.bollingerMiddle === 0
+    ? 0
+    : ((indicators.bollingerUpper - indicators.bollingerLower) / indicators.bollingerMiddle) * 100;
+  const dayRange = row ? row.high24h - row.low24h : 0;
+  const dayPosition = row && dayRange > 0 ? ((row.price - row.low24h) / dayRange) * 100 : 50;
+
+  const scoreJudgment: IndicatorJudgment = indicators.score >= 65
+    ? { label: "종합 점수", value: indicatorValue(indicators.score, 1), verdict: "추천", tone: "buy", detail: "여러 지표가 같은 방향으로 기울었습니다." }
+    : indicators.score <= 40
+      ? { label: "종합 점수", value: indicatorValue(indicators.score, 1), verdict: "비추천", tone: "avoid", detail: "추세와 모멘텀 점수가 약합니다." }
+      : { label: "종합 점수", value: indicatorValue(indicators.score, 1), verdict: "관망", tone: "watch", detail: "방향성이 아직 충분히 선명하지 않습니다." };
+
+  const rsiJudgment: IndicatorJudgment = indicators.rsi14 >= 70
+    ? { label: "RSI 14", value: indicatorValue(indicators.rsi14), verdict: "고점 경계", tone: "high", detail: "단기 과열권입니다. 추격 진입은 부담입니다." }
+    : indicators.rsi14 <= 30
+      ? { label: "RSI 14", value: indicatorValue(indicators.rsi14), verdict: "저점 후보", tone: "low", detail: "과매도권입니다. 반등 확인이 필요합니다." }
+      : indicators.rsi14 >= 55
+        ? { label: "RSI 14", value: indicatorValue(indicators.rsi14), verdict: "추천", tone: "buy", detail: "매수 압력이 우세한 구간입니다." }
+        : indicators.rsi14 <= 45
+          ? { label: "RSI 14", value: indicatorValue(indicators.rsi14), verdict: "비추천", tone: "avoid", detail: "모멘텀이 약한 구간입니다." }
+          : { label: "RSI 14", value: indicatorValue(indicators.rsi14), verdict: "관망", tone: "watch", detail: "중립권이라 단독 판단은 어렵습니다." };
+
+  const emaTrend = indicators.ema20 >= indicators.ema50;
+  const macdPositive = indicators.macdHistogram >= 0;
+  const macdCrossPositive = indicators.macd >= indicators.macdSignal;
+  const priceAboveEma20 = latestClose >= indicators.ema20;
+
+  return [
+    scoreJudgment,
+    rsiJudgment,
+    {
+      label: "EMA 20 / 50",
+      value: `${formatPrice(indicators.ema20)} / ${formatPrice(indicators.ema50)}`,
+      verdict: emaTrend ? "추천" : "비추천",
+      tone: emaTrend ? "buy" : "avoid",
+      detail: emaTrend ? "단기 평균이 중기 평균 위에 있습니다." : "단기 평균이 중기 평균 아래에 있습니다.",
+    },
+    {
+      label: "가격 / EMA20",
+      value: `${formatPrice(latestClose)} / ${formatPrice(indicators.ema20)}`,
+      verdict: priceAboveEma20 ? "추천" : "비추천",
+      tone: priceAboveEma20 ? "buy" : "avoid",
+      detail: priceAboveEma20 ? "현재가가 단기 추세선 위입니다." : "현재가가 단기 추세선 아래입니다.",
+    },
+    {
+      label: "MACD Histogram",
+      value: indicators.macdHistogram.toLocaleString("ko-KR", { maximumFractionDigits: 6 }),
+      verdict: macdPositive ? "추천" : "비추천",
+      tone: macdPositive ? "buy" : "avoid",
+      detail: macdPositive ? "상승 모멘텀이 우세합니다." : "하락 모멘텀이 우세합니다.",
+    },
+    {
+      label: "MACD / Signal",
+      value: `${indicatorValue(indicators.macd, 6)} / ${indicatorValue(indicators.macdSignal, 6)}`,
+      verdict: macdCrossPositive ? "추천" : "비추천",
+      tone: macdCrossPositive ? "buy" : "avoid",
+      detail: macdCrossPositive ? "MACD가 시그널 위에 있습니다." : "MACD가 시그널 아래에 있습니다.",
+    },
+    {
+      label: "Bollinger %B",
+      value: `${indicatorValue(indicators.bollingerPercentB)}%`,
+      verdict: indicators.bollingerPercentB >= 90 ? "고점 경계" : indicators.bollingerPercentB <= 10 ? "저점 후보" : indicators.bollingerPercentB >= 50 ? "추천" : "비추천",
+      tone: indicators.bollingerPercentB >= 90 ? "high" : indicators.bollingerPercentB <= 10 ? "low" : indicators.bollingerPercentB >= 50 ? "buy" : "avoid",
+      detail: indicators.bollingerPercentB >= 90 ? "상단 밴드에 가까워 과열을 점검합니다." : indicators.bollingerPercentB <= 10 ? "하단 밴드에 가까워 반등 후보입니다." : "밴드 안의 상대 위치를 확인합니다.",
+    },
+    {
+      label: "Bollinger 폭",
+      value: `${indicatorValue(bollingerWidthPercent)}%`,
+      verdict: bollingerWidthPercent >= 12 ? "고변동" : bollingerWidthPercent <= 4 ? "압축" : "관망",
+      tone: bollingerWidthPercent >= 12 ? "high" : bollingerWidthPercent <= 4 ? "watch" : "watch",
+      detail: bollingerWidthPercent >= 12 ? "밴드가 넓어 손절폭 관리가 필요합니다." : bollingerWidthPercent <= 4 ? "변동성 압축 후 돌파를 기다립니다." : "평균적인 변동성 구간입니다.",
+    },
+    {
+      label: "ATR %",
+      value: `${indicatorValue(indicators.atrPercent)}%`,
+      verdict: indicators.atrPercent >= 7 ? "고위험" : indicators.atrPercent <= 2 ? "관망" : "추천",
+      tone: indicators.atrPercent >= 7 ? "high" : indicators.atrPercent <= 2 ? "watch" : "buy",
+      detail: indicators.atrPercent >= 7 ? "가격 흔들림이 커서 진입 크기를 줄입니다." : indicators.atrPercent <= 2 ? "움직임이 작아 돌파 확인이 필요합니다." : "거래 가능한 변동성입니다.",
+    },
+    {
+      label: "Stochastic 14",
+      value: `${indicatorValue(indicators.stochastic14)}%`,
+      verdict: indicators.stochastic14 >= 80 ? "고점 경계" : indicators.stochastic14 <= 20 ? "저점 후보" : indicators.stochastic14 >= 50 ? "추천" : "비추천",
+      tone: indicators.stochastic14 >= 80 ? "high" : indicators.stochastic14 <= 20 ? "low" : indicators.stochastic14 >= 50 ? "buy" : "avoid",
+      detail: indicators.stochastic14 >= 80 ? "단기 위치가 상단권입니다." : indicators.stochastic14 <= 20 ? "단기 위치가 하단권입니다." : "단기 위치가 방향 판단을 보조합니다.",
+    },
+    {
+      label: "Volume / 20",
+      value: `${indicatorValue(indicators.volume20Ratio)}%`,
+      verdict: indicators.volume20Ratio >= 140 ? "추천" : indicators.volume20Ratio <= 70 ? "비추천" : "관망",
+      tone: indicators.volume20Ratio >= 140 ? "buy" : indicators.volume20Ratio <= 70 ? "avoid" : "watch",
+      detail: indicators.volume20Ratio >= 140 ? "평균보다 거래량이 붙었습니다." : indicators.volume20Ratio <= 70 ? "거래 참여가 약합니다." : "거래량은 평균권입니다.",
+    },
+    {
+      label: "24h 위치",
+      value: `${indicatorValue(dayPosition)}%`,
+      verdict: dayPosition >= 85 ? "고점 경계" : dayPosition <= 15 ? "저점 후보" : dayPosition >= 55 ? "추천" : "비추천",
+      tone: dayPosition >= 85 ? "high" : dayPosition <= 15 ? "low" : dayPosition >= 55 ? "buy" : "avoid",
+      detail: dayPosition >= 85 ? "24h 고가권에 가까워 추격을 경계합니다." : dayPosition <= 15 ? "24h 저가권에 가까워 반등 여부를 봅니다." : "24h 범위 안의 위치를 확인합니다.",
+    },
+  ];
 }
 
 function WatchReport({
@@ -408,6 +558,7 @@ function TechnicalPanel({
   candles: FuturesCandle[];
 }) {
   const chartRows = useMemo(() => buildChartRows(candles), [candles]);
+  const indicatorJudgments = useMemo(() => indicators ? buildIndicatorJudgments(indicators, row) : [], [indicators, row]);
   const bias = indicators?.bias ?? row?.signal ?? "neutral";
 
   return (
@@ -455,23 +606,31 @@ function TechnicalPanel({
               <Gauge className="h-4 w-4 text-indigo-500" />
               기술적 지표
             </h3>
-            <p className="mt-1 text-xs text-slate-500">RSI, EMA, MACD, Bollinger, ATR</p>
+            <p className="mt-1 text-xs text-slate-500">12개 지표별 추천·비추천·고점·저점 판단</p>
           </div>
-          <Select value={interval} onValueChange={onIntervalChange}>
-            <SelectTrigger className="h-9 w-28 rounded-md bg-white">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(intervalLabels).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            {loading && indicators ? (
+              <Badge variant="outline" className="rounded-md bg-slate-50 text-slate-600">
+                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                값 갱신 중
+              </Badge>
+            ) : null}
+            <Select value={interval} onValueChange={onIntervalChange}>
+              <SelectTrigger className="h-9 w-28 rounded-md bg-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(intervalLabels).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        {loading ? (
+        {loading && !indicators ? (
           <div className="mt-4 flex h-40 items-center justify-center rounded-lg bg-slate-50 text-sm font-semibold text-slate-500">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             지표 계산 중
@@ -492,14 +651,10 @@ function TechnicalPanel({
                 <div className="h-2 rounded-full bg-emerald-400" style={{ width: `${indicators.score}%` }} />
               </div>
             </div>
-            <div className="mt-4">
-              <IndicatorRow label="RSI 14" value={indicators.rsi14.toFixed(2)} tone={indicators.rsi14 >= 50 ? "good" : "bad"} />
-              <IndicatorRow label="EMA 20 / 50" value={`${formatPrice(indicators.ema20)} / ${formatPrice(indicators.ema50)}`} tone={indicators.ema20 > indicators.ema50 ? "good" : "bad"} />
-              <IndicatorRow label="MACD Histogram" value={indicators.macdHistogram.toLocaleString("ko-KR", { maximumFractionDigits: 6 })} tone={indicators.macdHistogram >= 0 ? "good" : "bad"} />
-              <IndicatorRow label="Bollinger %B" value={`${indicators.bollingerPercentB.toFixed(2)}%`} />
-              <IndicatorRow label="ATR %" value={`${indicators.atrPercent.toFixed(2)}%`} />
-              <IndicatorRow label="Stochastic 14" value={`${indicators.stochastic14.toFixed(2)}%`} tone={indicators.stochastic14 >= 50 ? "good" : "bad"} />
-              <IndicatorRow label="Volume / 20" value={`${indicators.volume20Ratio.toFixed(2)}%`} />
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {indicatorJudgments.map(indicator => (
+                <IndicatorCard key={indicator.label} indicator={indicator} />
+              ))}
             </div>
           </>
         ) : null}
@@ -546,8 +701,8 @@ export default function BinanceFutures() {
   const [marketFilter, setMarketFilter] = useState("all");
   const [quoteFilter, setQuoteFilter] = useState("all");
   const [signalFilter, setSignalFilter] = useState("all");
-  const [sortKey, setSortKey] = useState<SortKey>("volume24hUsd");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [sortKey, setSortKey] = useState<SortKey>("rank");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [interval, setInterval] = useState("1h");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -556,7 +711,7 @@ export default function BinanceFutures() {
   const [wsStatus, setWsStatus] = useState<Record<FuturesMarketType, WsStatus>>({ "USD-M": "idle", "COIN-M": "idle" });
   const [technicalLoading, setTechnicalLoading] = useState(false);
   const [technicalError, setTechnicalError] = useState<string | null>(null);
-  const [technical, setTechnical] = useState<{ candles: FuturesCandle[]; indicators: FuturesTechnicalIndicators } | null>(null);
+  const [technical, setTechnical] = useState<{ key: string; candles: FuturesCandle[]; indicators: FuturesTechnicalIndicators } | null>(null);
   const [reportTechnicalByKey, setReportTechnicalByKey] = useState<ReportTechnicalByKey>({});
   const [reportTechnicalLoading, setReportTechnicalLoading] = useState(false);
   const [reportTechnicalUpdatedAt, setReportTechnicalUpdatedAt] = useState<string | null>(null);
@@ -567,7 +722,7 @@ export default function BinanceFutures() {
     setError(null);
     try {
       const nextRows = await fetchAllFuturesRows();
-      setRows(nextRows);
+      setRows(previousRows => mergeRowsWithoutLayoutShift(previousRows, nextRows));
       setMetadataLastRefreshedAt(new Date().toISOString());
       setSelectedKey(previous => {
         if (previous && nextRows.some(row => rowSelectionKey(row) === previous)) return previous;
@@ -611,24 +766,26 @@ export default function BinanceFutures() {
   }, []);
 
   const selectedRow = useMemo(() => rows.find(row => rowSelectionKey(row) === selectedKey), [rows, selectedKey]);
+  const selectedTechnicalKey = selectedRow ? `${rowSelectionKey(selectedRow)}:${interval}` : "";
+  const activeTechnical = technical?.key === selectedTechnicalKey ? technical : null;
 
   useEffect(() => {
     if (!selectedRow) return;
     const controller = new AbortController();
+    const requestKey = `${rowSelectionKey(selectedRow)}:${interval}`;
     setTechnicalLoading(true);
     setTechnicalError(null);
     fetchFuturesTechnicalDetail(selectedRow.symbol, selectedRow.marketType, interval, controller.signal)
-      .then(detail => setTechnical(detail))
+      .then(detail => setTechnical({ key: requestKey, ...detail }))
       .catch(loadError => {
         if (controller.signal.aborted) return;
-        setTechnical(null);
         setTechnicalError(loadError instanceof Error ? loadError.message : "기술적 지표를 계산하지 못했습니다.");
       })
       .finally(() => {
         if (!controller.signal.aborted) setTechnicalLoading(false);
       });
     return () => controller.abort();
-  }, [selectedRow, interval]);
+  }, [selectedKey, selectedRow?.marketType, selectedRow?.symbol, interval]);
 
   const summary = useMemo(() => summarizeFuturesRows(rows), [rows]);
   const report = useMemo(() => buildFuturesWatchReport(rows), [rows]);
@@ -788,7 +945,7 @@ export default function BinanceFutures() {
           />
         </div>
 
-        <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_620px]">
           <div className="min-w-0 space-y-4">
             <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_130px_130px] 2xl:grid-cols-[minmax(220px,1fr)_120px_130px_130px_150px_160px_120px]">
@@ -965,8 +1122,8 @@ export default function BinanceFutures() {
             onIntervalChange={setInterval}
             loading={technicalLoading}
             error={technicalError}
-            indicators={technical?.indicators ?? null}
-            candles={technical?.candles ?? []}
+            indicators={activeTechnical?.indicators ?? null}
+            candles={activeTechnical?.candles ?? []}
           />
         </section>
 

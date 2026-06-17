@@ -338,9 +338,9 @@ export function applyTickerUpdates(rows: FuturesMarketRow[], updates: BinanceFut
       lastUpdated: isoFromMillis(update.closeTime) ?? row.lastUpdated,
       signal: signalFromRow(change24hPercent, row.fundingRate, openInterestToVolumePercent),
     };
-  }).sort(compareByVolume);
+  });
 
-  return merged.map((row, index) => ({ ...row, rank: index + 1 }));
+  return merged;
 }
 
 function scoreLogVolume(value: number) {

@@ -94,6 +94,7 @@ function BinanceAccessGate() {
 function AppRoutes() {
   return (
     <Switch>
+      <Route path={"/"} component={BinanceAccessGate} />
       <Route path={"/binance-futures"} component={BinanceAccessGate} />
       <Route component={AuthenticatedRoutes} />
     </Switch>
