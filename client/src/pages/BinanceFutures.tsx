@@ -1374,7 +1374,7 @@ export default function BinanceFutures() {
           />
         </div>
 
-        <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_540px] 2xl:grid-cols-[minmax(0,1fr)_640px]">
+        <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_480px] 2xl:grid-cols-[minmax(0,1fr)_620px]">
           <div className="min-w-0 space-y-4">
             <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_130px_130px] 2xl:grid-cols-[minmax(220px,1fr)_120px_130px_130px_150px_160px_120px]">
