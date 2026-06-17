@@ -1070,7 +1070,7 @@ function TechnicalPanel({
                 </ResponsiveContainer>
               </div>
             </div>
-            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 2xl:grid-cols-3">
               {indicatorJudgments.map(indicator => (
                 <IndicatorCard key={indicator.label} indicator={indicator} />
               ))}
@@ -1314,7 +1314,7 @@ export default function BinanceFutures() {
   return (
     <div className="min-h-screen bg-[#f4f7fa] text-slate-950">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-[1600px] flex-col gap-4 px-4 py-5 lg:flex-row lg:items-center lg:justify-between lg:px-6">
+        <div className="mx-auto flex max-w-[1800px] flex-col gap-4 px-4 py-5 lg:flex-row lg:items-center lg:justify-between lg:px-6">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-950 text-white">
               <Bitcoin className="h-6 w-6" />
@@ -1343,7 +1343,7 @@ export default function BinanceFutures() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1600px] px-4 py-5 lg:px-6">
+      <main className="mx-auto max-w-[1800px] px-4 py-5 lg:px-6">
         {error ? (
           <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800">
             <ShieldAlert className="mr-2 inline h-4 w-4" />
@@ -1374,7 +1374,7 @@ export default function BinanceFutures() {
           />
         </div>
 
-        <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_620px]">
+        <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_540px] 2xl:grid-cols-[minmax(0,1fr)_640px]">
           <div className="min-w-0 space-y-4">
             <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_130px_130px] 2xl:grid-cols-[minmax(220px,1fr)_120px_130px_130px_150px_160px_120px]">

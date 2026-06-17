@@ -55,19 +55,21 @@ function BinanceAccessGate() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-950 px-5 py-10 text-slate-100">
-      <section className="w-full max-w-sm rounded-lg border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/30">
+    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-5 py-10 text-slate-950">
+      <section className="w-full max-w-sm rounded-lg border border-slate-300 bg-white p-6 shadow-2xl shadow-slate-300/60">
         <div className="mb-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">KJHSTOCK</p>
-          <h1 className="mt-3 text-2xl font-bold tracking-normal text-white">접근 코드 입력</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">KJHSTOCK</p>
+          <h1 className="mt-3 text-2xl font-bold tracking-normal text-slate-950">접근 코드 입력</h1>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <label className="block text-sm font-medium text-slate-200" htmlFor="binance-access-code">
+          <label className="block text-sm font-bold text-slate-700" htmlFor="binance-access-code">
             코드
           </label>
           <input
             id="binance-access-code"
-            className="h-12 w-full rounded-md border border-white/15 bg-slate-900 px-4 text-center text-xl font-semibold tracking-[0.4em] text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/25"
+            aria-label="접근 코드"
+            autoComplete="one-time-code"
+            className="h-12 w-full rounded-md border border-slate-400 bg-white px-4 text-center text-xl font-black tracking-[0.4em] text-slate-950 shadow-inner outline-none transition [color-scheme:light] [-webkit-text-security:disc] placeholder:text-slate-400 selection:bg-cyan-200 focus:border-cyan-700 focus:ring-2 focus:ring-cyan-600/30"
             inputMode="numeric"
             maxLength={4}
             onChange={(event) => {
@@ -75,12 +77,12 @@ function BinanceAccessGate() {
               setError("");
             }}
             pattern="[0-9]*"
-            type="password"
+            type="text"
             value={code}
           />
-          {error ? <p className="text-sm font-medium text-red-300">{error}</p> : null}
+          {error ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm font-bold text-rose-700">{error}</p> : null}
           <button
-            className="h-11 w-full rounded-md bg-cyan-400 px-4 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-200 focus:ring-offset-2 focus:ring-offset-slate-950"
+            className="h-11 w-full rounded-md bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:ring-offset-2 focus:ring-offset-white"
             type="submit"
           >
             입장
