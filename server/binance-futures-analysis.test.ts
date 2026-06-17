@@ -224,9 +224,10 @@ describe("binance futures analysis", () => {
       title: expect.any(String),
       why: expect.any(String),
       risk: expect.any(String),
+      watchPoints: expect.arrayContaining([expect.any(String)]),
       priorityScore: expect.any(Number),
     });
-    expect(report.items.every(item => item.why.length > 20 && item.risk.length > 10)).toBe(true);
+    expect(report.items.every(item => item.why.length > 20 && item.risk.length > 10 && item.watchPoints.length >= 2)).toBe(true);
   });
 
   it("keeps TradeFi futures out of the crypto watch report", () => {
@@ -294,6 +295,7 @@ describe("binance futures analysis", () => {
     expect(markdown).toContain("BRUSDT");
     expect(markdown).toContain("왜 주목");
     expect(markdown).toContain("리스크");
+    expect(markdown).toContain("관찰 체크");
     expect(markdown).toContain("기술 점수: 72.5 (강세)");
     expect(markdown).toContain("RSI 14: 61.25");
     expect(markdown).toContain("MACD Histogram: 0.01234567");
@@ -312,6 +314,10 @@ describe("binance futures analysis", () => {
         priorityScore: 100,
         why: "펀딩비가 극단적으로 벌어져 포지션 비용 압력을 확인할 필요가 있습니다.",
         risk: "초저가 계약은 호가 단위와 청산 변동성이 커질 수 있습니다.",
+        watchPoints: [
+          "다음 펀딩 시각 전후로 펀딩비 극단값이 완화되는지 확인",
+          "가격이 횡보하는데 펀딩비만 극단인지 확인",
+        ],
         metrics: {
           change24hPercent: 2.22,
           volume24hUsd: 6_630_000,

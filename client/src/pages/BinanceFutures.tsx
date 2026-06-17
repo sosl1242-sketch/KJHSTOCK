@@ -330,6 +330,20 @@ function WatchReport({
             <p className="mt-3 text-sm font-black text-slate-800">{item.title}</p>
             <p className="mt-2 text-xs leading-5 text-slate-600">{item.why}</p>
             <p className="mt-3 border-t border-slate-200 pt-3 text-xs leading-5 text-rose-700">{item.risk}</p>
+            <div className="mt-3 border-t border-slate-200 pt-3">
+              <p className="flex items-center gap-1 text-[11px] font-black uppercase text-slate-400">
+                <Target className="h-3 w-3" />
+                관찰 체크
+              </p>
+              <ul className="mt-2 space-y-1.5 text-xs leading-5 text-slate-600">
+                {item.watchPoints.slice(0, 2).map(point => (
+                  <li key={point} className="flex gap-2">
+                    <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-slate-400" />
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
             <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 text-xs">
               {item.technical ? (
                 <>

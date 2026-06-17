@@ -79,6 +79,7 @@ export type FuturesWatchReportItem = {
   priorityScore: number;
   why: string;
   risk: string;
+  watchPoints: string[];
   metrics: {
     change24hPercent: number;
     volume24hUsd: number;
@@ -353,6 +354,7 @@ function makeWatchItem(
   priorityScore: number,
   why: string,
   risk: string,
+  watchPoints: string[],
 ): FuturesWatchReportItem {
   return {
     category,
@@ -363,6 +365,7 @@ function makeWatchItem(
     priorityScore: round(clamp(priorityScore, 0, 100), 1),
     why,
     risk,
+    watchPoints,
     metrics: {
       change24hPercent: row.change24hPercent,
       volume24hUsd: row.volume24hUsd,
@@ -394,6 +397,10 @@ export function buildFuturesWatchReport(rows: FuturesMarketRow[]): FuturesWatchR
       momentum.change24hPercent * 1.2 + scoreLogVolume(momentum.volume24hUsd) * 5,
       `${momentum.marketType} ${momentum.contractType}에서 24h ${formatPercent(momentum.change24hPercent)}, 거래대금 ${formatUsd(momentum.volume24hUsd)}로 가격 움직임과 유동성이 같이 붙었습니다.`,
       "급등 직후에는 되돌림과 청산 변동성이 커질 수 있어 펀딩비와 다음 캔들 거래량 확인이 필요합니다.",
+      [
+        "다음 15분~1시간 캔들에서 고점 갱신과 거래대금 유지가 같이 나오는지 확인",
+        "펀딩비가 빠르게 양수로 확대되면 과열과 롱 비용 부담을 별도로 점검",
+      ],
     ));
   }
 
@@ -408,6 +415,10 @@ export function buildFuturesWatchReport(rows: FuturesMarketRow[]): FuturesWatchR
         ? `${volumeLeader.symbol}는 상승 후보이면서 전체 거래대금도 ${formatUsd(volumeLeader.volume24hUsd)}로 최상위권이라 추세 지속 여부를 볼 가치가 있습니다.`
         : `${volumeLeader.symbol}는 24h 거래대금 ${formatUsd(volumeLeader.volume24hUsd)}로 시장 자금 회전이 가장 큰 축에 있어 방향 전환 신호가 빠르게 나타날 수 있습니다.`,
       "거래대금 1위가 항상 방향성을 뜻하지는 않습니다. 가격 등락률과 펀딩비가 엇갈리면 관망 신호일 수 있습니다.",
+      [
+        "거래대금 증가가 가격 방향성과 함께 움직이는지 확인",
+        "펀딩비와 24h 등락률이 서로 엇갈리면 방향성보다 자금 회전 후보로 분류",
+      ],
     ));
   }
 
@@ -423,6 +434,10 @@ export function buildFuturesWatchReport(rows: FuturesMarketRow[]): FuturesWatchR
       Math.abs(fundingPressure.fundingRate ?? 0) * 20000 + scoreLogVolume(fundingPressure.volume24hUsd) * 2,
       `${fundingPressure.symbol}는 펀딩비 ${formatFunding(fundingPressure.fundingRate)}로 ${side}이 두드러지고, 거래대금은 ${formatUsd(fundingPressure.volume24hUsd)}입니다.`,
       "펀딩비 극단값은 추세 지속과 반대 청산 압력을 모두 만들 수 있어 단독 매수·매도 근거로 쓰면 위험합니다.",
+      [
+        "다음 펀딩 시각 전후로 펀딩비 극단값이 완화되는지 또는 더 벌어지는지 확인",
+        "가격이 횡보하는데 펀딩비만 극단이면 청산 압력 후보로만 관찰",
+      ],
     ));
   }
 
@@ -437,6 +452,10 @@ export function buildFuturesWatchReport(rows: FuturesMarketRow[]): FuturesWatchR
       Math.abs(pullback.change24hPercent) * 1.3 + scoreLogVolume(pullback.volume24hUsd) * 4,
       `${pullback.symbol}는 24h ${formatPercent(pullback.change24hPercent)} 하락에도 거래대금 ${formatUsd(pullback.volume24hUsd)}가 붙어 매도 압력과 반등 시도를 함께 관찰할 만합니다.`,
       "하락 중 거래량 증가는 저점 확인이 아니라 추가 청산 흐름일 수 있으므로 저가 갱신 여부를 먼저 봐야 합니다.",
+      [
+        "저가 갱신이 멈추는지와 반등 캔들 거래대금이 이전 매도 거래대금보다 커지는지 확인",
+        "EMA50 아래에서 MACD가 약하면 반등 후보보다 변동성 후보로 유지",
+      ],
     ));
   }
 
@@ -451,6 +470,10 @@ export function buildFuturesWatchReport(rows: FuturesMarketRow[]): FuturesWatchR
       scoreLogVolume(coinMargin.volume24hUsd) * 7 + Math.abs(coinMargin.change24hPercent) * 2,
       `${coinMargin.symbol}는 COIN-M ${coinMargin.contractType} 중 거래대금 ${formatUsd(coinMargin.volume24hUsd)}가 가장 커서 USD-M과 다른 담보 시장의 포지션 흐름을 비교하기 좋습니다.`,
       "COIN-M은 담보와 손익 구조가 USD-M과 달라 같은 심볼이라도 변동성 체감과 리스크가 다를 수 있습니다.",
+      [
+        "같은 기초자산의 USD-M 계약과 24h 등락률 및 펀딩비 차이를 비교",
+        "COIN-M 거래대금 증가가 현물성 담보 수요 변화와 같이 나타나는지 확인",
+      ],
     ));
   }
 
@@ -497,6 +520,7 @@ export function buildFuturesWatchReportMarkdown(report: FuturesWatchReport): str
       `- 펀딩비: ${formatFunding(item.metrics.fundingRate)}`,
       `- 왜 주목: ${item.why}`,
       `- 리스크: ${item.risk}`,
+      `- 관찰 체크: ${item.watchPoints.join(" / ")}`,
     );
 
     if (item.technical) {
