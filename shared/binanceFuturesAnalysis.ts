@@ -124,6 +124,39 @@ export type FuturesFinalJudgmentReport = {
   actionPlan: string[];
 };
 
+export type FuturesSelectedSymbolAnalysisTone = "strong" | "buy" | "watch" | "pullback" | "risk";
+
+export type FuturesSelectedSymbolAnalysis = {
+  symbol: string;
+  marketType: FuturesMarketType;
+  verdict: string;
+  tone: FuturesSelectedSymbolAnalysisTone;
+  score: number;
+  headline: string;
+  summary: string;
+  levels: {
+    current: string;
+    support: string;
+    riskLine: string;
+    fairZone: string;
+    resistance: string;
+    breakout: string;
+  };
+  evidence: Array<{
+    label: string;
+    verdict: string;
+    detail: string;
+  }>;
+  strengths: string[];
+  risks: string[];
+  scenarios: Array<{
+    title: string;
+    trigger: string;
+    expectation: string;
+  }>;
+  actionPlan: string[];
+};
+
 export type FuturesWatchTechnicalSnapshot = {
   score: number;
   bias: FuturesBias;
@@ -647,6 +680,190 @@ export function buildFuturesFinalJudgmentReport(report: FuturesWatchReport): Fut
     },
     strengths,
     risks,
+    actionPlan,
+  };
+}
+
+function averageFinite(values: number[], fallback: number) {
+  const finite = values.filter(value => Number.isFinite(value) && value > 0);
+  return finite.length ? average(finite) : fallback;
+}
+
+export function buildFuturesSelectedSymbolAnalysis(
+  row: FuturesMarketRow,
+  indicators: FuturesTechnicalIndicators,
+): FuturesSelectedSymbolAnalysis {
+  const current = indicators.latestClose || row.price;
+  const dayRange = row.high24h - row.low24h;
+  const dayPositionPercent = dayRange > 0 ? clamp(((row.price - row.low24h) / dayRange) * 100, 0, 100) : 50;
+  const emaTrendUp = indicators.ema20 >= indicators.ema50;
+  const priceAboveEma20 = current >= indicators.ema20;
+  const macdPositive = indicators.macdHistogram >= 0 && indicators.macd >= indicators.macdSignal;
+  const rsiConstructive = indicators.rsi14 >= 52 && indicators.rsi14 < 70;
+  const rsiOverheated = indicators.rsi14 >= 70;
+  const stochOverheated = indicators.stochastic14 >= 80;
+  const bollingerUpperRisk = indicators.bollingerPercentB >= 90;
+  const volumeExpanded = indicators.volume20Ratio >= 120;
+  const highVolatility = indicators.atrPercent >= 7;
+  const activeVolatility = indicators.atrPercent >= 4 && indicators.atrPercent < 7;
+  const fundingAbs = Math.abs(row.fundingRate ?? 0);
+  const fundingCrowded = fundingAbs >= 0.0005;
+  const fundingExtreme = fundingAbs >= 0.001;
+  const oiHeavy = (row.openInterestToVolumePercent ?? 0) >= 60;
+
+  const trendAdjustment = emaTrendUp && priceAboveEma20 ? 3 : emaTrendUp || priceAboveEma20 ? 1 : -5;
+  const momentumAdjustment = macdPositive ? 2 : -2;
+  const rsiAdjustment = rsiConstructive ? 2 : rsiOverheated ? -2 : indicators.rsi14 <= 35 ? -3 : 0;
+  const volumeAdjustment = volumeExpanded ? 2 : indicators.volume20Ratio <= 70 ? -2 : 0;
+  const fundingPenalty = fundingExtreme ? 5 : fundingCrowded ? 3 : 0;
+  const volatilityPenalty = highVolatility ? 4 : activeVolatility ? 1 : 0;
+  const dayPositionPenalty = dayPositionPercent >= 85 ? 2 : dayPositionPercent <= 20 ? -1 : 0;
+  const score = round(clamp(
+    indicators.score
+      + trendAdjustment
+      + momentumAdjustment
+      + rsiAdjustment
+      + volumeAdjustment
+      - fundingPenalty
+      - volatilityPenalty
+      - dayPositionPenalty,
+    0,
+    100,
+  ), 1);
+
+  const tone: FuturesSelectedSymbolAnalysisTone = score >= 85 && !fundingExtreme && !highVolatility
+    ? "strong"
+    : score >= 65 && !highVolatility
+      ? "buy"
+      : score >= 50
+        ? "watch"
+        : dayPositionPercent <= 25 && indicators.rsi14 <= 40
+          ? "pullback"
+          : "risk";
+  const verdictByTone: Record<FuturesSelectedSymbolAnalysisTone, string> = {
+    strong: "강한 추천",
+    buy: "추천 우위",
+    watch: "관망",
+    pullback: "저점 반등 후보",
+    risk: "리스크 우선",
+  };
+  const verdict = verdictByTone[tone];
+
+  const supportValue = averageFinite([indicators.ema20, indicators.bollingerMiddle, row.low24h], current);
+  const riskLineValue = Math.min(
+    ...[indicators.ema50, indicators.bollingerLower, row.low24h].filter(value => Number.isFinite(value) && value > 0),
+  );
+  const fairLowValue = Math.min(indicators.ema20, indicators.bollingerMiddle);
+  const fairHighValue = Math.max(indicators.ema20, indicators.bollingerMiddle);
+  const resistanceValue = averageFinite([indicators.bollingerUpper, row.high24h], current);
+  const breakoutValue = Math.max(row.high24h, indicators.bollingerUpper);
+
+  const fundingText = row.fundingRate === null
+    ? "펀딩비 자료가 없어 포지션 쏠림 판단은 제한됩니다."
+    : `펀딩비 ${formatFunding(row.fundingRate)}로 ${fundingCrowded ? "포지션 쏠림을 반드시 확인해야 합니다." : "부담은 아직 제한적입니다."}`;
+  const positionText = dayPositionPercent >= 80
+    ? "24h 고점권"
+    : dayPositionPercent <= 20
+      ? "24h 저점권"
+      : "24h 중립권";
+  const summary = `${row.symbol}은 ${verdict}입니다. 기술 점수 ${indicators.score}, 24h ${formatPercent(row.change24hPercent)}, 거래대금 ${formatUsd(row.volume24hUsd)}, ${positionText} 위치를 함께 보면 ${emaTrendUp && macdPositive ? "추세와 모멘텀은 우호적" : "추세 확인이 아직 필요"}하지만 ${fundingCrowded || rsiOverheated || highVolatility ? "과열과 리스크 관리가 핵심" : "가격 확인 후 관심도를 높일 수 있는 구조"}입니다.`;
+
+  const evidence: FuturesSelectedSymbolAnalysis["evidence"] = [
+    {
+      label: "추세",
+      verdict: emaTrendUp && priceAboveEma20 ? "상승 추세 우위" : emaTrendUp ? "추세 전환 확인" : "추세 약세",
+      detail: `현재가 ${formatPriceUsd(current)}, EMA20 ${formatPriceUsd(indicators.ema20)}, EMA50 ${formatPriceUsd(indicators.ema50)}입니다. ${emaTrendUp ? "단기 평균이 중기 평균 위에 있어 추세 구조는 우호적입니다." : "EMA20이 EMA50 아래라 추세 복원이 먼저 필요합니다."}`,
+    },
+    {
+      label: "모멘텀",
+      verdict: macdPositive && rsiConstructive ? "매수 압력 우세" : rsiOverheated || stochOverheated ? "단기 과열 경계" : "모멘텀 확인 필요",
+      detail: `RSI ${round(indicators.rsi14, 2)}, Stochastic ${round(indicators.stochastic14, 2)}, MACD Histogram ${round(indicators.macdHistogram, 8)}입니다. ${macdPositive ? "MACD가 양의 방향이라 상승 모멘텀을 지지합니다." : "MACD가 약해 단기 추격은 보수적으로 봅니다."}`,
+    },
+    {
+      label: "거래량",
+      verdict: volumeExpanded ? "거래량 확장" : indicators.volume20Ratio <= 70 ? "거래량 부족" : "평균권",
+      detail: `20봉 평균 대비 거래량은 ${round(indicators.volume20Ratio, 2)}%, 24h 거래대금은 ${formatUsd(row.volume24hUsd)}입니다. ${volumeExpanded ? "가격 움직임에 실제 참여가 붙은 상태입니다." : "거래량 확인 없이 방향을 확정하기는 어렵습니다."}`,
+    },
+    {
+      label: "가격 위치",
+      verdict: bollingerUpperRisk || dayPositionPercent >= 85 ? "고점 추격 경계" : dayPositionPercent <= 25 ? "저점 반등 관찰" : "균형권",
+      detail: `24h 범위 내 위치는 ${round(dayPositionPercent, 1)}%, Bollinger %B는 ${round(indicators.bollingerPercentB, 2)}%입니다. ${bollingerUpperRisk ? "상단 밴드에 가까워 분할 접근이 필요합니다." : "밴드 안에서 다음 방향 확인이 가능합니다."}`,
+    },
+    {
+      label: "변동성",
+      verdict: highVolatility ? "고위험 변동성" : activeVolatility ? "거래 가능한 변동성" : "낮은 변동성",
+      detail: `ATR은 ${round(indicators.atrPercent, 2)}%입니다. ${highVolatility ? "손절폭과 포지션 크기를 줄여야 합니다." : activeVolatility ? "움직임은 충분하지만 과도한 변동성은 아닙니다." : "돌파 확인 전까지 움직임이 작을 수 있습니다."}`,
+    },
+    {
+      label: "펀딩/OI",
+      verdict: fundingExtreme || oiHeavy ? "청산 쏠림 경계" : fundingCrowded ? "펀딩 부담" : "쏠림 제한",
+      detail: `${fundingText} OI/거래대금은 ${row.openInterestToVolumePercent === null ? "자료 없음" : `${round(row.openInterestToVolumePercent, 2)}%`}입니다.`,
+    },
+  ];
+
+  const strengths = [
+    ...(emaTrendUp && priceAboveEma20 ? ["EMA20과 EMA50 기준 추세 배열이 우호적입니다."] : []),
+    ...(macdPositive ? ["MACD가 양의 방향이라 단기 모멘텀이 살아 있습니다."] : []),
+    ...(volumeExpanded ? ["평균 대비 거래량이 확장되어 가격 움직임의 신뢰도가 높아졌습니다."] : []),
+    ...(row.volume24hUsd >= 1_000_000_000 ? ["24h 거래대금이 큰 편이라 체결 유동성 관찰 가치가 높습니다."] : []),
+  ];
+  if (!strengths.length) strengths.push("명확한 우위 신호가 부족해 다음 캔들 확인이 중요합니다.");
+
+  const risks = [
+    ...(fundingCrowded ? [`펀딩비 ${formatFunding(row.fundingRate)}로 포지션 쏠림과 청산 변동성을 경계해야 합니다.`] : []),
+    ...(rsiOverheated || stochOverheated ? ["RSI 또는 Stochastic이 상단권이라 단기 추격 매수는 부담입니다."] : []),
+    ...(dayPositionPercent >= 80 ? ["현재가가 24h 고점권에 있어 눌림 없는 진입은 손익비가 나빠질 수 있습니다."] : []),
+    ...(highVolatility ? ["ATR이 높아 짧은 시간에 손절폭이 커질 수 있습니다."] : activeVolatility ? ["ATR이 활성 구간이라 포지션 크기를 과하게 잡으면 변동성 부담이 커집니다."] : []),
+    ...(oiHeavy ? ["미결제약정이 거래대금 대비 높아 강제 청산 방향 전환에 취약할 수 있습니다."] : []),
+  ];
+  if (!risks.length) risks.push("뚜렷한 과열 신호는 적지만 선물 시장 특성상 급격한 펀딩비와 변동성 변화는 계속 확인해야 합니다.");
+
+  const scenarios = [
+    {
+      title: "강세 지속",
+      trigger: `${formatPriceUsd(breakoutValue)} 돌파 후 거래량이 20봉 평균 이상으로 유지`,
+      expectation: `돌파가 유지되면 ${formatPriceUsd(resistanceValue)} 위 가격 발견 구간을 열 수 있습니다.`,
+    },
+    {
+      title: "눌림 후 재평가",
+      trigger: `${formatPriceUsd(supportValue)} 부근까지 조정된 뒤 RSI가 50 위에서 유지`,
+      expectation: "추세가 살아 있으면 눌림 매수 후보로 재평가할 수 있습니다.",
+    },
+    {
+      title: "무효화",
+      trigger: `${formatPriceUsd(riskLineValue)} 이탈 또는 MACD Histogram 음전환 확대`,
+      expectation: "추세 신뢰도가 낮아지므로 관망 또는 리스크 축소가 우선입니다.",
+    },
+  ];
+
+  const actionPlan = [
+    `첫 판단은 ${verdict}입니다. 결론부터 보면 ${row.symbol}은 ${score}점으로 추세·모멘텀·거래량을 동시에 확인해야 합니다.`,
+    `${formatPriceUsd(breakoutValue)} 돌파가 거래량 확장과 같이 나오면 관심도를 높입니다.`,
+    `${formatPriceUsd(supportValue)} 부근 눌림에서는 EMA20과 RSI 50 유지 여부를 확인합니다.`,
+    `${formatPriceUsd(riskLineValue)} 이탈 시에는 분석을 무효화하고 리스크 축소를 우선합니다.`,
+    fundingCrowded ? "펀딩비가 완화되기 전까지 과도한 레버리지 추격은 피합니다." : "펀딩비가 급변하면 같은 분석이라도 리스크 등급을 즉시 재평가합니다.",
+  ];
+
+  return {
+    symbol: row.symbol,
+    marketType: row.marketType,
+    verdict,
+    tone,
+    score,
+    headline: `결론: ${row.symbol}은 ${verdict}입니다. ${summary}`,
+    summary,
+    levels: {
+      current: formatPriceUsd(current),
+      support: formatPriceUsd(supportValue),
+      riskLine: formatPriceUsd(riskLineValue),
+      fairZone: `${formatPriceUsd(fairLowValue)} ~ ${formatPriceUsd(fairHighValue)}`,
+      resistance: formatPriceUsd(resistanceValue),
+      breakout: formatPriceUsd(breakoutValue),
+    },
+    evidence,
+    strengths,
+    risks,
+    scenarios,
     actionPlan,
   };
 }

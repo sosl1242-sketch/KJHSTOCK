@@ -3,6 +3,7 @@ import {
   applyTickerUpdates,
   buildFuturesFinalJudgmentReport,
   buildFuturesRows,
+  buildFuturesSelectedSymbolAnalysis,
   buildFuturesWatchReport,
   buildFuturesWatchReportMarkdown,
   calculateTechnicalIndicators,
@@ -490,5 +491,57 @@ describe("binance futures analysis", () => {
     expect(markdown).toContain("- 최종 판정: 강한 주목");
     expect(markdown).toContain("- 1순위 후보: ALPHAUSDT");
     expect(markdown.trim().endsWith("투자 판단 전에는 반드시 본인 기준의 손절가와 포지션 크기를 먼저 정합니다.")).toBe(true);
+  });
+
+  it("builds a top-first comprehensive analysis for the selected symbol", () => {
+    const rows = buildFuturesRows({
+      marketType: "USD-M",
+      symbols: [
+        { symbol: "ALPHAUSDT", baseAsset: "ALPHA", quoteAsset: "USDT", contractType: "PERPETUAL", status: "TRADING" },
+      ],
+      tickers: [
+        ticker("ALPHAUSDT", {
+          lastPrice: "124.5",
+          highPrice: "130",
+          lowPrice: "100",
+          quoteVolume: "1800000000",
+          priceChangePercent: "9.4",
+        }),
+      ],
+      premiumIndex: [{ symbol: "ALPHAUSDT", markPrice: "124.4", lastFundingRate: "0.0008", nextFundingTime: 1_780_001_000_000 }],
+      openInterestBySymbol: new Map([["ALPHAUSDT", 720_000_000]]),
+      nowIso: "2026-06-17T00:00:00.000Z",
+    });
+    const row = rows[0];
+    const analysis = buildFuturesSelectedSymbolAnalysis(row, {
+      latestClose: 124.5,
+      ema20: 119.2,
+      ema50: 111.4,
+      rsi14: 67.5,
+      macd: 1.42,
+      macdSignal: 1.01,
+      macdHistogram: 0.41,
+      bollingerMiddle: 116.6,
+      bollingerUpper: 129.8,
+      bollingerLower: 103.4,
+      bollingerPercentB: 79.9,
+      atrPercent: 5.4,
+      stochastic14: 76.2,
+      volume20Ratio: 171.5,
+      score: 78.4,
+      bias: "bullish",
+    });
+
+    expect(analysis.symbol).toBe("ALPHAUSDT");
+    expect(analysis.headline.startsWith("결론:")).toBe(true);
+    expect(analysis.verdict).toBe("추천 우위");
+    expect(analysis.score).toBeGreaterThanOrEqual(70);
+    expect(analysis.levels.support).toContain("$");
+    expect(analysis.levels.resistance).toContain("$");
+    expect(analysis.evidence.some(item => item.label === "추세")).toBe(true);
+    expect(analysis.evidence.some(item => item.label === "거래량")).toBe(true);
+    expect(analysis.risks.join(" ")).toContain("펀딩");
+    expect(analysis.scenarios.length).toBe(3);
+    expect(analysis.actionPlan.length).toBeGreaterThanOrEqual(4);
   });
 });

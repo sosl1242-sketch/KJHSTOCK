@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   buildFuturesFinalJudgmentReport,
+  buildFuturesSelectedSymbolAnalysis,
   buildFuturesWatchReport,
   buildFuturesWatchReportMarkdown,
   summarizeFuturesRows,
@@ -22,6 +23,7 @@ import {
   type FuturesMarketType,
   type FuturesTechnicalIndicators,
   type FuturesFinalJudgmentReport,
+  type FuturesSelectedSymbolAnalysis,
   type FuturesWatchReportItem,
   type FuturesWatchTechnicalSnapshot,
 } from "@shared/binanceFuturesAnalysis";
@@ -1069,6 +1071,120 @@ function FinalJudgmentReport({
   );
 }
 
+const selectedAnalysisToneClass: Record<FuturesSelectedSymbolAnalysis["tone"], string> = {
+  strong: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  buy: "border-cyan-200 bg-cyan-50 text-cyan-800",
+  watch: "border-slate-200 bg-slate-50 text-slate-700",
+  pullback: "border-indigo-200 bg-indigo-50 text-indigo-800",
+  risk: "border-rose-200 bg-rose-50 text-rose-800",
+};
+
+function SelectedSymbolAnalysisPanel({ analysis }: { analysis: FuturesSelectedSymbolAnalysis }) {
+  return (
+    <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="rounded-lg bg-slate-950 p-4 text-white">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Selected Symbol Thesis</p>
+            <h4 className="mt-1 text-lg font-black">종목 종합분석</h4>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="outline" className={cn("rounded-md border-white/15 bg-white px-2 py-1 text-xs font-black", selectedAnalysisToneClass[analysis.tone])}>
+              {analysis.verdict}
+            </Badge>
+            <Badge className="rounded-md bg-white text-slate-950 hover:bg-white">종합 {analysis.score}</Badge>
+          </div>
+        </div>
+        <p className="mt-3 text-sm font-black leading-6 text-white">{analysis.headline}</p>
+        <p className="mt-2 text-xs leading-5 text-slate-300">{analysis.summary}</p>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {[
+          ["현재가", analysis.levels.current],
+          ["지지", analysis.levels.support],
+          ["무효화", analysis.levels.riskLine],
+          ["적정 구간", analysis.levels.fairZone],
+          ["저항", analysis.levels.resistance],
+          ["돌파", analysis.levels.breakout],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-md bg-slate-50 p-2.5">
+            <p className="text-[11px] font-black text-slate-400">{label}</p>
+            <p className="mt-1 break-words text-sm font-black text-slate-950">{value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-3 grid gap-2">
+        {analysis.evidence.map(item => (
+          <div key={item.label} className="rounded-md border border-slate-200 bg-slate-50 p-3">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-xs font-black text-slate-500">{item.label}</p>
+              <Badge variant="outline" className="shrink-0 rounded-md bg-white px-2 py-0.5 text-[10px] font-black text-slate-700">
+                {item.verdict}
+              </Badge>
+            </div>
+            <p className="mt-2 text-xs leading-5 text-slate-600">{item.detail}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-3 grid gap-2 lg:grid-cols-2">
+        <div className="rounded-md border border-emerald-100 bg-emerald-50 p-3">
+          <p className="text-xs font-black text-emerald-900">강점</p>
+          <ul className="mt-2 space-y-1.5 text-xs leading-5 text-emerald-950">
+            {analysis.strengths.map(item => (
+              <li key={item} className="flex gap-2">
+                <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-emerald-500" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="rounded-md border border-rose-100 bg-rose-50 p-3">
+          <p className="text-xs font-black text-rose-900">리스크</p>
+          <ul className="mt-2 space-y-1.5 text-xs leading-5 text-rose-950">
+            {analysis.risks.map(item => (
+              <li key={item} className="flex gap-2">
+                <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-rose-500" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+        <p className="text-xs font-black text-slate-500">가격 시나리오</p>
+        <div className="mt-2 grid gap-2">
+          {analysis.scenarios.map(item => (
+            <div key={item.title} className="rounded-md bg-white p-2.5">
+              <p className="text-xs font-black text-slate-950">{item.title}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">{item.trigger}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-700">{item.expectation}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-3 rounded-md bg-slate-950 p-3 text-white">
+        <p className="flex items-center gap-2 text-xs font-black">
+          <Target className="h-3.5 w-3.5 text-cyan-300" />
+          실행 체크
+        </p>
+        <ol className="mt-2 space-y-2 text-xs leading-5 text-slate-200">
+          {analysis.actionPlan.map((item, index) => (
+            <li key={item} className="flex gap-2">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white text-[10px] font-black text-slate-950">{index + 1}</span>
+              <span>{item}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  );
+}
+
 function TechnicalPanel({
   row,
   interval,
@@ -1089,6 +1205,10 @@ function TechnicalPanel({
   const chartRows = useMemo(() => buildChartRows(candles), [candles]);
   const indicatorJudgments = useMemo(() => indicators ? buildIndicatorJudgments(indicators, row) : [], [indicators, row]);
   const indicatorBars = useMemo(() => indicators ? buildIndicatorBarRows(indicators) : [], [indicators]);
+  const selectedAnalysis = useMemo(
+    () => row && indicators ? buildFuturesSelectedSymbolAnalysis(row, indicators) : null,
+    [indicators, row],
+  );
   const latestChartClose = chartRows[chartRows.length - 1]?.close;
   const bias = indicators?.bias ?? row?.signal ?? "neutral";
 
@@ -1170,6 +1290,7 @@ function TechnicalPanel({
           <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{error}</div>
         ) : indicators ? (
           <>
+            {selectedAnalysis ? <SelectedSymbolAnalysisPanel analysis={selectedAnalysis} /> : null}
             <div className="mt-4 rounded-lg bg-slate-950 p-4 text-white">
               <div className="flex items-end justify-between gap-4">
                 <div>
