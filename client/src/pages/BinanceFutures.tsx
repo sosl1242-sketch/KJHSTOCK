@@ -59,6 +59,7 @@ type IndicatorJudgmentTone = "buy" | "watch" | "avoid" | "high" | "low";
 type IndicatorJudgment = {
   label: string;
   value: string;
+  fairPrice: string;
   verdict: string;
   detail: string;
   tone: IndicatorJudgmentTone;
@@ -445,7 +446,7 @@ const indicatorToneClass: Record<IndicatorJudgmentTone, string> = {
 
 function IndicatorCard({ indicator }: { indicator: IndicatorJudgment }) {
   return (
-    <div className="min-h-[124px] rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+    <div className="min-h-[154px] rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs font-black text-slate-500">{indicator.label}</p>
         <Badge variant="outline" className={cn("shrink-0 rounded-md px-2 py-0.5 text-[10px] font-black", indicatorToneClass[indicator.tone])}>
@@ -453,6 +454,12 @@ function IndicatorCard({ indicator }: { indicator: IndicatorJudgment }) {
         </Badge>
       </div>
       <p className="mt-2 break-words text-lg font-black tabular-nums text-slate-950">{indicator.value}</p>
+      <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] font-black text-slate-400">지표 적정가</span>
+          <span className="text-sm font-black tabular-nums text-slate-950">{indicator.fairPrice}</span>
+        </div>
+      </div>
       <p className="mt-2 text-xs leading-5 text-slate-500">{indicator.detail}</p>
     </div>
   );
@@ -462,6 +469,22 @@ function indicatorValue(value: number, digits = 2) {
   return value.toLocaleString("ko-KR", { maximumFractionDigits: digits });
 }
 
+function fairPriceFromOffset(basePrice: number, offset: number) {
+  if (!Number.isFinite(basePrice) || basePrice <= 0) return basePrice;
+  return basePrice * (1 + offset);
+}
+
+function weightedFairPrice(values: Array<{ price: number; weight: number }>) {
+  const validValues = values.filter(item => Number.isFinite(item.price) && item.price > 0 && Number.isFinite(item.weight) && item.weight > 0);
+  const totalWeight = validValues.reduce((sum, item) => sum + item.weight, 0);
+  if (!validValues.length || totalWeight <= 0) return null;
+  return validValues.reduce((sum, item) => sum + item.price * item.weight, 0) / totalWeight;
+}
+
+function formatFairPrice(value: number | null | undefined) {
+  return formatPrice(value);
+}
+
 function buildIndicatorJudgments(indicators: FuturesTechnicalIndicators, row: FuturesMarketRow | undefined): IndicatorJudgment[] {
   const latestClose = indicators.latestClose;
   const bollingerWidthPercent = indicators.bollingerMiddle === 0
@@ -469,22 +492,39 @@ function buildIndicatorJudgments(indicators: FuturesTechnicalIndicators, row: Fu
     : ((indicators.bollingerUpper - indicators.bollingerLower) / indicators.bollingerMiddle) * 100;
   const dayRange = row ? row.high24h - row.low24h : 0;
   const dayPosition = row && dayRange > 0 ? ((row.price - row.low24h) / dayRange) * 100 : 50;
+  const dayMidpoint = row && dayRange > 0 ? (row.high24h + row.low24h) / 2 : latestClose;
+  const scoreFairPrice = fairPriceFromOffset(latestClose, clamp((indicators.score - 50) / 500, -0.08, 0.08));
+  const rsiFairPrice = fairPriceFromOffset(latestClose, clamp((50 - indicators.rsi14) / 300, -0.12, 0.12));
+  const emaFairPrice = weightedFairPrice([
+    { price: indicators.ema20, weight: 0.65 },
+    { price: indicators.ema50, weight: 0.35 },
+  ]);
+  const macdHistogramFairPrice = fairPriceFromOffset(latestClose, clamp((indicators.macdHistogram / latestClose) * 2, -0.08, 0.08));
+  const macdCrossFairPrice = fairPriceFromOffset(latestClose, clamp(((indicators.macd - indicators.macdSignal) / latestClose) * 2, -0.08, 0.08));
+  const bollingerFairPrice = weightedFairPrice([
+    { price: indicators.bollingerMiddle, weight: 0.7 },
+    { price: latestClose, weight: 0.3 },
+  ]);
+  const volatilityDiscount = clamp((indicators.atrPercent - 3) / 200, -0.03, 0.08);
+  const atrFairPrice = fairPriceFromOffset(latestClose, -volatilityDiscount);
+  const stochasticFairPrice = fairPriceFromOffset(latestClose, clamp((50 - indicators.stochastic14) / 300, -0.12, 0.12));
+  const volumeFairPrice = fairPriceFromOffset(latestClose, clamp((indicators.volume20Ratio - 100) / 1000, -0.06, 0.08));
 
   const scoreJudgment: IndicatorJudgment = indicators.score >= 65
-    ? { label: "종합 점수", value: indicatorValue(indicators.score, 1), verdict: "추천", tone: "buy", detail: "여러 지표가 같은 방향으로 기울었습니다." }
+    ? { label: "종합 점수", value: indicatorValue(indicators.score, 1), fairPrice: formatFairPrice(scoreFairPrice), verdict: "추천", tone: "buy", detail: "여러 지표가 같은 방향으로 기울었습니다." }
     : indicators.score <= 40
-      ? { label: "종합 점수", value: indicatorValue(indicators.score, 1), verdict: "비추천", tone: "avoid", detail: "추세와 모멘텀 점수가 약합니다." }
-      : { label: "종합 점수", value: indicatorValue(indicators.score, 1), verdict: "관망", tone: "watch", detail: "방향성이 아직 충분히 선명하지 않습니다." };
+      ? { label: "종합 점수", value: indicatorValue(indicators.score, 1), fairPrice: formatFairPrice(scoreFairPrice), verdict: "비추천", tone: "avoid", detail: "추세와 모멘텀 점수가 약합니다." }
+      : { label: "종합 점수", value: indicatorValue(indicators.score, 1), fairPrice: formatFairPrice(scoreFairPrice), verdict: "관망", tone: "watch", detail: "방향성이 아직 충분히 선명하지 않습니다." };
 
   const rsiJudgment: IndicatorJudgment = indicators.rsi14 >= 70
-    ? { label: "RSI 14", value: indicatorValue(indicators.rsi14), verdict: "고점 경계", tone: "high", detail: "단기 과열권입니다. 추격 진입은 부담입니다." }
+    ? { label: "RSI 14", value: indicatorValue(indicators.rsi14), fairPrice: formatFairPrice(rsiFairPrice), verdict: "고점 경계", tone: "high", detail: "단기 과열권입니다. 추격 진입은 부담입니다." }
     : indicators.rsi14 <= 30
-      ? { label: "RSI 14", value: indicatorValue(indicators.rsi14), verdict: "저점 후보", tone: "low", detail: "과매도권입니다. 반등 확인이 필요합니다." }
+      ? { label: "RSI 14", value: indicatorValue(indicators.rsi14), fairPrice: formatFairPrice(rsiFairPrice), verdict: "저점 후보", tone: "low", detail: "과매도권입니다. 반등 확인이 필요합니다." }
       : indicators.rsi14 >= 55
-        ? { label: "RSI 14", value: indicatorValue(indicators.rsi14), verdict: "추천", tone: "buy", detail: "매수 압력이 우세한 구간입니다." }
+        ? { label: "RSI 14", value: indicatorValue(indicators.rsi14), fairPrice: formatFairPrice(rsiFairPrice), verdict: "추천", tone: "buy", detail: "매수 압력이 우세한 구간입니다." }
         : indicators.rsi14 <= 45
-          ? { label: "RSI 14", value: indicatorValue(indicators.rsi14), verdict: "비추천", tone: "avoid", detail: "모멘텀이 약한 구간입니다." }
-          : { label: "RSI 14", value: indicatorValue(indicators.rsi14), verdict: "관망", tone: "watch", detail: "중립권이라 단독 판단은 어렵습니다." };
+          ? { label: "RSI 14", value: indicatorValue(indicators.rsi14), fairPrice: formatFairPrice(rsiFairPrice), verdict: "비추천", tone: "avoid", detail: "모멘텀이 약한 구간입니다." }
+          : { label: "RSI 14", value: indicatorValue(indicators.rsi14), fairPrice: formatFairPrice(rsiFairPrice), verdict: "관망", tone: "watch", detail: "중립권이라 단독 판단은 어렵습니다." };
 
   const emaTrend = indicators.ema20 >= indicators.ema50;
   const macdPositive = indicators.macdHistogram >= 0;
@@ -497,6 +537,7 @@ function buildIndicatorJudgments(indicators: FuturesTechnicalIndicators, row: Fu
     {
       label: "EMA 20 / 50",
       value: `${formatPrice(indicators.ema20)} / ${formatPrice(indicators.ema50)}`,
+      fairPrice: formatFairPrice(emaFairPrice),
       verdict: emaTrend ? "추천" : "비추천",
       tone: emaTrend ? "buy" : "avoid",
       detail: emaTrend ? "단기 평균이 중기 평균 위에 있습니다." : "단기 평균이 중기 평균 아래에 있습니다.",
@@ -504,6 +545,7 @@ function buildIndicatorJudgments(indicators: FuturesTechnicalIndicators, row: Fu
     {
       label: "가격 / EMA20",
       value: `${formatPrice(latestClose)} / ${formatPrice(indicators.ema20)}`,
+      fairPrice: formatFairPrice(indicators.ema20),
       verdict: priceAboveEma20 ? "추천" : "비추천",
       tone: priceAboveEma20 ? "buy" : "avoid",
       detail: priceAboveEma20 ? "현재가가 단기 추세선 위입니다." : "현재가가 단기 추세선 아래입니다.",
@@ -511,6 +553,7 @@ function buildIndicatorJudgments(indicators: FuturesTechnicalIndicators, row: Fu
     {
       label: "MACD Histogram",
       value: indicators.macdHistogram.toLocaleString("ko-KR", { maximumFractionDigits: 6 }),
+      fairPrice: formatFairPrice(macdHistogramFairPrice),
       verdict: macdPositive ? "추천" : "비추천",
       tone: macdPositive ? "buy" : "avoid",
       detail: macdPositive ? "상승 모멘텀이 우세합니다." : "하락 모멘텀이 우세합니다.",
@@ -518,6 +561,7 @@ function buildIndicatorJudgments(indicators: FuturesTechnicalIndicators, row: Fu
     {
       label: "MACD / Signal",
       value: `${indicatorValue(indicators.macd, 6)} / ${indicatorValue(indicators.macdSignal, 6)}`,
+      fairPrice: formatFairPrice(macdCrossFairPrice),
       verdict: macdCrossPositive ? "추천" : "비추천",
       tone: macdCrossPositive ? "buy" : "avoid",
       detail: macdCrossPositive ? "MACD가 시그널 위에 있습니다." : "MACD가 시그널 아래에 있습니다.",
@@ -525,6 +569,7 @@ function buildIndicatorJudgments(indicators: FuturesTechnicalIndicators, row: Fu
     {
       label: "Bollinger %B",
       value: `${indicatorValue(indicators.bollingerPercentB)}%`,
+      fairPrice: formatFairPrice(bollingerFairPrice),
       verdict: indicators.bollingerPercentB >= 90 ? "고점 경계" : indicators.bollingerPercentB <= 10 ? "저점 후보" : indicators.bollingerPercentB >= 50 ? "추천" : "비추천",
       tone: indicators.bollingerPercentB >= 90 ? "high" : indicators.bollingerPercentB <= 10 ? "low" : indicators.bollingerPercentB >= 50 ? "buy" : "avoid",
       detail: indicators.bollingerPercentB >= 90 ? "상단 밴드에 가까워 과열을 점검합니다." : indicators.bollingerPercentB <= 10 ? "하단 밴드에 가까워 반등 후보입니다." : "밴드 안의 상대 위치를 확인합니다.",
@@ -532,6 +577,7 @@ function buildIndicatorJudgments(indicators: FuturesTechnicalIndicators, row: Fu
     {
       label: "Bollinger 폭",
       value: `${indicatorValue(bollingerWidthPercent)}%`,
+      fairPrice: formatFairPrice(indicators.bollingerMiddle),
       verdict: bollingerWidthPercent >= 12 ? "고변동" : bollingerWidthPercent <= 4 ? "압축" : "관망",
       tone: bollingerWidthPercent >= 12 ? "high" : bollingerWidthPercent <= 4 ? "watch" : "watch",
       detail: bollingerWidthPercent >= 12 ? "밴드가 넓어 손절폭 관리가 필요합니다." : bollingerWidthPercent <= 4 ? "변동성 압축 후 돌파를 기다립니다." : "평균적인 변동성 구간입니다.",
@@ -539,6 +585,7 @@ function buildIndicatorJudgments(indicators: FuturesTechnicalIndicators, row: Fu
     {
       label: "ATR %",
       value: `${indicatorValue(indicators.atrPercent)}%`,
+      fairPrice: formatFairPrice(atrFairPrice),
       verdict: indicators.atrPercent >= 7 ? "고위험" : indicators.atrPercent <= 2 ? "관망" : "추천",
       tone: indicators.atrPercent >= 7 ? "high" : indicators.atrPercent <= 2 ? "watch" : "buy",
       detail: indicators.atrPercent >= 7 ? "가격 흔들림이 커서 진입 크기를 줄입니다." : indicators.atrPercent <= 2 ? "움직임이 작아 돌파 확인이 필요합니다." : "거래 가능한 변동성입니다.",
@@ -546,6 +593,7 @@ function buildIndicatorJudgments(indicators: FuturesTechnicalIndicators, row: Fu
     {
       label: "Stochastic 14",
       value: `${indicatorValue(indicators.stochastic14)}%`,
+      fairPrice: formatFairPrice(stochasticFairPrice),
       verdict: indicators.stochastic14 >= 80 ? "고점 경계" : indicators.stochastic14 <= 20 ? "저점 후보" : indicators.stochastic14 >= 50 ? "추천" : "비추천",
       tone: indicators.stochastic14 >= 80 ? "high" : indicators.stochastic14 <= 20 ? "low" : indicators.stochastic14 >= 50 ? "buy" : "avoid",
       detail: indicators.stochastic14 >= 80 ? "단기 위치가 상단권입니다." : indicators.stochastic14 <= 20 ? "단기 위치가 하단권입니다." : "단기 위치가 방향 판단을 보조합니다.",
@@ -553,6 +601,7 @@ function buildIndicatorJudgments(indicators: FuturesTechnicalIndicators, row: Fu
     {
       label: "Volume / 20",
       value: `${indicatorValue(indicators.volume20Ratio)}%`,
+      fairPrice: formatFairPrice(volumeFairPrice),
       verdict: indicators.volume20Ratio >= 140 ? "추천" : indicators.volume20Ratio <= 70 ? "비추천" : "관망",
       tone: indicators.volume20Ratio >= 140 ? "buy" : indicators.volume20Ratio <= 70 ? "avoid" : "watch",
       detail: indicators.volume20Ratio >= 140 ? "평균보다 거래량이 붙었습니다." : indicators.volume20Ratio <= 70 ? "거래 참여가 약합니다." : "거래량은 평균권입니다.",
@@ -560,6 +609,7 @@ function buildIndicatorJudgments(indicators: FuturesTechnicalIndicators, row: Fu
     {
       label: "24h 위치",
       value: `${indicatorValue(dayPosition)}%`,
+      fairPrice: formatFairPrice(dayMidpoint),
       verdict: dayPosition >= 85 ? "고점 경계" : dayPosition <= 15 ? "저점 후보" : dayPosition >= 55 ? "추천" : "비추천",
       tone: dayPosition >= 85 ? "high" : dayPosition <= 15 ? "low" : dayPosition >= 55 ? "buy" : "avoid",
       detail: dayPosition >= 85 ? "24h 고가권에 가까워 추격을 경계합니다." : dayPosition <= 15 ? "24h 저가권에 가까워 반등 여부를 봅니다." : "24h 범위 안의 위치를 확인합니다.",
@@ -944,7 +994,7 @@ function TechnicalPanel({
               <Gauge className="h-4 w-4 text-indigo-500" />
               기술적 지표
             </h3>
-            <p className="mt-1 text-xs text-slate-500">12개 지표별 추천·비추천·고점·저점 판단</p>
+            <p className="mt-1 text-xs text-slate-500">12개 지표별 추천·비추천·고점·저점 판단과 지표 적정가</p>
           </div>
           <div className="flex items-center gap-2">
             {loading && indicators ? (
