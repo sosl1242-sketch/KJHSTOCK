@@ -69,6 +69,9 @@ type IndicatorBarRow = {
   displayValue: string;
   fill: string;
 };
+type StableSymbolChartRow = {
+  fullSymbol: string;
+};
 
 const MARKET_METADATA_REFRESH_MS = 300_000;
 const REPORT_TECHNICAL_REFRESH_MS = 120_000;
@@ -256,6 +259,29 @@ function buildSignalDistributionChartRows(rows: FuturesMarketRow[]) {
       volume,
     };
   });
+}
+
+function mergeStableChartRows<T extends StableSymbolChartRow>(previousRows: T[], nextRows: T[], limit: number) {
+  if (!previousRows.length) return nextRows.slice(0, limit);
+
+  const nextBySymbol = new Map(nextRows.map(row => [row.fullSymbol, row]));
+  const usedSymbols = new Set<string>();
+  const preservedRows = previousRows
+    .map(previousRow => {
+      const nextRow = nextBySymbol.get(previousRow.fullSymbol);
+      if (!nextRow) return null;
+      usedSymbols.add(previousRow.fullSymbol);
+      return nextRow;
+    })
+    .filter((row): row is T => row !== null);
+  const appendedRows = nextRows.filter(row => !usedSymbols.has(row.fullSymbol));
+
+  return [...preservedRows, ...appendedRows].slice(0, limit);
+}
+
+function chartRowsEqual<T extends Record<string, unknown>>(leftRows: T[], rightRows: T[]) {
+  if (leftRows.length !== rightRows.length) return false;
+  return leftRows.every((leftRow, index) => JSON.stringify(leftRow) === JSON.stringify(rightRows[index]));
 }
 
 function buildIndicatorBarRows(indicators: FuturesTechnicalIndicators): IndicatorBarRow[] {
@@ -579,13 +605,37 @@ function MarketVisualBoard({ rows }: { rows: FuturesMarketRow[] }) {
   const momentumRows = useMemo(() => buildMomentumChartRows(rows), [rows]);
   const fundingRows = useMemo(() => buildFundingPressureChartRows(rows), [rows]);
   const signalRows = useMemo(() => buildSignalDistributionChartRows(rows), [rows]);
+  const [stableVolumeRows, setStableVolumeRows] = useState(volumeRows);
+  const [stableMomentumRows, setStableMomentumRows] = useState(momentumRows);
+  const [stableFundingRows, setStableFundingRows] = useState(fundingRows);
+
+  useEffect(() => {
+    setStableVolumeRows(previousRows => {
+      const mergedRows = mergeStableChartRows(previousRows, volumeRows, 12);
+      return chartRowsEqual(previousRows, mergedRows) ? previousRows : mergedRows;
+    });
+  }, [volumeRows]);
+
+  useEffect(() => {
+    setStableMomentumRows(previousRows => {
+      const mergedRows = mergeStableChartRows(previousRows, momentumRows, 12);
+      return chartRowsEqual(previousRows, mergedRows) ? previousRows : mergedRows;
+    });
+  }, [momentumRows]);
+
+  useEffect(() => {
+    setStableFundingRows(previousRows => {
+      const mergedRows = mergeStableChartRows(previousRows, fundingRows, 12);
+      return chartRowsEqual(previousRows, mergedRows) ? previousRows : mergedRows;
+    });
+  }, [fundingRows]);
 
   return (
     <section className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-4">
       <MarketChartPanel title="거래대금 상위 12" detail="24h 달러 거래대금 기준입니다. 막대 색은 24h 방향입니다.">
-        {volumeRows.length ? (
+        {stableVolumeRows.length ? (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={volumeRows} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
+            <BarChart data={stableVolumeRows} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid stroke={chartGridStroke} strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="symbol" tick={{ fontSize: 10, fill: chartMutedText }} tickLine={false} axisLine={false} interval={0} angle={-28} textAnchor="end" height={48} />
               <YAxis tick={{ fontSize: 10, fill: chartMutedText }} tickFormatter={value => formatUsd(Number(value))} width={58} tickLine={false} axisLine={false} />
@@ -597,8 +647,8 @@ function MarketVisualBoard({ rows }: { rows: FuturesMarketRow[] }) {
                 labelFormatter={(_label, payload: any) => payload?.[0]?.payload?.fullSymbol ?? ""}
                 contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }}
               />
-              <Bar dataKey="volume" radius={[5, 5, 0, 0]}>
-                {volumeRows.map(row => (
+              <Bar dataKey="volume" radius={[5, 5, 0, 0]} isAnimationActive={false}>
+                {stableVolumeRows.map(row => (
                   <Cell key={row.fullSymbol} fill={row.fill} />
                 ))}
               </Bar>
@@ -610,9 +660,9 @@ function MarketVisualBoard({ rows }: { rows: FuturesMarketRow[] }) {
       </MarketChartPanel>
 
       <MarketChartPanel title="24h 모멘텀 양극단" detail="상승률 상위 6개와 하락률 하위 6개를 동시에 비교합니다.">
-        {momentumRows.length ? (
+        {stableMomentumRows.length ? (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={momentumRows} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
+            <BarChart data={stableMomentumRows} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid stroke={chartGridStroke} strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="symbol" tick={{ fontSize: 10, fill: chartMutedText }} tickLine={false} axisLine={false} interval={0} angle={-28} textAnchor="end" height={48} />
               <YAxis tick={{ fontSize: 10, fill: chartMutedText }} tickFormatter={value => `${Number(value).toFixed(0)}%`} width={44} tickLine={false} axisLine={false} />
@@ -625,8 +675,8 @@ function MarketVisualBoard({ rows }: { rows: FuturesMarketRow[] }) {
                 contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }}
               />
               <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="4 4" />
-              <Bar dataKey="change" radius={[5, 5, 0, 0]}>
-                {momentumRows.map(row => (
+              <Bar dataKey="change" radius={[5, 5, 0, 0]} isAnimationActive={false}>
+                {stableMomentumRows.map(row => (
                   <Cell key={row.fullSymbol} fill={row.fill} />
                 ))}
               </Bar>
@@ -638,9 +688,9 @@ function MarketVisualBoard({ rows }: { rows: FuturesMarketRow[] }) {
       </MarketChartPanel>
 
       <MarketChartPanel title="펀딩비 압력" detail="절대값이 큰 펀딩비 종목입니다. 0선에서 멀수록 포지션 비용 압력이 큽니다.">
-        {fundingRows.length ? (
+        {stableFundingRows.length ? (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={fundingRows} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
+            <BarChart data={stableFundingRows} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid stroke={chartGridStroke} strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="symbol" tick={{ fontSize: 10, fill: chartMutedText }} tickLine={false} axisLine={false} interval={0} angle={-28} textAnchor="end" height={48} />
               <YAxis tick={{ fontSize: 10, fill: chartMutedText }} tickFormatter={value => `${Number(value).toFixed(2)}%`} width={54} tickLine={false} axisLine={false} />
@@ -653,8 +703,8 @@ function MarketVisualBoard({ rows }: { rows: FuturesMarketRow[] }) {
                 contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }}
               />
               <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="4 4" />
-              <Bar dataKey="funding" radius={[5, 5, 0, 0]}>
-                {fundingRows.map(row => (
+              <Bar dataKey="funding" radius={[5, 5, 0, 0]} isAnimationActive={false}>
+                {stableFundingRows.map(row => (
                   <Cell key={row.fullSymbol} fill={row.fill} />
                 ))}
               </Bar>
@@ -681,8 +731,8 @@ function MarketVisualBoard({ rows }: { rows: FuturesMarketRow[] }) {
                 labelFormatter={label => `${label} 시그널`}
                 contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }}
               />
-              <Bar dataKey="usdM" stackId="signal" fill="#0ea5e9" radius={[0, 0, 4, 4]} />
-              <Bar dataKey="coinM" stackId="signal" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="usdM" stackId="signal" fill="#0ea5e9" radius={[0, 0, 4, 4]} isAnimationActive={false} />
+              <Bar dataKey="coinM" stackId="signal" fill="#8b5cf6" radius={[4, 4, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         ) : (
@@ -961,7 +1011,7 @@ function TechnicalPanel({
                       contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }}
                     />
                     <ReferenceLine x={50} stroke="#94a3b8" strokeDasharray="4 4" />
-                    <Bar dataKey="value" radius={[0, 5, 5, 0]}>
+                    <Bar dataKey="value" radius={[0, 5, 5, 0]} isAnimationActive={false}>
                       {indicatorBars.map(row => (
                         <Cell key={row.label} fill={row.fill} />
                       ))}
@@ -1003,10 +1053,10 @@ function TechnicalPanel({
                 {typeof latestChartClose === "number" ? (
                   <ReferenceLine yAxisId="price" y={latestChartClose} stroke="#0f172a" strokeDasharray="5 5" />
                 ) : null}
-                <Bar yAxisId="volume" dataKey="volume" fill="#cbd5e1" opacity={0.45} />
-                <Line yAxisId="price" type="monotone" dataKey="high" stroke="#f59e0b" strokeDasharray="4 4" strokeWidth={1.4} dot={false} />
-                <Line yAxisId="price" type="monotone" dataKey="low" stroke="#38bdf8" strokeDasharray="4 4" strokeWidth={1.4} dot={false} />
-                <Line yAxisId="price" type="monotone" dataKey="close" stroke="#0891b2" strokeWidth={2.5} dot={false} />
+                <Bar yAxisId="volume" dataKey="volume" fill="#cbd5e1" opacity={0.45} isAnimationActive={false} />
+                <Line yAxisId="price" type="monotone" dataKey="high" stroke="#f59e0b" strokeDasharray="4 4" strokeWidth={1.4} dot={false} isAnimationActive={false} />
+                <Line yAxisId="price" type="monotone" dataKey="low" stroke="#38bdf8" strokeDasharray="4 4" strokeWidth={1.4} dot={false} isAnimationActive={false} />
+                <Line yAxisId="price" type="monotone" dataKey="close" stroke="#0891b2" strokeWidth={2.5} dot={false} isAnimationActive={false} />
               </ComposedChart>
             </ResponsiveContainer>
           ) : (
