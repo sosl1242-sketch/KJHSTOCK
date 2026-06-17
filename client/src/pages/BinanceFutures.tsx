@@ -45,6 +45,7 @@ import {
   ShieldAlert,
   Signal,
   Sparkles,
+  Star,
   Target,
   Wifi,
   WifiOff,
@@ -80,6 +81,7 @@ type StableSymbolChartRow = {
 
 const MARKET_METADATA_REFRESH_MS = 300_000;
 const REPORT_TECHNICAL_REFRESH_MS = 120_000;
+const FAVORITES_STORAGE_KEY = "kjhstock-binance-futures-favorites";
 const chartGridStroke = "#e2e8f0";
 const chartMutedText = "#64748b";
 
@@ -332,6 +334,52 @@ function buildIndicatorBarRows(indicators: FuturesTechnicalIndicators): Indicato
 
 function rowSelectionKey(row: Pick<FuturesMarketRow, "marketType" | "symbol">): FuturesSelectionKey {
   return `${row.marketType}:${row.symbol}`;
+}
+
+function isFavoriteSelectionKey(value: string): value is FuturesSelectionKey {
+  return /^(USD-M|COIN-M):[A-Z0-9_]+$/.test(value);
+}
+
+function parseFavoriteKeys(value: string | null): FuturesSelectionKey[] {
+  if (!value) return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+
+    const uniqueKeys: FuturesSelectionKey[] = [];
+    const seenKeys = new Set<string>();
+    for (const item of parsed) {
+      if (typeof item !== "string" || !isFavoriteSelectionKey(item) || seenKeys.has(item)) continue;
+      seenKeys.add(item);
+      uniqueKeys.push(item);
+    }
+
+    return uniqueKeys;
+  } catch {
+    return [];
+  }
+}
+
+function serializeFavoriteKeys(keys: FuturesSelectionKey[]) {
+  const uniqueKeys: FuturesSelectionKey[] = [];
+  const seenKeys = new Set<string>();
+  for (const key of keys) {
+    if (!isFavoriteSelectionKey(key) || seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    uniqueKeys.push(key);
+  }
+  return JSON.stringify(uniqueKeys);
+}
+
+function readFavoriteKeysFromStorage() {
+  if (typeof window === "undefined") return [];
+
+  try {
+    return parseFavoriteKeys(window.localStorage.getItem(FAVORITES_STORAGE_KEY));
+  } catch {
+    return [];
+  }
 }
 
 function mergeRowsWithoutLayoutShift(previousRows: FuturesMarketRow[], nextRows: FuturesMarketRow[]) {
@@ -1404,6 +1452,8 @@ export default function BinanceFutures() {
   const [reportTechnicalLoading, setReportTechnicalLoading] = useState(false);
   const [reportTechnicalUpdatedAt, setReportTechnicalUpdatedAt] = useState<string | null>(null);
   const [reportTechnicalRefreshTick, setReportTechnicalRefreshTick] = useState(0);
+  const [favoriteKeys, setFavoriteKeys] = useState<FuturesSelectionKey[]>(readFavoriteKeysFromStorage);
+  const [favoriteOnly, setFavoriteOnly] = useState(false);
 
   const reload = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!silent) setRefreshing(true);
@@ -1430,6 +1480,14 @@ export default function BinanceFutures() {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(FAVORITES_STORAGE_KEY, serializeFavoriteKeys(favoriteKeys));
+    } catch {
+      // Browsers may reject localStorage in private mode or strict privacy settings.
+    }
+  }, [favoriteKeys]);
 
   useEffect(() => {
     if (!rows.length) return;
@@ -1489,11 +1547,30 @@ export default function BinanceFutures() {
   const finalJudgment = useMemo(() => buildFuturesFinalJudgmentReport(reportWithTechnical), [reportWithTechnical]);
   const reportMarkdown = useMemo(() => buildFuturesWatchReportMarkdown(reportWithTechnical), [reportWithTechnical]);
   const quoteAssets = useMemo(() => Array.from(new Set(rows.map(row => row.quoteAsset))).sort(), [rows]);
+  const favoriteKeySet = useMemo(() => new Set(favoriteKeys), [favoriteKeys]);
+  const favoriteRows = useMemo(() => {
+    const rowsByKey = new Map(rows.map(row => [rowSelectionKey(row), row]));
+    return favoriteKeys
+      .map(key => rowsByKey.get(key))
+      .filter((row): row is FuturesMarketRow => Boolean(row));
+  }, [favoriteKeys, rows]);
   const marketCounts = useMemo(() => {
     const usdM = rows.filter(row => row.marketType === "USD-M").length;
     const coinM = rows.filter(row => row.marketType === "COIN-M").length;
     return { usdM, coinM };
   }, [rows]);
+
+  const toggleFavorite = useCallback((row: Pick<FuturesMarketRow, "marketType" | "symbol">) => {
+    const key = rowSelectionKey(row);
+    setFavoriteKeys(current => {
+      if (current.includes(key)) return current.filter(favoriteKey => favoriteKey !== key);
+      return [key, ...current];
+    });
+  }, []);
+
+  const onSelectFavorite = useCallback((key: FuturesSelectionKey) => {
+    setSelectedKey(key);
+  }, []);
 
   useEffect(() => {
     if (!reportCandidates.length) {
@@ -1562,7 +1639,8 @@ export default function BinanceFutures() {
       const matchesAsset = assetFilter === "all" || row.assetClass === assetFilter;
       const matchesQuote = quoteFilter === "all" || row.quoteAsset === quoteFilter;
       const matchesSignal = signalFilter === "all" || row.signal === signalFilter;
-      return matchesQuery && matchesAsset && matchesMarket && matchesQuote && matchesSignal;
+      const matchesFavorite = !favoriteOnly || favoriteKeySet.has(rowSelectionKey(row));
+      return matchesQuery && matchesAsset && matchesMarket && matchesQuote && matchesSignal && matchesFavorite;
     });
     return filtered.sort((a, b) => {
       const aValue = sortValue(a, sortKey);
@@ -1573,7 +1651,7 @@ export default function BinanceFutures() {
       const delta = Number(aValue) - Number(bValue);
       return sortDirection === "asc" ? delta : -delta;
     });
-  }, [query, assetFilter, marketFilter, quoteFilter, rows, signalFilter, sortDirection, sortKey]);
+  }, [query, assetFilter, favoriteKeySet, favoriteOnly, marketFilter, quoteFilter, rows, signalFilter, sortDirection, sortKey]);
 
   return (
     <div className="min-h-screen bg-[#f4f7fa] text-slate-950">
@@ -1641,7 +1719,7 @@ export default function BinanceFutures() {
         <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_480px] 2xl:grid-cols-[minmax(0,1fr)_620px]">
           <div className="min-w-0 space-y-4">
             <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_130px_130px] 2xl:grid-cols-[minmax(220px,1fr)_120px_130px_130px_150px_160px_120px]">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_130px_130px] 2xl:grid-cols-[minmax(220px,1fr)_120px_130px_130px_150px_160px_120px_140px]">
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
@@ -1722,8 +1800,64 @@ export default function BinanceFutures() {
                 >
                   {sortDirection === "asc" ? "오름차순" : "내림차순"}
                 </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  aria-pressed={favoriteOnly}
+                  className={cn(
+                    "h-10 rounded-md",
+                    favoriteOnly && "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100",
+                  )}
+                  onClick={() => setFavoriteOnly(current => !current)}
+                >
+                  <Star className={cn("h-4 w-4", favoriteOnly ? "fill-amber-400 text-amber-500" : "text-slate-400")} />
+                  즐겨찾기만
+                </Button>
               </div>
             </section>
+
+            {favoriteKeys.length > 0 ? (
+              <section className="rounded-lg border border-amber-200 bg-amber-50/70 p-3 shadow-sm">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="flex items-center gap-2 text-sm font-black text-amber-950">
+                      <Star className="h-4 w-4 fill-amber-400 text-amber-500" />
+                      즐겨찾기 종목
+                    </h3>
+                    <p className="mt-1 text-xs font-semibold text-amber-800">
+                      저장 {favoriteKeys.length.toLocaleString("ko-KR")} / 현재 표시 가능 {favoriteRows.length.toLocaleString("ko-KR")}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="w-fit rounded-md border-amber-200 bg-white text-amber-800">
+                    브라우저 저장
+                  </Badge>
+                </div>
+                <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                  {favoriteRows.length > 0 ? favoriteRows.map(row => {
+                    const key = rowSelectionKey(row);
+                    const active = key === selectedKey;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        className={cn(
+                          "flex min-w-[154px] shrink-0 flex-col items-start rounded-md border bg-white px-3 py-2 text-left shadow-sm transition-colors",
+                          active ? "border-slate-950 ring-2 ring-slate-950/10" : "border-amber-200 hover:border-amber-400",
+                        )}
+                        onClick={() => onSelectFavorite(key)}
+                      >
+                        <span className="text-sm font-black text-slate-950">{row.symbol}</span>
+                        <span className="mt-1 text-xs font-semibold text-slate-500">{row.marketType} · {formatPercent(row.change24hPercent)}</span>
+                      </button>
+                    );
+                  }) : (
+                    <p className="rounded-md border border-amber-200 bg-white px-3 py-2 text-xs font-semibold text-amber-800">
+                      저장한 종목이 현재 Binance 목록에 없습니다.
+                    </p>
+                  )}
+                </div>
+              </section>
+            ) : null}
 
             <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
               <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
@@ -1745,6 +1879,9 @@ export default function BinanceFutures() {
                 <Table>
                   <TableHeader className="sticky top-0 z-10 bg-white">
                     <TableRow>
+                      <TableHead className="w-12 text-center">
+                        <Star className="mx-auto h-4 w-4 text-slate-400" />
+                      </TableHead>
                       <TableHead className="w-14 text-right">#</TableHead>
                       <TableHead>마켓</TableHead>
                       <TableHead>심볼</TableHead>
@@ -1758,14 +1895,35 @@ export default function BinanceFutures() {
                   </TableHeader>
                   <TableBody>
                     {visibleRows.map(row => {
-                      const selected = rowSelectionKey(row) === selectedKey;
+                      const favoriteKey = rowSelectionKey(row);
+                      const selected = favoriteKey === selectedKey;
+                      const favorited = favoriteKeySet.has(favoriteKey);
                       return (
                         <TableRow
                           key={`${row.marketType}-${row.symbol}`}
                           data-state={selected ? "selected" : undefined}
                           className={cn("border-slate-100", selected && "bg-cyan-50/70 hover:bg-cyan-50")}
-                          onClick={() => setSelectedKey(rowSelectionKey(row))}
+                          onClick={() => setSelectedKey(favoriteKey)}
                         >
+                          <TableCell className="text-center">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-pressed={favorited}
+                              aria-label={favorited ? `${row.symbol} 즐겨찾기 해제` : `${row.symbol} 즐겨찾기 추가`}
+                              className={cn(
+                                "h-8 w-8 rounded-md text-slate-300 hover:text-amber-500",
+                                favorited && "bg-amber-50 text-amber-500 hover:bg-amber-100 hover:text-amber-600",
+                              )}
+                              onClick={event => {
+                                event.stopPropagation();
+                                toggleFavorite(row);
+                              }}
+                            >
+                              <Star className={cn("h-4 w-4", favorited && "fill-amber-400")} />
+                            </Button>
+                          </TableCell>
                           <TableCell className="text-right text-xs font-bold text-slate-400">{row.rank}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className="rounded-md px-2 py-1 text-[11px] text-slate-600">
@@ -1798,8 +1956,8 @@ export default function BinanceFutures() {
                     })}
                     {!loading && visibleRows.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="h-32 text-center text-sm text-slate-500">
-                          조건에 맞는 선물 계약이 없습니다.
+                        <TableCell colSpan={10} className="h-32 text-center text-sm text-slate-500">
+                          {favoriteOnly ? "즐겨찾기 조건에 맞는 선물 계약이 없습니다." : "조건에 맞는 선물 계약이 없습니다."}
                         </TableCell>
                       </TableRow>
                     ) : null}
