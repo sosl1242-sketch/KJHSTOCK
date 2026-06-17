@@ -766,7 +766,7 @@ export function buildFuturesSelectedSymbolAnalysis(
     : dayPositionPercent <= 20
       ? "24h 저점권"
       : "24h 중립권";
-  const summary = `${row.symbol}은 ${verdict}입니다. 기술 점수 ${indicators.score}, 24h ${formatPercent(row.change24hPercent)}, 거래대금 ${formatUsd(row.volume24hUsd)}, ${positionText} 위치를 함께 보면 ${emaTrendUp && macdPositive ? "추세와 모멘텀은 우호적" : "추세 확인이 아직 필요"}하지만 ${fundingCrowded || rsiOverheated || highVolatility ? "과열과 리스크 관리가 핵심" : "가격 확인 후 관심도를 높일 수 있는 구조"}입니다.`;
+  const summary = `기술 점수 ${indicators.score}, 24h ${formatPercent(row.change24hPercent)}, 거래대금 ${formatUsd(row.volume24hUsd)}, ${positionText} 위치를 함께 보면 ${emaTrendUp && macdPositive ? "추세와 모멘텀은 우호적" : "추세 확인이 아직 필요"}입니다. 다만 ${fundingCrowded || rsiOverheated || highVolatility ? "과열과 리스크 관리가 핵심" : "가격 확인 후 관심도를 높일 수 있는 구조"}입니다.`;
 
   const evidence: FuturesSelectedSymbolAnalysis["evidence"] = [
     {

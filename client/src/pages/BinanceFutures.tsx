@@ -1096,7 +1096,6 @@ function SelectedSymbolAnalysisPanel({ analysis }: { analysis: FuturesSelectedSy
           </div>
         </div>
         <p className="mt-3 text-sm font-black leading-6 text-white">{analysis.headline}</p>
-        <p className="mt-2 text-xs leading-5 text-slate-300">{analysis.summary}</p>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
