@@ -45,8 +45,8 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 
 type SortKey = "rank" | "marketType" | "symbol" | "price" | "change24hPercent" | "volume24hUsd" | "fundingRate" | "signal";
@@ -63,9 +63,17 @@ type IndicatorJudgment = {
   detail: string;
   tone: IndicatorJudgmentTone;
 };
+type IndicatorBarRow = {
+  label: string;
+  value: number;
+  displayValue: string;
+  fill: string;
+};
 
 const MARKET_METADATA_REFRESH_MS = 300_000;
 const REPORT_TECHNICAL_REFRESH_MS = 120_000;
+const chartGridStroke = "#e2e8f0";
+const chartMutedText = "#64748b";
 
 const sortOptions: Array<{ value: SortKey; label: string; direction: SortDirection }> = [
   { value: "volume24hUsd", label: "거래대금", direction: "desc" },
@@ -160,9 +168,135 @@ function sortValue(row: FuturesMarketRow, key: SortKey) {
 function buildChartRows(candles: FuturesCandle[]) {
   return candles.slice(-120).map(candle => ({
     time: new Date(candle.openTime).toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit" }),
+    open: candle.open,
+    high: candle.high,
+    low: candle.low,
     close: candle.close,
     volume: candle.volume,
   }));
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function compactChartSymbol(symbol: string) {
+  return symbol
+    .replace(/USDT$/, "")
+    .replace(/USDC$/, "")
+    .replace(/USD_PERP$/, "")
+    .replace(/USD$/, "");
+}
+
+function buildVolumeLeaderChartRows(rows: FuturesMarketRow[]) {
+  return rows
+    .filter(row => row.volume24hUsd > 0)
+    .slice()
+    .sort((a, b) => b.volume24hUsd - a.volume24hUsd)
+    .slice(0, 12)
+    .map(row => ({
+      symbol: compactChartSymbol(row.symbol),
+      fullSymbol: row.symbol,
+      volume: row.volume24hUsd,
+      change: row.change24hPercent,
+      fill: row.change24hPercent >= 0 ? "#10b981" : "#f43f5e",
+    }));
+}
+
+function buildMomentumChartRows(rows: FuturesMarketRow[]) {
+  const gainers = rows
+    .filter(row => Number.isFinite(row.change24hPercent))
+    .slice()
+    .sort((a, b) => b.change24hPercent - a.change24hPercent)
+    .slice(0, 6);
+  const losers = rows
+    .filter(row => Number.isFinite(row.change24hPercent))
+    .slice()
+    .sort((a, b) => a.change24hPercent - b.change24hPercent)
+    .slice(0, 6);
+
+  return [...losers.reverse(), ...gainers].map(row => ({
+    symbol: compactChartSymbol(row.symbol),
+    fullSymbol: row.symbol,
+    change: row.change24hPercent,
+    volume: row.volume24hUsd,
+    fill: row.change24hPercent >= 0 ? "#059669" : "#e11d48",
+  }));
+}
+
+function buildFundingPressureChartRows(rows: FuturesMarketRow[]) {
+  return rows
+    .filter(row => typeof row.fundingRate === "number" && Number.isFinite(row.fundingRate))
+    .slice()
+    .sort((a, b) => Math.abs((b.fundingRate ?? 0) * 100) - Math.abs((a.fundingRate ?? 0) * 100))
+    .slice(0, 12)
+    .sort((a, b) => (a.fundingRate ?? 0) - (b.fundingRate ?? 0))
+    .map(row => {
+      const fundingPercent = (row.fundingRate ?? 0) * 100;
+      return {
+        symbol: compactChartSymbol(row.symbol),
+        fullSymbol: row.symbol,
+        funding: fundingPercent,
+        fill: fundingPercent >= 0 ? "#2563eb" : "#f97316",
+      };
+    });
+}
+
+function buildSignalDistributionChartRows(rows: FuturesMarketRow[]) {
+  return (["bullish", "neutral", "bearish"] as FuturesBias[]).map(signal => {
+    const signalRows = rows.filter(row => row.signal === signal);
+    const usdM = signalRows.filter(row => row.marketType === "USD-M").length;
+    const coinM = signalRows.filter(row => row.marketType === "COIN-M").length;
+    const volume = signalRows.reduce((sum, row) => sum + row.volume24hUsd, 0);
+    return {
+      signal: signalMeta[signal].label,
+      usdM,
+      coinM,
+      total: usdM + coinM,
+      volume,
+    };
+  });
+}
+
+function buildIndicatorBarRows(indicators: FuturesTechnicalIndicators): IndicatorBarRow[] {
+  return [
+    {
+      label: "종합",
+      value: clamp(indicators.score, 0, 100),
+      displayValue: indicatorValue(indicators.score, 1),
+      fill: "#0f172a",
+    },
+    {
+      label: "RSI",
+      value: clamp(indicators.rsi14, 0, 100),
+      displayValue: indicatorValue(indicators.rsi14),
+      fill: indicators.rsi14 >= 70 ? "#f59e0b" : indicators.rsi14 <= 30 ? "#06b6d4" : "#6366f1",
+    },
+    {
+      label: "Stoch",
+      value: clamp(indicators.stochastic14, 0, 100),
+      displayValue: `${indicatorValue(indicators.stochastic14)}%`,
+      fill: indicators.stochastic14 >= 80 ? "#f59e0b" : indicators.stochastic14 <= 20 ? "#06b6d4" : "#22c55e",
+    },
+    {
+      label: "Boll %B",
+      value: clamp(indicators.bollingerPercentB, 0, 100),
+      displayValue: `${indicatorValue(indicators.bollingerPercentB)}%`,
+      fill: indicators.bollingerPercentB >= 90 ? "#f59e0b" : indicators.bollingerPercentB <= 10 ? "#06b6d4" : "#8b5cf6",
+    },
+    {
+      label: "Vol",
+      value: clamp(indicators.volume20Ratio / 2, 0, 100),
+      displayValue: `${indicatorValue(indicators.volume20Ratio)}%`,
+      fill: indicators.volume20Ratio >= 140 ? "#10b981" : indicators.volume20Ratio <= 70 ? "#f43f5e" : "#64748b",
+    },
+    {
+      label: "ATR",
+      value: clamp(indicators.atrPercent * 12, 0, 100),
+      displayValue: `${indicatorValue(indicators.atrPercent)}%`,
+      fill: indicators.atrPercent >= 7 ? "#f97316" : "#0ea5e9",
+    },
+  ];
 }
 
 function rowSelectionKey(row: Pick<FuturesMarketRow, "marketType" | "symbol">): FuturesSelectionKey {
@@ -407,6 +541,158 @@ function buildIndicatorJudgments(indicators: FuturesTechnicalIndicators, row: Fu
   ];
 }
 
+function MarketChartPanel({
+  title,
+  detail,
+  children,
+}: {
+  title: string;
+  detail: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <h3 className="flex items-center gap-2 text-sm font-black text-slate-950">
+            <BarChart3 className="h-4 w-4 text-slate-500" />
+            {title}
+          </h3>
+          <p className="mt-1 text-xs leading-5 text-slate-500">{detail}</p>
+        </div>
+      </div>
+      <div className="h-64">{children}</div>
+    </section>
+  );
+}
+
+function EmptyChartState() {
+  return (
+    <div className="flex h-full items-center justify-center rounded-lg bg-slate-50 text-sm font-semibold text-slate-500">
+      데이터 대기
+    </div>
+  );
+}
+
+function MarketVisualBoard({ rows }: { rows: FuturesMarketRow[] }) {
+  const volumeRows = useMemo(() => buildVolumeLeaderChartRows(rows), [rows]);
+  const momentumRows = useMemo(() => buildMomentumChartRows(rows), [rows]);
+  const fundingRows = useMemo(() => buildFundingPressureChartRows(rows), [rows]);
+  const signalRows = useMemo(() => buildSignalDistributionChartRows(rows), [rows]);
+
+  return (
+    <section className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-4">
+      <MarketChartPanel title="거래대금 상위 12" detail="24h 달러 거래대금 기준입니다. 막대 색은 24h 방향입니다.">
+        {volumeRows.length ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={volumeRows} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke={chartGridStroke} strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="symbol" tick={{ fontSize: 10, fill: chartMutedText }} tickLine={false} axisLine={false} interval={0} angle={-28} textAnchor="end" height={48} />
+              <YAxis tick={{ fontSize: 10, fill: chartMutedText }} tickFormatter={value => formatUsd(Number(value))} width={58} tickLine={false} axisLine={false} />
+              <Tooltip
+                formatter={(value, name) => {
+                  if (name === "volume") return [formatUsd(Number(value)), "거래대금"];
+                  return [String(value), String(name)];
+                }}
+                labelFormatter={(_label, payload: any) => payload?.[0]?.payload?.fullSymbol ?? ""}
+                contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }}
+              />
+              <Bar dataKey="volume" radius={[5, 5, 0, 0]}>
+                {volumeRows.map(row => (
+                  <Cell key={row.fullSymbol} fill={row.fill} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <EmptyChartState />
+        )}
+      </MarketChartPanel>
+
+      <MarketChartPanel title="24h 모멘텀 양극단" detail="상승률 상위 6개와 하락률 하위 6개를 동시에 비교합니다.">
+        {momentumRows.length ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={momentumRows} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke={chartGridStroke} strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="symbol" tick={{ fontSize: 10, fill: chartMutedText }} tickLine={false} axisLine={false} interval={0} angle={-28} textAnchor="end" height={48} />
+              <YAxis tick={{ fontSize: 10, fill: chartMutedText }} tickFormatter={value => `${Number(value).toFixed(0)}%`} width={44} tickLine={false} axisLine={false} />
+              <Tooltip
+                formatter={(value, name) => {
+                  if (name === "change") return [formatPercent(Number(value)), "24h"];
+                  return [String(value), String(name)];
+                }}
+                labelFormatter={(_label, payload: any) => payload?.[0]?.payload?.fullSymbol ?? ""}
+                contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }}
+              />
+              <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="4 4" />
+              <Bar dataKey="change" radius={[5, 5, 0, 0]}>
+                {momentumRows.map(row => (
+                  <Cell key={row.fullSymbol} fill={row.fill} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <EmptyChartState />
+        )}
+      </MarketChartPanel>
+
+      <MarketChartPanel title="펀딩비 압력" detail="절대값이 큰 펀딩비 종목입니다. 0선에서 멀수록 포지션 비용 압력이 큽니다.">
+        {fundingRows.length ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={fundingRows} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke={chartGridStroke} strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="symbol" tick={{ fontSize: 10, fill: chartMutedText }} tickLine={false} axisLine={false} interval={0} angle={-28} textAnchor="end" height={48} />
+              <YAxis tick={{ fontSize: 10, fill: chartMutedText }} tickFormatter={value => `${Number(value).toFixed(2)}%`} width={54} tickLine={false} axisLine={false} />
+              <Tooltip
+                formatter={(value, name) => {
+                  if (name === "funding") return [`${Number(value).toFixed(4)}%`, "펀딩비"];
+                  return [String(value), String(name)];
+                }}
+                labelFormatter={(_label, payload: any) => payload?.[0]?.payload?.fullSymbol ?? ""}
+                contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }}
+              />
+              <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="4 4" />
+              <Bar dataKey="funding" radius={[5, 5, 0, 0]}>
+                {fundingRows.map(row => (
+                  <Cell key={row.fullSymbol} fill={row.fill} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <EmptyChartState />
+        )}
+      </MarketChartPanel>
+
+      <MarketChartPanel title="시그널 분포" detail="강세·중립·약세 계약 수를 USD-M과 COIN-M으로 나눠 봅니다.">
+        {signalRows.some(row => row.total > 0) ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={signalRows} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke={chartGridStroke} strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="signal" tick={{ fontSize: 11, fill: chartMutedText }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: chartMutedText }} width={44} tickLine={false} axisLine={false} />
+              <Tooltip
+                formatter={(value, name) => {
+                  if (name === "usdM") return [Number(value).toLocaleString("ko-KR"), "USD-M"];
+                  if (name === "coinM") return [Number(value).toLocaleString("ko-KR"), "COIN-M"];
+                  return [String(value), String(name)];
+                }}
+                labelFormatter={label => `${label} 시그널`}
+                contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }}
+              />
+              <Bar dataKey="usdM" stackId="signal" fill="#0ea5e9" radius={[0, 0, 4, 4]} />
+              <Bar dataKey="coinM" stackId="signal" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <EmptyChartState />
+        )}
+      </MarketChartPanel>
+    </section>
+  );
+}
+
 function WatchReport({
   items,
   markdown,
@@ -559,6 +845,8 @@ function TechnicalPanel({
 }) {
   const chartRows = useMemo(() => buildChartRows(candles), [candles]);
   const indicatorJudgments = useMemo(() => indicators ? buildIndicatorJudgments(indicators, row) : [], [indicators, row]);
+  const indicatorBars = useMemo(() => indicators ? buildIndicatorBarRows(indicators) : [], [indicators]);
+  const latestChartClose = chartRows[chartRows.length - 1]?.close;
   const bias = indicators?.bias ?? row?.signal ?? "neutral";
 
   return (
@@ -651,6 +939,37 @@ function TechnicalPanel({
                 <div className="h-2 rounded-full bg-emerald-400" style={{ width: `${indicators.score}%` }} />
               </div>
             </div>
+            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-black text-slate-950">지표 위치 막대</h4>
+                  <p className="mt-1 text-xs text-slate-500">핵심 보조지표를 0-100 스케일로 정규화해 빠르게 비교합니다.</p>
+                </div>
+                <Badge variant="outline" className="rounded-md bg-white text-slate-600">50 기준선</Badge>
+              </div>
+              <div className="mt-3 h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={indicatorBars} layout="vertical" margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+                    <CartesianGrid stroke={chartGridStroke} strokeDasharray="3 3" horizontal={false} />
+                    <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: chartMutedText }} tickLine={false} axisLine={false} />
+                    <YAxis type="category" dataKey="label" tick={{ fontSize: 11, fill: chartMutedText, fontWeight: 700 }} width={58} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      formatter={(value, name, payload: any) => {
+                        if (name === "value") return [payload?.payload?.displayValue ?? indicatorValue(Number(value)), "현재값"];
+                        return [String(value), String(name)];
+                      }}
+                      contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }}
+                    />
+                    <ReferenceLine x={50} stroke="#94a3b8" strokeDasharray="4 4" />
+                    <Bar dataKey="value" radius={[0, 5, 5, 0]}>
+                      {indicatorBars.map(row => (
+                        <Cell key={row.label} fill={row.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
             <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {indicatorJudgments.map(indicator => (
                 <IndicatorCard key={indicator.label} indicator={indicator} />
@@ -663,24 +982,30 @@ function TechnicalPanel({
       <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <h3 className="flex items-center gap-2 text-base font-black text-slate-950">
           <LineChartIcon className="h-4 w-4 text-cyan-600" />
-          가격 흐름
+          가격·거래량 흐름
         </h3>
         <div className="mt-4 h-64">
           {chartRows.length ? (
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartRows} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="time" tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} minTickGap={26} />
-                <YAxis yAxisId="price" tick={{ fontSize: 11, fill: "#64748b" }} tickFormatter={value => formatPrice(Number(value))} width={72} tickLine={false} axisLine={false} />
+                <CartesianGrid stroke={chartGridStroke} strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="time" tick={{ fontSize: 11, fill: chartMutedText }} tickLine={false} axisLine={false} minTickGap={26} />
+                <YAxis yAxisId="price" tick={{ fontSize: 11, fill: chartMutedText }} tickFormatter={value => formatPrice(Number(value))} width={72} tickLine={false} axisLine={false} />
                 <YAxis yAxisId="volume" orientation="right" hide />
                 <Tooltip
                   formatter={(value, name) => {
                     if (name === "volume") return [Number(value).toLocaleString("ko-KR", { maximumFractionDigits: 0 }), "거래량"];
-                    return [formatPrice(Number(value)), name === "close" ? "종가" : String(name)];
+                    const labelMap: Record<string, string> = { close: "종가", high: "고가", low: "저가", open: "시가" };
+                    return [formatPrice(Number(value)), labelMap[String(name)] ?? String(name)];
                   }}
                   contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }}
                 />
+                {typeof latestChartClose === "number" ? (
+                  <ReferenceLine yAxisId="price" y={latestChartClose} stroke="#0f172a" strokeDasharray="5 5" />
+                ) : null}
                 <Bar yAxisId="volume" dataKey="volume" fill="#cbd5e1" opacity={0.45} />
+                <Line yAxisId="price" type="monotone" dataKey="high" stroke="#f59e0b" strokeDasharray="4 4" strokeWidth={1.4} dot={false} />
+                <Line yAxisId="price" type="monotone" dataKey="low" stroke="#38bdf8" strokeDasharray="4 4" strokeWidth={1.4} dot={false} />
                 <Line yAxisId="price" type="monotone" dataKey="close" stroke="#0891b2" strokeWidth={2.5} dot={false} />
               </ComposedChart>
             </ResponsiveContainer>
@@ -932,6 +1257,10 @@ export default function BinanceFutures() {
           <SummaryCard title="상승 1위" value={summary.topGainer?.symbol ?? "-"} detail={formatPercent(summary.topGainer?.change24hPercent)} icon={ArrowUp} />
           <SummaryCard title="하락 1위" value={summary.topLoser?.symbol ?? "-"} detail={formatPercent(summary.topLoser?.change24hPercent)} icon={ArrowDown} />
         </section>
+
+        <div className="mt-5">
+          <MarketVisualBoard rows={rows} />
+        </div>
 
         <div className="mt-5">
           <WatchReport
