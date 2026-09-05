@@ -1,0 +1,222 @@
+[
+  {
+    "label": "이름",
+    "direction": "ascending",
+    "ok": true,
+    "first": [
+      "0GUSDT0G / USDT",
+      "1INCHUSDT1INCH / USDT",
+      "1MBABYDOGEUSDT1MBABYDOGE / USDT"
+    ],
+    "count": 50
+  },
+  {
+    "label": "이름",
+    "direction": "descending",
+    "ok": true,
+    "first": [
+      "ZRXUSDTZRX / USDT",
+      "ZROUSDTZRO / USDT",
+      "ZORAUSDTZORA / USDT"
+    ],
+    "count": 50
+  },
+  {
+    "label": "현재가",
+    "direction": "descending",
+    "ok": true,
+    "first": [
+      "$81,000",
+      "$80,934.8",
+      "$80,124.6"
+    ],
+    "count": 50
+  },
+  {
+    "label": "현재가",
+    "direction": "ascending",
+    "ok": true,
+    "first": [
+      "$0.000011",
+      "$0.000046",
+      "$0.000084"
+    ],
+    "count": 50
+  },
+  {
+    "label": "등락률 (24h)",
+    "direction": "descending",
+    "ok": true,
+    "first": [
+      "+214.81%",
+      "+54.85%",
+      "+53.81%"
+    ],
+    "count": 50
+  },
+  {
+    "label": "등락률 (24h)",
+    "direction": "ascending",
+    "ok": true,
+    "first": [
+      "-24.17%",
+      "-23%",
+      "-22.2%"
+    ],
+    "count": 50
+  },
+  {
+    "label": "거래대금 (24h)",
+    "direction": "descending",
+    "ok": true,
+    "first": [
+      "$3.9B",
+      "$2.9B",
+      "$1.3B"
+    ],
+    "count": 50
+  },
+  {
+    "label": "거래대금 (24h)",
+    "direction": "ascending",
+    "ok": true,
+    "first": [
+      "$19.38",
+      "$24,379.24",
+      "$106,898.69"
+    ],
+    "count": 50
+  },
+  {
+    "label": "거래량 (24h)",
+    "direction": "descending",
+    "ok": true,
+    "first": [
+      "125,172,836,437",
+      "64,137,587,058",
+      "56,194,440,538"
+    ],
+    "count": 50
+  },
+  {
+    "label": "거래량 (24h)",
+    "direction": "ascending",
+    "ok": true,
+    "first": [
+      "29.27",
+      "46.6",
+      "81.5"
+    ],
+    "count": 50
+  },
+  {
+    "label": "펀딩비",
+    "direction": "descending",
+    "ok": true,
+    "first": [
+      "0.1469%",
+      "0.1257%",
+      "0.1193%"
+    ],
+    "count": 50
+  },
+  {
+    "label": "펀딩비",
+    "direction": "ascending",
+    "ok": true,
+    "first": [
+      "-0.3316%",
+      "-0.2210%",
+      "-0.1875%"
+    ],
+    "count": 50
+  },
+  {
+    "label": "마켓",
+    "direction": "ascending",
+    "ok": true,
+    "first": [
+      "COIN-M",
+      "COIN-M",
+      "COIN-M"
+    ],
+    "count": 50
+  },
+  {
+    "label": "마켓",
+    "direction": "descending",
+    "ok": true,
+    "first": [
+      "USD-M",
+      "USD-M",
+      "USD-M"
+    ],
+    "count": 50
+  },
+  {
+    "label": "계약",
+    "direction": "ascending",
+    "ok": true,
+    "first": [
+      "CURRENT_QUARTER",
+      "CURRENT_QUARTER",
+      "CURRENT_QUARTER"
+    ],
+    "count": 50
+  },
+  {
+    "label": "계약",
+    "direction": "descending",
+    "ok": true,
+    "first": [
+      "PERPETUAL",
+      "PERPETUAL",
+      "PERPETUAL"
+    ],
+    "count": 50
+  },
+  {
+    "label": "시그널",
+    "direction": "descending",
+    "ok": true,
+    "first": [
+      "강세",
+      "강세",
+      "강세"
+    ],
+    "count": 50
+  },
+  {
+    "label": "시그널",
+    "direction": "ascending",
+    "ok": true,
+    "first": [
+      "약세",
+      "약세",
+      "약세"
+    ],
+    "count": 50
+  },
+  {
+    "label": "순위",
+    "direction": "ascending",
+    "ok": true,
+    "first": [
+      "1",
+      "2",
+      "3"
+    ],
+    "count": 50
+  },
+  {
+    "label": "순위",
+    "direction": "descending",
+    "ok": true,
+    "first": [
+      "792",
+      "789",
+      "768"
+    ],
+    "count": 50
+  }
+]

@@ -1,0 +1,79 @@
+# KJHSTOCK, clear market workspace
+
+## 1. Atmosphere and signature
+An uncluttered Korean market workspace. The Sheet is the first destination; charts,
+reports and selected-contract analysis have their own views. Dense data is balanced
+by generous section gutters, restrained weight and clear Korean labels.
+DESIGN_VARIANCE=4, MOTION_INTENSITY=1, VISUAL_DENSITY=8.
+The existing data charts are the visual assets; decorative photographs do not help
+compare financial contracts. Preserve Lucide icons and real Recharts visualizations.
+
+## 2. Color
+| Token | Value | Purpose |
+|---|---|---|
+| --market-bg | #f5f7fa | Page |
+| --market-surface | #ffffff | Sheet and panels |
+| --market-ink | #172b3a | Primary text |
+| --market-muted | #526477 | Secondary text |
+| --market-line | #dbe3eb | Rules and borders |
+| --market-accent | #087f8c | Selected controls, focus |
+| --market-accent-ink | #066571 | Accent text, sufficient contrast on white |
+| --market-tint | #eaf6f7 | Selected rows, hover |
+| --market-positive | #047857 | Positive values |
+| --market-negative | #be123c | Negative values |
+| --market-soft | #f1f5f9 | Secondary surfaces |
+| --market-warning | #92400e | Existing favorite and caution semantics |
+
+Existing chart/report semantic palette retained (not new brand accents):
+slate #f4f7fa #f8fafc #e2e8f0 #cbd5e1 #94a3b8 #64748b #475569 #334155 #1e293b #0f172a;
+teal/cyan #0891b2 #06b6d4 #0e7490 #38bdf8;
+gains #10b981 #059669 #34d399 #064e3b; losses #f43f5e #e11d48 #fb7185;
+warnings #f59e0b #d97706 #fbbf24; chart comparison #6366f1 #8b5cf6.
+These inherited categorical chart colors remain data encodings.
+
+## 3. Typography
+Noto Sans KR first, Segoe UI and system sans fallback. Korean labels have intentional
+word breaks; numbers use tabular lining figures. Font size scale: 10, 11, 12, 13,
+14, 16, 18, 20, 24, 28, 32, 36px. Main heading 28px/700/1.3, mobile 24px.
+Section heading 18px/700/1.4; body 14px/400/1.6; table 13px/500/1.5;
+column labels 12px/600; metadata 12px/400/1.5. Avoid ubiquitous black/900 weights.
+Tracking: normal; brand 0.06em. Existing charts may retain 10/11px ticks.
+
+## 4. Spacing
+Base 4px. --space-1=4px, --space-2=8px, --space-3=12px, --space-4=16px,
+--space-5=20px, --space-6=24px, --space-8=32px, --space-10=40px,
+--space-12=48px, --space-16=64px. 2px allowed for focus offset and optical label gaps.
+Main content max-width 1600px, page gutter 32px desktop, 24px tablet, 16px mobile.
+Sheet height 560px desktop / 60vh mobile, row height 56px, header 44px.
+Table min-width 1200px. Only the Sheet scrolls horizontally, with the name column
+fixed at the leading edge. Name width 184px desktop / 156px mobile.
+Breakpoints 640, 768, 1024, 1280px; existing charts may retain 1536px layout.
+
+## 5. Components
+Surface radius 12px, input/button 8px, badges 4px. Border 1px.
+Header: white, brand left, connection health and reload right.
+Summary strip: four metrics divided by rules, 24px inset (16px mobile), no shadows.
+Navigation: four view buttons, explicit selected underline, 44px targets.
+Filters: visible labels, 40px controls, search spans remaining width. Clear filters
+button resets search and filters while keeping user sorting. Favorite toggle remains.
+Search stays visible. Additional filters and the alternate sort menu live under
+the native expandable "필터 및 정렬" disclosure, so the Sheet stays near the top
+on small screens. Its summary reports the number of active filters.
+Sheet headers: real buttons inside th with scope=col and aria-sort; inactive
+ArrowUpDown, active ArrowUp/ArrowDown plus tint. Numeric headers align right.
+First click uses a sensible per-field default, repeated click reverses. Missing
+values always last. Sort full filtered dataset before pagination. 50 rows/page.
+Name links open detail view; favorite buttons stop row selection. Distinct keyboard
+focus outline 2px accent and offset 2px. Hover tint, selected tint + weight 700,
+disabled opacity .5. Empty state explains cause and offers filter reset. Loading
+state uses truthful text, failures expose retry. Prices never masquerade as zeros.
+Reports retain existing underlying analysis; concise explanatory glossary available.
+
+## 6. Motion
+No decorative motion. Existing data charts keep animations disabled for stable
+reading. Loader rotation only; reduced-motion disables spinner animation. Focus,
+sorting and active view changes are immediate.
+
+## 7. Depth
+Borders and tonal surfaces. No new shadows, glows or gradients. Existing legacy
+chart/report shadow-sm can be removed within this dashboard to maintain one system.

@@ -23,7 +23,7 @@ export type BinanceFuturesTicker = {
 export type BinancePremiumIndex = {
   symbol: string;
   markPrice: string;
-  lastFundingRate: string;
+  lastFundingRate?: string | null;
   nextFundingTime: number;
 };
 
@@ -218,6 +218,11 @@ const parseNumber = (value: string | number | null | undefined): number | null =
 
 const numberOrZero = (value: string | number | null | undefined) => parseNumber(value) ?? 0;
 
+const parseFundingRate = (value: string | null | undefined): number | null => {
+  if (value == null || value.trim() === "") return null;
+  return parseNumber(value);
+};
+
 const round = (value: number, digits = 2) => {
   const factor = 10 ** digits;
   return Math.round(value * factor) / factor;
@@ -329,6 +334,11 @@ function getVolume24hUsd(marketType: FuturesMarketType, ticker: BinanceFuturesTi
   return baseVolume !== null ? baseVolume * price : quoteVolume ?? numberOrZero(ticker.volume);
 }
 
+function getBaseVolume24h(marketType: FuturesMarketType, ticker: BinanceFuturesTicker) {
+  // COIN-M volume is a contract count; baseVolume is the traded coin quantity.
+  return numberOrZero(marketType === "COIN-M" ? ticker.baseVolume : ticker.volume);
+}
+
 export function buildFuturesRows(input: BuildFuturesRowsInput): FuturesMarketRow[] {
   const tradableContracts = new Map(
     input.symbols
@@ -344,7 +354,7 @@ export function buildFuturesRows(input: BuildFuturesRowsInput): FuturesMarketRow
       if (!symbolInfo) throw new Error(`Missing exchange info for ${ticker.symbol}`);
       const premium = premiumBySymbol.get(ticker.symbol);
       const volume24hUsd = getVolume24hUsd(input.marketType, ticker);
-      const fundingRate = parseNumber(premium?.lastFundingRate);
+      const fundingRate = parseFundingRate(premium?.lastFundingRate);
       const openInterestUsd = input.openInterestBySymbol.get(ticker.symbol) ?? null;
       const openInterestToVolumePercent =
         openInterestUsd !== null && volume24hUsd > 0 ? round((openInterestUsd / volume24hUsd) * 100, 2) : null;
@@ -363,7 +373,7 @@ export function buildFuturesRows(input: BuildFuturesRowsInput): FuturesMarketRow
         high24h: numberOrZero(ticker.highPrice),
         low24h: numberOrZero(ticker.lowPrice),
         change24hPercent,
-        baseVolume24h: numberOrZero(ticker.volume),
+        baseVolume24h: getBaseVolume24h(input.marketType, ticker),
         volume24hUsd,
         fundingRate,
         markPrice: parseNumber(premium?.markPrice),
@@ -395,7 +405,7 @@ export function applyTickerUpdates(rows: FuturesMarketRow[], updates: BinanceFut
       high24h: numberOrZero(update.highPrice),
       low24h: numberOrZero(update.lowPrice),
       change24hPercent,
-      baseVolume24h: numberOrZero(update.volume),
+      baseVolume24h: getBaseVolume24h(row.marketType, update),
       volume24hUsd,
       openInterestToVolumePercent,
       lastUpdated: isoFromMillis(update.closeTime) ?? row.lastUpdated,

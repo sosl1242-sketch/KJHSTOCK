@@ -1,0 +1,13 @@
+{
+  "testedWith": "real Binance REST and WebSocket responses",
+  "sortCases": 20,
+  "keyboardDetailFocus": "tabpanel",
+  "keyboardReturnFocus": "Sheet",
+  "favoritesPersistAfterReload": true,
+  "filterDisclosure": true,
+  "searchAndEmptyAndFavoriteFilter": true,
+  "pagination": "51~100 / 603 then previous; scrollTop 481 -> 0",
+  "chartsRendered": true,
+  "reportRendered": true,
+  "browserErrors": []
+}

@@ -150,7 +150,12 @@ function vitePluginManusDebugCollector(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
+// Editor overlays and replay helpers belong to development, not the public site.
+const plugins = [
+  react(),
+  tailwindcss(),
+  ...(process.env.NODE_ENV === "production" ? [] : [jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()]),
+];
 const base = process.env.VITE_BASE_PATH ?? "/";
 
 export default defineConfig({

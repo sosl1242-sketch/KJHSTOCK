@@ -1,3 +1,7 @@
+import "@/styles/market-workspace.css";
+import { SortableFuturesHeader } from "@/components/SortableFuturesHeader";
+import { sortFuturesRows, type FuturesTableSortKey as SortKey, type FuturesSortDirection as SortDirection } from "@/lib/futuresTableSort";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,12 +54,10 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 
-type SortKey = "rank" | "marketType" | "symbol" | "price" | "change24hPercent" | "volume24hUsd" | "fundingRate" | "signal";
-type SortDirection = "asc" | "desc";
 type WsStatus = "idle" | "connecting" | "live" | "closed" | "error";
 
 type FuturesSelectionKey = `${FuturesMarketType}:${string}`;
@@ -91,16 +93,13 @@ const sortOptions: Array<{ value: SortKey; label: string; direction: SortDirecti
   { value: "fundingRate", label: "펀딩비", direction: "desc" },
   { value: "price", label: "가격", direction: "desc" },
   { value: "marketType", label: "마켓", direction: "asc" },
-  { value: "symbol", label: "심볼", direction: "asc" },
+  { value: "symbol", label: "이름", direction: "asc" },
+  { value: "baseVolume24h", label: "거래량", direction: "desc" },
+  { value: "contractType", label: "계약", direction: "asc" },
   { value: "rank", label: "순위", direction: "asc" },
   { value: "signal", label: "시그널", direction: "desc" },
 ];
 
-const signalRank: Record<FuturesBias, number> = {
-  bullish: 3,
-  neutral: 2,
-  bearish: 1,
-};
 
 const signalMeta: Record<FuturesBias, { label: string; className: string }> = {
   bullish: { label: "강세", className: "border-emerald-200 bg-emerald-50 text-emerald-700" },
@@ -169,11 +168,6 @@ function wsLabel(status: WsStatus) {
   return "대기";
 }
 
-function sortValue(row: FuturesMarketRow, key: SortKey) {
-  if (key === "signal") return signalRank[row.signal];
-  if (key === "fundingRate") return row.fundingRate ?? 0;
-  return row[key];
-}
 
 function buildChartRows(candles: FuturesCandle[]) {
   return candles.slice(-120).map(candle => ({
@@ -247,7 +241,7 @@ function buildFundingPressureChartRows(rows: FuturesMarketRow[]) {
         symbol: compactChartSymbol(row.symbol),
         fullSymbol: row.symbol,
         funding: fundingPercent,
-        fill: fundingPercent >= 0 ? "#2563eb" : "#f97316",
+        fill: fundingPercent >= 0 ? "#0891b2" : "#d97706",
       };
     });
 }
@@ -309,7 +303,7 @@ function buildIndicatorBarRows(indicators: FuturesTechnicalIndicators): Indicato
       label: "Stoch",
       value: clamp(indicators.stochastic14, 0, 100),
       displayValue: `${indicatorValue(indicators.stochastic14)}%`,
-      fill: indicators.stochastic14 >= 80 ? "#f59e0b" : indicators.stochastic14 <= 20 ? "#06b6d4" : "#22c55e",
+      fill: indicators.stochastic14 >= 80 ? "#f59e0b" : indicators.stochastic14 <= 20 ? "#06b6d4" : "#10b981",
     },
     {
       label: "Boll %B",
@@ -327,7 +321,7 @@ function buildIndicatorBarRows(indicators: FuturesTechnicalIndicators): Indicato
       label: "ATR",
       value: clamp(indicators.atrPercent * 12, 0, 100),
       displayValue: `${indicatorValue(indicators.atrPercent)}%`,
-      fill: indicators.atrPercent >= 7 ? "#f97316" : "#0ea5e9",
+      fill: indicators.atrPercent >= 7 ? "#d97706" : "#06b6d4",
     },
   ];
 }
@@ -459,13 +453,13 @@ function SummaryCard({
   icon: typeof Activity;
 }) {
   return (
-    <Card className="rounded-lg border-slate-200 bg-white shadow-sm">
+    <Card className="rounded-lg border-slate-200 bg-white ">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-semibold text-slate-500">{title}</CardTitle>
         <Icon className="h-4 w-4 text-slate-400" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-black tracking-tight text-slate-950">{value}</div>
+        <div className="text-2xl font-semibold tracking-tight text-slate-950">{value}</div>
         <p className="mt-1 text-xs font-medium text-slate-500">{detail}</p>
       </CardContent>
     </Card>
@@ -498,18 +492,18 @@ const indicatorToneClass: Record<IndicatorJudgmentTone, string> = {
 
 function IndicatorCard({ indicator }: { indicator: IndicatorJudgment }) {
   return (
-    <div className="min-h-[154px] rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+    <div className="min-h-[154px] rounded-lg border border-slate-200 bg-white p-3 ">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-black text-slate-500">{indicator.label}</p>
-        <Badge variant="outline" className={cn("shrink-0 rounded-md px-2 py-0.5 text-[10px] font-black", indicatorToneClass[indicator.tone])}>
+        <p className="text-xs font-semibold text-slate-500">{indicator.label}</p>
+        <Badge variant="outline" className={cn("shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold", indicatorToneClass[indicator.tone])}>
           {indicator.verdict}
         </Badge>
       </div>
-      <p className="mt-2 break-words text-lg font-black tabular-nums text-slate-950">{indicator.value}</p>
+      <p className="mt-2 break-words text-lg font-semibold tabular-nums text-slate-950">{indicator.value}</p>
       <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-black text-slate-400">지표 적정가</span>
-          <span className="text-sm font-black tabular-nums text-slate-950">{indicator.fairPrice}</span>
+          <span className="text-[11px] font-semibold text-slate-400">지표 적정가</span>
+          <span className="text-sm font-semibold tabular-nums text-slate-950">{indicator.fairPrice}</span>
         </div>
       </div>
       <p className="mt-2 text-xs leading-5 text-slate-500">{indicator.detail}</p>
@@ -679,10 +673,10 @@ function MarketChartPanel({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <section className="rounded-lg border border-slate-200 bg-white p-4 ">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
-          <h3 className="flex items-center gap-2 text-sm font-black text-slate-950">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-950">
             <BarChart3 className="h-4 w-4 text-slate-500" />
             {title}
           </h3>
@@ -833,7 +827,7 @@ function MarketVisualBoard({ rows }: { rows: FuturesMarketRow[] }) {
                 labelFormatter={label => `${label} 시그널`}
                 contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }}
               />
-              <Bar dataKey="usdM" stackId="signal" fill="#0ea5e9" radius={[0, 0, 4, 4]} isAnimationActive={false} />
+              <Bar dataKey="usdM" stackId="signal" fill="#06b6d4" radius={[0, 0, 4, 4]} isAnimationActive={false} />
               <Bar dataKey="coinM" stackId="signal" fill="#8b5cf6" radius={[4, 4, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
@@ -865,10 +859,10 @@ function WatchReport({
   const hasItems = items.length > 0;
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <section className="rounded-lg border border-slate-200 bg-white p-4 ">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="flex items-center gap-2 text-base font-black text-slate-950">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-slate-950">
             <Sparkles className="h-4 w-4 text-amber-500" />
             주목 후보 리포트
           </h2>
@@ -905,21 +899,21 @@ function WatchReport({
                 <Badge variant="outline" className="rounded-md bg-white text-[11px] text-slate-500">
                   {reportCategoryLabel[item.category]}
                 </Badge>
-                <h3 className="mt-2 text-lg font-black text-slate-950">{item.symbol}</h3>
+                <h3 className="mt-2 text-lg font-semibold text-slate-950">{item.symbol}</h3>
                 <p className="mt-1 text-xs font-semibold text-slate-500">
                   {item.marketType} · {item.contractType}
                 </p>
               </div>
               <div className="text-right">
                 <p className="text-xs font-bold text-slate-400">점수</p>
-                <p className="text-xl font-black text-slate-950">{item.priorityScore}</p>
+                <p className="text-xl font-semibold text-slate-950">{item.priorityScore}</p>
               </div>
             </div>
-            <p className="mt-3 text-sm font-black text-slate-800">{item.title}</p>
+            <p className="mt-3 text-sm font-semibold text-slate-800">{item.title}</p>
             <p className="mt-2 text-xs leading-5 text-slate-600">{item.why}</p>
             <p className="mt-3 border-t border-slate-200 pt-3 text-xs leading-5 text-rose-700">{item.risk}</p>
             <div className="mt-3 border-t border-slate-200 pt-3">
-              <p className="flex items-center gap-1 text-[11px] font-black uppercase text-slate-400">
+              <p className="flex items-center gap-1 text-[11px] font-semibold uppercase text-slate-400">
                 <Target className="h-3 w-3" />
                 관찰 체크
               </p>
@@ -937,23 +931,23 @@ function WatchReport({
                 <>
                   <div>
                     <p className="font-bold text-slate-400">TA 점수</p>
-                    <p className="mt-0.5 font-black text-slate-900">
+                    <p className="mt-0.5 font-semibold text-slate-900">
                       {item.technical.score} · {signalMeta[item.technical.bias].label}
                     </p>
                   </div>
                   <div>
                     <p className="font-bold text-slate-400">RSI</p>
-                    <p className="mt-0.5 font-black text-slate-900">{item.technical.rsi14.toFixed(2)}</p>
+                    <p className="mt-0.5 font-semibold text-slate-900">{item.technical.rsi14.toFixed(2)}</p>
                   </div>
                   <div>
                     <p className="font-bold text-slate-400">MACD</p>
-                    <p className={cn("mt-0.5 font-black", item.technical.macdHistogram >= 0 ? "text-emerald-700" : "text-rose-700")}>
+                    <p className={cn("mt-0.5 font-semibold", item.technical.macdHistogram >= 0 ? "text-emerald-700" : "text-rose-700")}>
                       {item.technical.macdHistogram.toLocaleString("ko-KR", { maximumFractionDigits: 6 })}
                     </p>
                   </div>
                   <div>
                     <p className="font-bold text-slate-400">ATR</p>
-                    <p className="mt-0.5 font-black text-slate-900">{item.technical.atrPercent.toFixed(2)}%</p>
+                    <p className="mt-0.5 font-semibold text-slate-900">{item.technical.atrPercent.toFixed(2)}%</p>
                   </div>
                 </>
               ) : (
@@ -966,7 +960,7 @@ function WatchReport({
         ))}
       </div>
       <details className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
-        <summary className="cursor-pointer text-sm font-black text-slate-700">Markdown 리포트 원문</summary>
+        <summary className="cursor-pointer text-sm font-semibold text-slate-700">Markdown 리포트 원문</summary>
         <Textarea
           readOnly
           value={markdown}
@@ -995,21 +989,21 @@ function FinalJudgmentReport({
   technicalUpdatedAt: string | null;
 }) {
   return (
-    <section className="mt-5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <section className="mt-5 rounded-lg border border-slate-200 bg-white p-4 ">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Final Decision Report</p>
-          <h2 className="mt-1 flex items-center gap-2 text-xl font-black text-slate-950">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">시장 종합 판단</p>
+          <h2 className="mt-1 flex items-center gap-2 text-xl font-semibold text-slate-950">
             <Sparkles className="h-5 w-5 text-amber-500" />
             최종 종합판단
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{judgment.headline}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className={cn("h-9 rounded-md px-3 text-sm font-black", finalJudgmentToneClass[judgment.tone])}>
+          <Badge variant="outline" className={cn("h-9 rounded-md px-3 text-sm font-semibold", finalJudgmentToneClass[judgment.tone])}>
             {judgment.label}
           </Badge>
-          <Badge variant="outline" className="h-9 rounded-md bg-slate-950 px-3 text-sm font-black text-white">
+          <Badge variant="outline" className="h-9 rounded-md bg-slate-950 px-3 text-sm font-semibold text-white">
             종합 {judgment.score}
           </Badge>
           <Badge variant="outline" className="h-9 rounded-md bg-slate-50 px-3 text-slate-600">
@@ -1023,8 +1017,8 @@ function FinalJudgmentReport({
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-xs font-black text-slate-400">1순위 후보</p>
-              <p className="mt-1 text-3xl font-black text-slate-950">{judgment.primarySymbol ?? "자료 부족"}</p>
+              <p className="text-xs font-semibold text-slate-400">1순위 후보</p>
+              <p className="mt-1 text-3xl font-semibold text-slate-950">{judgment.primarySymbol ?? "자료 부족"}</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">{judgment.summary}</p>
             </div>
             <Badge variant="outline" className="w-fit rounded-md bg-white px-3 py-1.5 text-slate-700">
@@ -1033,47 +1027,47 @@ function FinalJudgmentReport({
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             <div className="rounded-md bg-white p-3">
-              <p className="text-[11px] font-black text-slate-400">후보 수</p>
-              <p className="mt-1 text-lg font-black text-slate-950">{judgment.evidence.candidateCount}</p>
+              <p className="text-[11px] font-semibold text-slate-400">후보 수</p>
+              <p className="mt-1 text-lg font-semibold text-slate-950">{judgment.evidence.candidateCount}</p>
             </div>
             <div className="rounded-md bg-white p-3">
-              <p className="text-[11px] font-black text-slate-400">TA 확보</p>
-              <p className="mt-1 text-lg font-black text-slate-950">{judgment.evidence.technicalCount}/{judgment.evidence.candidateCount}</p>
+              <p className="text-[11px] font-semibold text-slate-400">TA 확보</p>
+              <p className="mt-1 text-lg font-semibold text-slate-950">{judgment.evidence.technicalCount}/{judgment.evidence.candidateCount}</p>
             </div>
             <div className="rounded-md bg-white p-3">
-              <p className="text-[11px] font-black text-slate-400">평균 TA</p>
-              <p className="mt-1 text-lg font-black text-slate-950">{judgment.evidence.averageTechnicalScore ?? "-"}</p>
+              <p className="text-[11px] font-semibold text-slate-400">평균 TA</p>
+              <p className="mt-1 text-lg font-semibold text-slate-950">{judgment.evidence.averageTechnicalScore ?? "-"}</p>
             </div>
             <div className="rounded-md bg-white p-3">
-              <p className="text-[11px] font-black text-slate-400">강세 TA</p>
-              <p className="mt-1 text-lg font-black text-emerald-700">{judgment.evidence.bullishTechnicalCount}</p>
+              <p className="text-[11px] font-semibold text-slate-400">강세 TA</p>
+              <p className="mt-1 text-lg font-semibold text-emerald-700">{judgment.evidence.bullishTechnicalCount}</p>
             </div>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
             <div className="rounded-md bg-white p-3">
-              <p className="text-[11px] font-black text-slate-400">24h 거래대금</p>
-              <p className="mt-1 text-sm font-black text-slate-950">{formatUsd(judgment.evidence.totalVolume24hUsd)}</p>
+              <p className="text-[11px] font-semibold text-slate-400">24h 거래대금</p>
+              <p className="mt-1 text-sm font-semibold text-slate-950">{formatUsd(judgment.evidence.totalVolume24hUsd)}</p>
             </div>
             <div className="rounded-md bg-white p-3">
-              <p className="text-[11px] font-black text-slate-400">평균 24h</p>
-              <p className={cn("mt-1 text-sm font-black", judgment.evidence.averageChange24hPercent >= 0 ? "text-emerald-700" : "text-rose-700")}>
+              <p className="text-[11px] font-semibold text-slate-400">평균 24h</p>
+              <p className={cn("mt-1 text-sm font-semibold", judgment.evidence.averageChange24hPercent >= 0 ? "text-emerald-700" : "text-rose-700")}>
                 {formatPercent(judgment.evidence.averageChange24hPercent)}
               </p>
             </div>
             <div className="rounded-md bg-white p-3">
-              <p className="text-[11px] font-black text-slate-400">과열</p>
-              <p className="mt-1 text-sm font-black text-amber-700">{judgment.evidence.overboughtCount}</p>
+              <p className="text-[11px] font-semibold text-slate-400">과열</p>
+              <p className="mt-1 text-sm font-semibold text-amber-700">{judgment.evidence.overboughtCount}</p>
             </div>
             <div className="rounded-md bg-white p-3">
-              <p className="text-[11px] font-black text-slate-400">펀딩 쏠림</p>
-              <p className="mt-1 text-sm font-black text-rose-700">{judgment.evidence.extremeFundingCount}</p>
+              <p className="text-[11px] font-semibold text-slate-400">펀딩 쏠림</p>
+              <p className="mt-1 text-sm font-semibold text-rose-700">{judgment.evidence.extremeFundingCount}</p>
             </div>
           </div>
         </div>
 
         <div className="grid gap-3">
           <div className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-4">
-            <h3 className="text-sm font-black text-emerald-900">종합 근거</h3>
+            <h3 className="text-sm font-semibold text-emerald-900">종합 근거</h3>
             <ul className="mt-3 space-y-2 text-sm leading-6 text-emerald-950">
               {judgment.strengths.map(item => (
                 <li key={item} className="flex gap-2">
@@ -1084,7 +1078,7 @@ function FinalJudgmentReport({
             </ul>
           </div>
           <div className="rounded-lg border border-rose-100 bg-rose-50/70 p-4">
-            <h3 className="text-sm font-black text-rose-900">주의 리스크</h3>
+            <h3 className="text-sm font-semibold text-rose-900">주의 리스크</h3>
             <ul className="mt-3 space-y-2 text-sm leading-6 text-rose-950">
               {judgment.risks.map(item => (
                 <li key={item} className="flex gap-2">
@@ -1098,14 +1092,14 @@ function FinalJudgmentReport({
       </div>
 
       <div className="mt-3 rounded-lg border border-slate-200 bg-slate-950 p-4 text-white">
-        <h3 className="flex items-center gap-2 text-sm font-black">
+        <h3 className="flex items-center gap-2 text-sm font-semibold">
           <Target className="h-4 w-4 text-cyan-300" />
           실행 체크
         </h3>
         <ol className="mt-3 grid gap-2 text-sm leading-6 text-slate-200 lg:grid-cols-2">
           {judgment.actionPlan.map((item, index) => (
             <li key={item} className="flex gap-2">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white text-[11px] font-black text-slate-950">{index + 1}</span>
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white text-[11px] font-semibold text-slate-950">{index + 1}</span>
               <span>{item}</span>
             </li>
           ))}
@@ -1129,21 +1123,21 @@ const selectedAnalysisToneClass: Record<FuturesSelectedSymbolAnalysis["tone"], s
 
 function SelectedSymbolAnalysisPanel({ analysis }: { analysis: FuturesSelectedSymbolAnalysis }) {
   return (
-    <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+    <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3 ">
       <div className="rounded-lg bg-slate-950 p-4 text-white">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Selected Symbol Thesis</p>
-            <h4 className="mt-1 text-lg font-black">종목 종합분석</h4>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Selected Symbol Thesis</p>
+            <h4 className="mt-1 text-lg font-semibold">종목 종합분석</h4>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge variant="outline" className={cn("rounded-md border-white/15 bg-white px-2 py-1 text-xs font-black", selectedAnalysisToneClass[analysis.tone])}>
+            <Badge variant="outline" className={cn("rounded-md border-white/15 bg-white px-2 py-1 text-xs font-semibold", selectedAnalysisToneClass[analysis.tone])}>
               {analysis.verdict}
             </Badge>
             <Badge className="rounded-md bg-white text-slate-950 hover:bg-white">종합 {analysis.score}</Badge>
           </div>
         </div>
-        <p className="mt-3 text-sm font-black leading-6 text-white">{analysis.headline}</p>
+        <p className="mt-3 text-sm font-semibold leading-6 text-white">{analysis.headline}</p>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -1156,8 +1150,8 @@ function SelectedSymbolAnalysisPanel({ analysis }: { analysis: FuturesSelectedSy
           ["돌파", analysis.levels.breakout],
         ].map(([label, value]) => (
           <div key={label} className="rounded-md bg-slate-50 p-2.5">
-            <p className="text-[11px] font-black text-slate-400">{label}</p>
-            <p className="mt-1 break-words text-sm font-black text-slate-950">{value}</p>
+            <p className="text-[11px] font-semibold text-slate-400">{label}</p>
+            <p className="mt-1 break-words text-sm font-semibold text-slate-950">{value}</p>
           </div>
         ))}
       </div>
@@ -1166,8 +1160,8 @@ function SelectedSymbolAnalysisPanel({ analysis }: { analysis: FuturesSelectedSy
         {analysis.evidence.map(item => (
           <div key={item.label} className="rounded-md border border-slate-200 bg-slate-50 p-3">
             <div className="flex items-start justify-between gap-2">
-              <p className="text-xs font-black text-slate-500">{item.label}</p>
-              <Badge variant="outline" className="shrink-0 rounded-md bg-white px-2 py-0.5 text-[10px] font-black text-slate-700">
+              <p className="text-xs font-semibold text-slate-500">{item.label}</p>
+              <Badge variant="outline" className="shrink-0 rounded-md bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-700">
                 {item.verdict}
               </Badge>
             </div>
@@ -1178,7 +1172,7 @@ function SelectedSymbolAnalysisPanel({ analysis }: { analysis: FuturesSelectedSy
 
       <div className="mt-3 grid gap-2 lg:grid-cols-2">
         <div className="rounded-md border border-emerald-100 bg-emerald-50 p-3">
-          <p className="text-xs font-black text-emerald-900">강점</p>
+          <p className="text-xs font-semibold text-emerald-900">강점</p>
           <ul className="mt-2 space-y-1.5 text-xs leading-5 text-emerald-950">
             {analysis.strengths.map(item => (
               <li key={item} className="flex gap-2">
@@ -1189,7 +1183,7 @@ function SelectedSymbolAnalysisPanel({ analysis }: { analysis: FuturesSelectedSy
           </ul>
         </div>
         <div className="rounded-md border border-rose-100 bg-rose-50 p-3">
-          <p className="text-xs font-black text-rose-900">리스크</p>
+          <p className="text-xs font-semibold text-rose-900">리스크</p>
           <ul className="mt-2 space-y-1.5 text-xs leading-5 text-rose-950">
             {analysis.risks.map(item => (
               <li key={item} className="flex gap-2">
@@ -1202,11 +1196,11 @@ function SelectedSymbolAnalysisPanel({ analysis }: { analysis: FuturesSelectedSy
       </div>
 
       <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3">
-        <p className="text-xs font-black text-slate-500">가격 시나리오</p>
+        <p className="text-xs font-semibold text-slate-500">가격 시나리오</p>
         <div className="mt-2 grid gap-2">
           {analysis.scenarios.map(item => (
             <div key={item.title} className="rounded-md bg-white p-2.5">
-              <p className="text-xs font-black text-slate-950">{item.title}</p>
+              <p className="text-xs font-semibold text-slate-950">{item.title}</p>
               <p className="mt-1 text-xs leading-5 text-slate-500">{item.trigger}</p>
               <p className="mt-1 text-xs leading-5 text-slate-700">{item.expectation}</p>
             </div>
@@ -1215,14 +1209,14 @@ function SelectedSymbolAnalysisPanel({ analysis }: { analysis: FuturesSelectedSy
       </div>
 
       <div className="mt-3 rounded-md bg-slate-950 p-3 text-white">
-        <p className="flex items-center gap-2 text-xs font-black">
+        <p className="flex items-center gap-2 text-xs font-semibold">
           <Target className="h-3.5 w-3.5 text-cyan-300" />
           실행 체크
         </p>
         <ol className="mt-2 space-y-2 text-xs leading-5 text-slate-200">
           {analysis.actionPlan.map((item, index) => (
             <li key={item} className="flex gap-2">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white text-[10px] font-black text-slate-950">{index + 1}</span>
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white text-[10px] font-semibold text-slate-950">{index + 1}</span>
               <span>{item}</span>
             </li>
           ))}
@@ -1261,11 +1255,11 @@ function TechnicalPanel({
 
   return (
     <aside className="space-y-4">
-      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <section className="rounded-lg border border-slate-200 bg-white p-4 ">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Selected Futures</p>
-            <h2 className="mt-1 text-2xl font-black text-slate-950">{row?.symbol ?? "선택 없음"}</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">선택한 계약</p>
+            <h2 className="mt-1 text-2xl font-semibold text-slate-950">{row?.symbol ?? "선택 없음"}</h2>
             <p className="mt-1 text-sm text-slate-500">
               {row ? `${row.marketType} · ${row.pair} · ${row.contractType}` : "Binance Futures"}
             </p>
@@ -1278,30 +1272,30 @@ function TechnicalPanel({
         <div className="mt-4 grid grid-cols-2 gap-3">
           <div className="rounded-lg bg-slate-50 p-3">
             <p className="text-xs font-semibold text-slate-500">현재가</p>
-            <p className="mt-1 text-lg font-black text-slate-950">{formatPrice(row?.price)}</p>
+            <p className="mt-1 text-lg font-semibold text-slate-950">{formatPrice(row?.price)}</p>
           </div>
           <div className="rounded-lg bg-slate-50 p-3">
             <p className="text-xs font-semibold text-slate-500">24h</p>
-            <p className={cn("mt-1 text-lg font-black", (row?.change24hPercent ?? 0) >= 0 ? "text-emerald-700" : "text-rose-700")}>
+            <p className={cn("mt-1 text-lg font-semibold", (row?.change24hPercent ?? 0) >= 0 ? "text-emerald-700" : "text-rose-700")}>
               {formatPercent(row?.change24hPercent)}
             </p>
           </div>
           <div className="rounded-lg bg-slate-50 p-3">
             <p className="text-xs font-semibold text-slate-500">거래대금</p>
-            <p className="mt-1 text-lg font-black text-slate-950">{formatUsd(row?.volume24hUsd)}</p>
+            <p className="mt-1 text-lg font-semibold text-slate-950">{formatUsd(row?.volume24hUsd)}</p>
           </div>
           <div className="rounded-lg bg-slate-50 p-3">
             <p className="text-xs font-semibold text-slate-500">펀딩비</p>
-            <p className="mt-1 text-lg font-black text-slate-950">{formatFunding(row?.fundingRate)}</p>
+            <p className="mt-1 text-lg font-semibold text-slate-950">{formatFunding(row?.fundingRate)}</p>
           </div>
         </div>
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <section className="rounded-lg border border-slate-200 bg-white p-4 ">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h3 className="flex items-center gap-2 text-base font-black text-slate-950">
-              <Gauge className="h-4 w-4 text-indigo-500" />
+            <h3 className="flex items-center gap-2 text-base font-semibold text-slate-950">
+              <Gauge className="h-4 w-4 text-cyan-700" />
               기술적 지표
             </h3>
             <p className="mt-1 text-xs text-slate-500">12개 지표별 추천·비추천·고점·저점 판단과 지표 적정가</p>
@@ -1314,7 +1308,7 @@ function TechnicalPanel({
               </Badge>
             ) : null}
             <Select value={interval} onValueChange={onIntervalChange}>
-              <SelectTrigger className="h-9 w-28 rounded-md bg-white">
+              <SelectTrigger aria-label="차트 시간 간격" className="h-9 w-28 rounded-md bg-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1342,7 +1336,7 @@ function TechnicalPanel({
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <p className="text-xs font-bold text-slate-400">종합 점수</p>
-                  <p className="mt-1 text-4xl font-black">{indicators.score}</p>
+                  <p className="mt-1 text-4xl font-semibold">{indicators.score}</p>
                 </div>
                 <Badge className="rounded-md bg-white text-slate-950 hover:bg-white">{signalMeta[indicators.bias].label}</Badge>
               </div>
@@ -1353,7 +1347,7 @@ function TechnicalPanel({
             <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h4 className="text-sm font-black text-slate-950">지표 위치 막대</h4>
+                  <h4 className="text-sm font-semibold text-slate-950">지표 위치 막대</h4>
                   <p className="mt-1 text-xs text-slate-500">핵심 보조지표를 0-100 스케일로 정규화해 빠르게 비교합니다.</p>
                 </div>
                 <Badge variant="outline" className="rounded-md bg-white text-slate-600">50 기준선</Badge>
@@ -1390,8 +1384,8 @@ function TechnicalPanel({
         ) : null}
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <h3 className="flex items-center gap-2 text-base font-black text-slate-950">
+      <section className="rounded-lg border border-slate-200 bg-white p-4 ">
+        <h3 className="flex items-center gap-2 text-base font-semibold text-slate-950">
           <LineChartIcon className="h-4 w-4 text-cyan-600" />
           가격·거래량 흐름
         </h3>
@@ -1430,6 +1424,12 @@ function TechnicalPanel({
 }
 
 export default function BinanceFutures() {
+  const detailPanelRef = useRef<HTMLDivElement>(null);
+  const sheetTabRef = useRef<HTMLButtonElement>(null);
+  const sheetScrollRef = useRef<HTMLDivElement>(null);
+  const moveFocusAfterNavigation = useRef(false);
+  const [activeView, setActiveView] = useState("sheet");
+  const [page, setPage] = useState(1);
   const [rows, setRows] = useState<FuturesMarketRow[]>([]);
   const [selectedKey, setSelectedKey] = useState<FuturesSelectionKey | "">("");
   const [query, setQuery] = useState("");
@@ -1437,8 +1437,8 @@ export default function BinanceFutures() {
   const [marketFilter, setMarketFilter] = useState("all");
   const [quoteFilter, setQuoteFilter] = useState("all");
   const [signalFilter, setSignalFilter] = useState("all");
-  const [sortKey, setSortKey] = useState<SortKey>("rank");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [sortKey, setSortKey] = useState<SortKey>("volume24hUsd");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [interval, setInterval] = useState("1h");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1570,6 +1570,8 @@ export default function BinanceFutures() {
 
   const onSelectFavorite = useCallback((key: FuturesSelectionKey) => {
     setSelectedKey(key);
+    moveFocusAfterNavigation.current = true;
+    setActiveView("detail");
   }, []);
 
   useEffect(() => {
@@ -1642,50 +1644,54 @@ export default function BinanceFutures() {
       const matchesFavorite = !favoriteOnly || favoriteKeySet.has(rowSelectionKey(row));
       return matchesQuery && matchesAsset && matchesMarket && matchesQuote && matchesSignal && matchesFavorite;
     });
-    return filtered.sort((a, b) => {
-      const aValue = sortValue(a, sortKey);
-      const bValue = sortValue(b, sortKey);
-      if (typeof aValue === "string" && typeof bValue === "string") {
-        return sortDirection === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-      }
-      const delta = Number(aValue) - Number(bValue);
-      return sortDirection === "asc" ? delta : -delta;
-    });
+    return sortFuturesRows(filtered, sortKey, sortDirection);
   }, [query, assetFilter, favoriteKeySet, favoriteOnly, marketFilter, quoteFilter, rows, signalFilter, sortDirection, sortKey]);
 
+  const pageCount = Math.max(1, Math.ceil(visibleRows.length / 50));
+  const currentPage = Math.min(page, pageCount);
+  const pageRows = visibleRows.slice((currentPage - 1) * 50, currentPage * 50);
+  useEffect(() => { setPage(1); }, [query, assetFilter, marketFilter, quoteFilter, signalFilter, favoriteOnly, sortKey, sortDirection]);
+  useEffect(() => { setPage(previous => Math.min(previous, pageCount)); }, [pageCount]);
+  useEffect(() => { if (sheetScrollRef.current) sheetScrollRef.current.scrollTop = 0; }, [page, query, assetFilter, marketFilter, quoteFilter, signalFilter, favoriteOnly, sortKey, sortDirection]);
+  useEffect(() => {
+    if (!moveFocusAfterNavigation.current) return;
+    // Tabs retain a hidden panel shell; focus after Radix reveals its content.
+    const frame = requestAnimationFrame(() => {
+      const target = activeView === "detail" ? detailPanelRef.current : sheetTabRef.current;
+      target?.focus();
+      moveFocusAfterNavigation.current = false;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeView]);
+  const onSort = (key: SortKey) => {
+    setSortDirection(sortKey === key ? (sortDirection === "asc" ? "desc" : "asc") : sortOptions.find(option => option.value === key)?.direction ?? "desc");
+    setSortKey(key);
+    setPage(1);
+  };
+  const resetFilters = () => { setQuery(""); setAssetFilter("crypto"); setMarketFilter("all"); setQuoteFilter("all"); setSignalFilter("all"); setFavoriteOnly(false); setPage(1); };
+  const selectContract = (key: FuturesSelectionKey) => { setSelectedKey(key); moveFocusAfterNavigation.current = true; setActiveView("detail"); };
+  const sortLabel = sortOptions.find(option => option.value === sortKey)?.label;
+  const header = (label: string, key: SortKey, numeric = false, sticky = false) => <SortableFuturesHeader label={label} sortKey={key} activeKey={sortKey} direction={sortDirection} onSort={onSort} numeric={numeric} sticky={sticky} />;
+
   return (
-    <div className="min-h-screen bg-[#f4f7fa] text-slate-950">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-[1800px] flex-col gap-4 px-4 py-5 lg:flex-row lg:items-center lg:justify-between lg:px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-950 text-white">
-              <Bitcoin className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">JBGGAMES / KJHSTOCK</p>
-              <h1 className="text-2xl font-black tracking-tight text-slate-950">Binance Futures Intelligence</h1>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
+    <div className="market-workspace">
+      <header className="market-header">
+        <div className="market-header-inner">
+          <button type="button" className="market-brand" onClick={() => setActiveView("sheet")}>KJHSTOCK <span>Binance 선물</span></button>
+          <div className="market-connection">
             <StatusBadge label="USD-M" status={wsStatus["USD-M"]} />
             <StatusBadge label="COIN-M" status={wsStatus["COIN-M"]} />
-            <Badge variant="outline" className="rounded-md px-3 py-1.5 text-slate-600">
-              <Clock3 className="mr-1 h-3.5 w-3.5" />
-              {formatDateTime(summary.lastUpdated)}
-            </Badge>
-            <Badge variant="outline" className="rounded-md px-3 py-1.5 text-slate-600">
-              <DatabaseZap className="mr-1 h-3.5 w-3.5" />
-              REST {formatDateTime(metadataLastRefreshedAt)}
-            </Badge>
-            <Button className="rounded-md" variant="outline" onClick={() => void reload()} disabled={refreshing}>
-              {refreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-              새로고침
+            <Button variant="outline" onClick={() => void reload()} disabled={refreshing}>
+              {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} 새로고침
             </Button>
           </div>
         </div>
       </header>
-
-      <main className="mx-auto max-w-[1800px] px-4 py-5 lg:px-6">
+      <main className="market-main">
+        <div className="market-intro">
+          <div><h1>선물 시장 한눈에</h1><p>종목을 비교하고, 원하는 기준으로 정렬하세요.</p></div>
+          <p className="market-updated" title={"전체 목록 갱신 " + formatDateTime(metadataLastRefreshedAt)}>시세 갱신 {formatDateTime(summary.lastUpdated)}</p>
+        </div>
         {error ? (
           <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800">
             <ShieldAlert className="mr-2 inline h-4 w-4" />
@@ -1693,44 +1699,38 @@ export default function BinanceFutures() {
           </div>
         ) : null}
 
-        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard title="선물 계약" value={summary.totalSymbols.toLocaleString("ko-KR")} detail={`USD-M ${marketCounts.usdM} / COIN-M ${marketCounts.coinM}`} icon={DatabaseZap} />
-          <SummaryCard title="24h 거래대금" value={formatUsd(summary.totalVolume24hUsd)} detail={`평균 등락률 ${formatPercent(summary.averageChange24hPercent)}`} icon={BarChart3} />
+        <section className="market-summary" aria-label="전체 선물 시장 요약">
+          <SummaryCard title="선물 계약" value={loading ? "불러오는 중" : summary.totalSymbols.toLocaleString("ko-KR")} detail={`USD-M ${marketCounts.usdM} / COIN-M ${marketCounts.coinM}`} icon={DatabaseZap} />
+          <SummaryCard title="24h 거래대금" value={loading ? "불러오는 중" : formatUsd(summary.totalVolume24hUsd)} detail={`평균 등락률 ${formatPercent(summary.averageChange24hPercent)}`} icon={BarChart3} />
           <SummaryCard title="상승 1위" value={summary.topGainer?.symbol ?? "-"} detail={formatPercent(summary.topGainer?.change24hPercent)} icon={ArrowUp} />
           <SummaryCard title="하락 1위" value={summary.topLoser?.symbol ?? "-"} detail={formatPercent(summary.topLoser?.change24hPercent)} icon={ArrowDown} />
         </section>
 
-        <div className="mt-5">
-          <MarketVisualBoard rows={rows} />
-        </div>
-
-        <div className="mt-5">
-          <WatchReport
-            items={reportWithTechnical.items}
-            markdown={reportMarkdown}
-            technicalLoading={reportTechnicalLoading}
-            technicalUpdatedAt={reportTechnicalUpdatedAt}
-            onSelect={setSelectedKey}
-            onCopyReport={copyReport}
-            onDownloadReport={downloadReport}
-          />
-        </div>
-
-        <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_480px] 2xl:grid-cols-[minmax(0,1fr)_620px]">
+        <Tabs value={activeView} onValueChange={setActiveView} className="market-views">
+          <TabsList className="market-tabs" aria-label="분석 화면">
+            <TabsTrigger value="sheet" ref={sheetTabRef}>Sheet</TabsTrigger>
+            <TabsTrigger value="charts">시장 차트</TabsTrigger>
+            <TabsTrigger value="reports">분석 리포트</TabsTrigger>
+            <TabsTrigger value="detail">종목 분석</TabsTrigger>
+          </TabsList>
+          <TabsContent value="sheet" className="market-view">
           <div className="min-w-0 space-y-4">
-            <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_130px_130px] 2xl:grid-cols-[minmax(220px,1fr)_120px_130px_130px_150px_160px_120px_140px]">
-                <div className="relative">
+            <section className="market-filters" aria-label="종목 검색과 필터">
+                <div className="relative market-search">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
                     value={query}
                     onChange={event => setQuery(event.target.value)}
                     className="h-10 rounded-md pl-9"
-                    placeholder="BTC, ETH, SOL..."
+                    placeholder="BTC, ETH, SOL 검색"
+                    aria-label="이름 또는 심볼 검색"
                   />
                 </div>
+              <details className="market-filter-disclosure">
+                <summary>필터 및 정렬 <span>{[assetFilter !== "crypto", marketFilter !== "all", quoteFilter !== "all", signalFilter !== "all", favoriteOnly].filter(Boolean).length}개 필터 적용</span></summary>
+              <div className="market-filter-grid">
                 <Select value={assetFilter} onValueChange={setAssetFilter}>
-                  <SelectTrigger className="h-10 w-full rounded-md bg-white">
+                  <SelectTrigger aria-label="자산 유형" className="h-10 w-full rounded-md bg-white">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1740,7 +1740,7 @@ export default function BinanceFutures() {
                   </SelectContent>
                 </Select>
                 <Select value={marketFilter} onValueChange={setMarketFilter}>
-                  <SelectTrigger className="h-10 w-full rounded-md bg-white">
+                  <SelectTrigger aria-label="마켓" className="h-10 w-full rounded-md bg-white">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1750,7 +1750,7 @@ export default function BinanceFutures() {
                   </SelectContent>
                 </Select>
                 <Select value={quoteFilter} onValueChange={setQuoteFilter}>
-                  <SelectTrigger className="h-10 w-full rounded-md bg-white">
+                  <SelectTrigger aria-label="표시 통화" className="h-10 w-full rounded-md bg-white">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1763,7 +1763,7 @@ export default function BinanceFutures() {
                   </SelectContent>
                 </Select>
                 <Select value={signalFilter} onValueChange={setSignalFilter}>
-                  <SelectTrigger className="h-10 w-full rounded-md bg-white">
+                  <SelectTrigger aria-label="시그널" className="h-10 w-full rounded-md bg-white">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1781,7 +1781,7 @@ export default function BinanceFutures() {
                     setSortDirection(sortOptions.find(option => option.value === nextKey)?.direction ?? "desc");
                   }}
                 >
-                  <SelectTrigger className="h-10 w-full rounded-md bg-white">
+                  <SelectTrigger aria-label="정렬 기준" className="h-10 w-full rounded-md bg-white">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1813,14 +1813,16 @@ export default function BinanceFutures() {
                   <Star className={cn("h-4 w-4", favoriteOnly ? "fill-amber-400 text-amber-500" : "text-slate-400")} />
                   즐겨찾기만
                 </Button>
+                <Button variant="ghost" onClick={resetFilters}>필터 초기화</Button>
               </div>
+              </details>
             </section>
 
             {favoriteKeys.length > 0 ? (
-              <section className="rounded-lg border border-amber-200 bg-amber-50/70 p-3 shadow-sm">
+              <section className="rounded-lg border border-amber-200 bg-amber-50/70 p-3 ">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h3 className="flex items-center gap-2 text-sm font-black text-amber-950">
+                    <h3 className="flex items-center gap-2 text-sm font-semibold text-amber-950">
                       <Star className="h-4 w-4 fill-amber-400 text-amber-500" />
                       즐겨찾기 종목
                     </h3>
@@ -1841,12 +1843,12 @@ export default function BinanceFutures() {
                         key={key}
                         type="button"
                         className={cn(
-                          "flex min-w-[154px] shrink-0 flex-col items-start rounded-md border bg-white px-3 py-2 text-left shadow-sm transition-colors",
+                          "flex min-w-[154px] shrink-0 flex-col items-start rounded-md border bg-white px-3 py-2 text-left  transition-colors",
                           active ? "border-slate-950 ring-2 ring-slate-950/10" : "border-amber-200 hover:border-amber-400",
                         )}
                         onClick={() => onSelectFavorite(key)}
                       >
-                        <span className="text-sm font-black text-slate-950">{row.symbol}</span>
+                        <span className="text-sm font-semibold text-slate-950">{row.symbol}</span>
                         <span className="mt-1 text-xs font-semibold text-slate-500">{row.marketType} · {formatPercent(row.change24hPercent)}</span>
                       </button>
                     );
@@ -1859,14 +1861,15 @@ export default function BinanceFutures() {
               </section>
             ) : null}
 
-            <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
+            <section className="market-sheet" aria-label="시장 Sheet">
               <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
                 <div>
-                  <h2 className="flex items-center gap-2 text-base font-black text-slate-950">
+                  <h2 className="flex items-center gap-2 text-base font-semibold text-slate-950">
                     <Signal className="h-4 w-4 text-emerald-600" />
-                    Binance 선물 전체
+                    시장 Sheet
                   </h2>
-                  <p className="mt-1 text-xs text-slate-500">표시 {visibleRows.length.toLocaleString("ko-KR")} / 전체 {rows.length.toLocaleString("ko-KR")}</p>
+                  <p className="sheet-help" id="sheet-instructions">열 제목을 누르면 정렬됩니다. 이름을 누르면 종목 분석을 볼 수 있습니다.</p>
+                  <p className="sheet-sort-status" role="status">{visibleRows.length.toLocaleString("ko-KR")}개 계약 · {sortLabel} {sortDirection === "asc" ? "오름차순" : "내림차순"}</p>
                 </div>
                 {loading ? (
                   <Badge variant="outline" className="rounded-md bg-slate-50">
@@ -1875,26 +1878,26 @@ export default function BinanceFutures() {
                   </Badge>
                 ) : null}
               </div>
-              <div className="max-h-[72vh] overflow-auto">
-                <Table>
+              <div className="sheet-scroll" ref={sheetScrollRef} tabIndex={0} role="region" aria-label="좌우로 스크롤 가능한 선물 표">
+                <Table aria-label="Binance 선물 시세" aria-describedby="sheet-instructions" aria-busy={loading}>
                   <TableHeader className="sticky top-0 z-10 bg-white">
                     <TableRow>
-                      <TableHead className="w-12 text-center">
-                        <Star className="mx-auto h-4 w-4 text-slate-400" />
-                      </TableHead>
-                      <TableHead className="w-14 text-right">#</TableHead>
-                      <TableHead>마켓</TableHead>
-                      <TableHead>심볼</TableHead>
-                      <TableHead className="text-right">가격</TableHead>
-                      <TableHead className="text-right">24h</TableHead>
-                      <TableHead className="text-right">거래대금</TableHead>
-                      <TableHead className="text-right">펀딩비</TableHead>
-                      <TableHead>계약</TableHead>
-                      <TableHead className="text-center">시그널</TableHead>
+                      {header("이름", "symbol", false, true)}
+                      <TableHead scope="col" className="sheet-favorite-heading"><span className="sr-only">즐겨찾기</span><Star aria-hidden="true" className="h-4 w-4" /></TableHead>
+                      {header("현재가", "price", true)}
+                      {header("등락률 (24h)", "change24hPercent", true)}
+                      {header("거래대금 (24h)", "volume24hUsd", true)}
+                      {header("거래량 (24h)", "baseVolume24h", true)}
+                      {header("펀딩비", "fundingRate", true)}
+                      {header("마켓", "marketType")}
+                      {header("계약", "contractType")}
+                      {header("시그널", "signal")}
+                      {header("순위", "rank", true)}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {visibleRows.map(row => {
+                    {loading && <TableRow><TableCell colSpan={11} className="sheet-loading"><Loader2 className="h-4 w-4 animate-spin" />Binance 시세를 불러오는 중입니다.</TableCell></TableRow>}
+                    {pageRows.map(row => {
                       const favoriteKey = rowSelectionKey(row);
                       const selected = favoriteKey === selectedKey;
                       const favorited = favoriteKeySet.has(favoriteKey);
@@ -1903,8 +1906,13 @@ export default function BinanceFutures() {
                           key={`${row.marketType}-${row.symbol}`}
                           data-state={selected ? "selected" : undefined}
                           className={cn("border-slate-100", selected && "bg-cyan-50/70 hover:bg-cyan-50")}
-                          onClick={() => setSelectedKey(favoriteKey)}
+                          onClick={() => selectContract(favoriteKey)}
                         >
+                          <TableCell className="sheet-name">
+                            <button type="button" className="sheet-symbol" onClick={event => { event.stopPropagation(); selectContract(favoriteKey); }} aria-label={row.symbol + " " + row.marketType + " 분석 보기"}>
+                              <strong>{row.symbol}</strong><span>{row.baseAsset} / {row.quoteAsset}</span>
+                            </button>
+                          </TableCell>
                           <TableCell className="text-center">
                             <Button
                               type="button"
@@ -1924,65 +1932,61 @@ export default function BinanceFutures() {
                               <Star className={cn("h-4 w-4", favorited && "fill-amber-400")} />
                             </Button>
                           </TableCell>
-                          <TableCell className="text-right text-xs font-bold text-slate-400">{row.rank}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="rounded-md px-2 py-1 text-[11px] text-slate-600">
-                              {row.marketType}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <span className="font-black text-slate-950">{row.symbol}</span>
-                              <Badge variant="outline" className="rounded-md px-1.5 py-0 text-[10px] text-slate-500">
-                                {row.quoteAsset}
-                              </Badge>
-                            </div>
-                            <p className="mt-0.5 text-xs text-slate-500">{row.pair}</p>
-                          </TableCell>
                           <TableCell className="text-right font-bold tabular-nums text-slate-950">{formatPrice(row.price)}</TableCell>
-                          <TableCell className={cn("text-right font-black tabular-nums", row.change24hPercent >= 0 ? "text-emerald-700" : "text-rose-700")}>
+                          <TableCell className={cn("text-right font-semibold tabular-nums", row.change24hPercent >= 0 ? "text-emerald-700" : "text-rose-700")}>
                             {formatPercent(row.change24hPercent)}
                           </TableCell>
                           <TableCell className="text-right font-semibold tabular-nums text-slate-700">{formatUsd(row.volume24hUsd)}</TableCell>
+                          <TableCell className="text-right font-semibold tabular-nums text-slate-700"><span>{Number.isFinite(row.baseVolume24h) ? row.baseVolume24h.toLocaleString("ko-KR", row.baseVolume24h > 0 && row.baseVolume24h < 1 ? { maximumSignificantDigits: 4 } : { maximumFractionDigits: 2 }) : "-"}</span><span className="sheet-unit">{row.baseAsset}</span></TableCell>
                           <TableCell className="text-right font-semibold tabular-nums text-slate-700">{formatFunding(row.fundingRate)}</TableCell>
+                          <TableCell className="text-xs text-slate-500">{row.marketType}</TableCell>
                           <TableCell className="text-xs font-semibold text-slate-500">{row.contractType}</TableCell>
                           <TableCell className="text-center">
                             <Badge variant="outline" className={cn("rounded-md px-2 py-1", signalMeta[row.signal].className)}>
                               {signalMeta[row.signal].label}
                             </Badge>
                           </TableCell>
+                          <TableCell className="text-right text-xs text-slate-500">{row.rank}</TableCell>
                         </TableRow>
                       );
                     })}
                     {!loading && visibleRows.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={10} className="h-32 text-center text-sm text-slate-500">
-                          {favoriteOnly ? "즐겨찾기 조건에 맞는 선물 계약이 없습니다." : "조건에 맞는 선물 계약이 없습니다."}
+                        <TableCell colSpan={11} className="h-32 text-center text-sm text-slate-500">
+                          {error ? "시세를 불러오지 못했습니다. 새로고침으로 다시 시도해 주세요." : favoriteOnly ? "즐겨찾기 조건에 맞는 선물 계약이 없습니다." : "조건에 맞는 선물 계약이 없습니다."}
+                          {!error && <Button variant="ghost" onClick={resetFilters}>필터 초기화</Button>}
                         </TableCell>
                       </TableRow>
                     ) : null}
                   </TableBody>
                 </Table>
               </div>
+              <div className="sheet-pagination">
+                <span>{visibleRows.length ? (currentPage - 1) * 50 + 1 : 0}~{Math.min(currentPage * 50, visibleRows.length)} / {visibleRows.length.toLocaleString("ko-KR")}개</span>
+                <span className="sheet-live-note">시세 갱신 시 선택한 정렬을 유지합니다.</span>
+                <div><Button variant="outline" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>이전</Button><span>{currentPage} / {pageCount}</span><Button variant="outline" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}>다음</Button></div>
+              </div>
             </section>
           </div>
 
-          <TechnicalPanel
-            row={selectedRow}
-            interval={interval}
-            onIntervalChange={setInterval}
-            loading={technicalLoading}
-            error={technicalError}
-            indicators={activeTechnical?.indicators ?? null}
-            candles={activeTechnical?.candles ?? []}
-          />
-        </section>
-
-        <FinalJudgmentReport
-          judgment={finalJudgment}
-          technicalLoading={reportTechnicalLoading}
-          technicalUpdatedAt={reportTechnicalUpdatedAt}
-        />
+          </TabsContent>
+          <TabsContent value="charts" className="market-view"><div className="view-intro"><h2>시장 흐름 비교</h2><p>거래대금, 등락률, 펀딩비를 함께 확인하세요.</p></div><MarketVisualBoard rows={rows} /></TabsContent>
+          <TabsContent value="reports" className="market-view">
+            <WatchReport items={reportWithTechnical.items} markdown={reportMarkdown} technicalLoading={reportTechnicalLoading} technicalUpdatedAt={reportTechnicalUpdatedAt} onSelect={selectContract} onCopyReport={copyReport} onDownloadReport={downloadReport} />
+            <FinalJudgmentReport judgment={finalJudgment} technicalLoading={reportTechnicalLoading} technicalUpdatedAt={reportTechnicalUpdatedAt} />
+          </TabsContent>
+          <TabsContent value="detail" className="market-view" ref={detailPanelRef} tabIndex={-1}>
+            <div className="detail-toolbar"><Button variant="outline" onClick={() => { moveFocusAfterNavigation.current = true; setActiveView("sheet"); }}>← Sheet로 돌아가기</Button><span>표의 이름을 누르면 분석 종목이 바뀝니다.</span></div>
+            <TechnicalPanel row={selectedRow} interval={interval} onIntervalChange={setInterval} loading={technicalLoading} error={technicalError} indicators={activeTechnical?.indicators ?? null} candles={activeTechnical?.candles ?? []} />
+          </TabsContent>
+        </Tabs>
+        <details className="market-glossary"><summary>표의 지표는 어떻게 읽나요?</summary><dl>
+          <div><dt>등락률</dt><dd>최근 24시간 가격 변화입니다. +는 상승, -는 하락입니다.</dd></div>
+          <div><dt>거래대금</dt><dd>24시간 동안 거래된 금액의 달러 환산값입니다. M은 백만, B는 십억입니다. COIN-M은 기초자산 거래량에 현재가를 곱한 추정값입니다.</dd></div>
+          <div><dt>거래량</dt><dd>기초자산 수량입니다. 코인별 단위가 다르므로 시장 간 규모 비교에는 거래대금을 함께 보세요.</dd></div>
+          <div><dt>펀딩비</dt><dd>무기한 계약의 포지션 간 정산 비율입니다. 적용되지 않거나 값이 없으면 -로 표시합니다.</dd></div>
+        </dl></details>
+        <footer className="market-footer">Binance 공개 시세 기준. 점수와 시그널은 계산된 참고 지표이며, 데이터가 지연되거나 누락될 수 있습니다.</footer>
       </main>
     </div>
   );

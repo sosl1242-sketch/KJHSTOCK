@@ -69,7 +69,7 @@ describe("binance futures analysis", () => {
 
     expect(rows.map(row => row.symbol)).toEqual(["BTCUSDT_260626", "BTCUSDT", "ETHUSDC"]);
     expect(rows[0]).toMatchObject({ rank: 1, marketType: "USD-M", quoteAsset: "USDT", contractType: "CURRENT_QUARTER" });
-    expect(rows[1]).toMatchObject({ rank: 2, marketType: "USD-M", quoteAsset: "USDT", fundingRate: 0.0001, assetClass: "crypto" });
+    expect(rows[1]).toMatchObject({ rank: 2, marketType: "USD-M", quoteAsset: "USDT", fundingRate: 0.0001, assetClass: "crypto", baseVolume24h: 1_000 });
     expect(rows[2]).toMatchObject({ rank: 3, marketType: "USD-M", quoteAsset: "USDC", fundingRate: -0.0002 });
   });
 
@@ -96,10 +96,12 @@ describe("binance futures analysis", () => {
       marketType: "COIN-M",
       pair: "BTCUSD",
       contractType: "PERPETUAL",
+      baseVolume24h: 100,
       volume24hUsd: 6_500_000,
     });
     expect(rows[2]).toMatchObject({
       contractType: "CURRENT_QUARTER",
+      baseVolume24h: 10,
       volume24hUsd: 652_000,
     });
   });
@@ -123,6 +125,7 @@ describe("binance futures analysis", () => {
       baseAsset: "BTC",
       price: 105.5,
       change24hPercent: 5.5,
+      baseVolume24h: 1_200,
       volume24hUsd: 126_600,
       openInterestUsd: 42_000,
     });
@@ -146,8 +149,28 @@ describe("binance futures analysis", () => {
     expect(updated[0]).toMatchObject({
       marketType: "COIN-M",
       price: 66000,
+      baseVolume24h: 120,
       volume24hUsd: 7_920_000,
     });
+  });
+
+  it.each([
+    { lastFundingRate: undefined, expected: null },
+    { lastFundingRate: null, expected: null },
+    { lastFundingRate: "", expected: null },
+    { lastFundingRate: "  ", expected: null },
+    { lastFundingRate: "0", expected: 0 },
+    { lastFundingRate: "-0.0002", expected: -0.0002 },
+  ])("preserves missing funding rates separately from zero ($lastFundingRate)", ({ lastFundingRate, expected }) => {
+    const rows = buildFuturesRows({
+      marketType: "USD-M",
+      symbols: [{ symbol: "BTCUSDT", baseAsset: "BTC", quoteAsset: "USDT", contractType: "PERPETUAL", status: "TRADING" }],
+      tickers: [ticker("BTCUSDT")],
+      premiumIndex: [{ symbol: "BTCUSDT", markPrice: "100", lastFundingRate, nextFundingTime: 0 }],
+      openInterestBySymbol: new Map(),
+    });
+
+    expect(rows[0].fundingRate).toBe(expected);
   });
 
   it("calculates trend, momentum, volatility and volume indicators from candles", () => {
