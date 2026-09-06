@@ -10,7 +10,9 @@ import {
   summarizeFuturesRows,
 type BinanceFuturesTicker,
   type FuturesCandle,
+  type FuturesMarketType,
 } from "../shared/binanceFuturesAnalysis";
+import { buildFuturesResearchReport } from "../shared/futuresResearchReport";
 
 function ticker(symbol: string, overrides: Partial<BinanceFuturesTicker> = {}): BinanceFuturesTicker {
   return {
@@ -39,6 +41,76 @@ function risingCandles(length = 80): FuturesCandle[] {
     };
   });
 }
+
+describe("exchange quote freshness", () => {
+  const fetchedAt = "2026-09-06T12:00:00.000Z";
+  const exchangeTime = Date.parse("2026-09-06T10:00:00.000Z");
+
+  function quote({ closeTime, marketType = "USD-M", nowIso }: {
+    closeTime?: number;
+    marketType?: FuturesMarketType;
+    nowIso?: string;
+  }) {
+    const symbol = marketType === "USD-M" ? "BTCUSDT" : "BTCUSD_PERP";
+    return buildFuturesRows({
+      marketType,
+      symbols: [{ symbol, baseAsset: "BTC", quoteAsset: marketType === "USD-M" ? "USDT" : "USD", contractType: "PERPETUAL", status: "TRADING" }],
+      tickers: [ticker(symbol, { closeTime, baseVolume: "1000" })],
+      premiumIndex: [],
+      openInterestBySymbol: new Map(),
+      nowIso,
+    })[0];
+  }
+
+  it.each<FuturesMarketType>(["USD-M", "COIN-M"])("does not relabel an old %s exchange quote with the current REST fetch time", marketType => {
+    const row = quote({ marketType, closeTime: exchangeTime, nowIso: fetchedAt });
+    const report = buildFuturesResearchReport({ rows: [row], candlesByKey: {}, generatedAt: fetchedAt });
+
+    expect(row.lastUpdated).toBe("2026-09-06T10:00:00.000Z");
+    expect(report.candidates[0]).toMatchObject({ direction: "unknown", coverage: { status: "stale" } });
+    expect(report.overview.stats.medianChange24hPercent).toBeNull();
+  });
+
+  it.each([
+    { label: "missing", closeTime: undefined },
+    { label: "NaN", closeTime: Number.NaN },
+    { label: "infinite", closeTime: Number.POSITIVE_INFINITY },
+    { label: "zero", closeTime: 0 },
+    { label: "negative", closeTime: -1 },
+    { label: "outside Date range", closeTime: 8_640_000_000_000_001 },
+  ])("keeps a $label exchange timestamp unknown even when a fetch time is supplied", ({ closeTime }) => {
+    const row = quote({ closeTime, nowIso: fetchedAt });
+    const report = buildFuturesResearchReport({ rows: [row], candlesByKey: {}, generatedAt: fetchedAt });
+
+    expect(row.lastUpdated).toBe("");
+    expect(summarizeFuturesRows([row]).lastUpdated).toBeNull();
+    expect(report.overview.stats.sourceLastUpdated).toBeNull();
+    expect(report.overview.stats.medianChange24hPercent).toBeNull();
+    expect(report.candidates[0].direction).toBe("unknown");
+  });
+
+  it("does not substitute the local clock when both the exchange and fetch timestamps are absent", () => {
+    expect(quote({}).lastUpdated).toBe("");
+  });
+
+  it("excludes unknown quotes from the dashboard's latest exchange time", () => {
+    const known = quote({ closeTime: exchangeTime, nowIso: fetchedAt });
+    const unknown = quote({ nowIso: fetchedAt });
+
+    expect(summarizeFuturesRows([unknown, known]).lastUpdated).toBe("2026-09-06T10:00:00.000Z");
+  });
+
+  it("lets a valid websocket timestamp replace unknown freshness without changing its exchange time", () => {
+    const initial = quote({ nowIso: fetchedAt });
+    const updated = applyTickerUpdates([initial], [ticker(initial.symbol, {
+      closeTime: Date.parse("2026-09-06T12:00:05.000Z"),
+      lastPrice: "105",
+    })]);
+
+    expect(initial.lastUpdated).toBe("");
+    expect(updated[0]).toMatchObject({ price: 105, lastUpdated: "2026-09-06T12:00:05.000Z" });
+  });
+});
 
 describe("binance futures analysis", () => {
   it("builds rows for every trading USD-M futures contract, not only USDT perpetuals", () => {
@@ -239,7 +311,7 @@ describe("binance futures analysis", () => {
 
     const report = buildFuturesWatchReport(rows);
 
-    expect(report.generatedAt).toBe("2026-06-17T00:00:00.000Z");
+    expect(report.generatedAt).toBe(new Date(1_780_000_000_000).toISOString());
     expect(report.items.length).toBeGreaterThanOrEqual(4);
     expect(report.items.map(item => item.category)).toContain("momentum_liquidity");
     expect(report.items.map(item => item.category)).toContain("funding_pressure");
