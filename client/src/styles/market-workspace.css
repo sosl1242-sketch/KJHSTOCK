@@ -431,6 +431,38 @@
   scrollbar-width: thin;
 }
 
+.sheet-pan-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--market-line);
+  background: var(--market-soft);
+  font-size: var(--market-font-meta);
+}
+.sheet-pan-controls label { color: var(--market-muted); white-space: nowrap; }
+.sheet-pan-controls input { min-width: 0; flex: 1; height: var(--space-10); accent-color: var(--market-accent); cursor: ew-resize; }
+.sheet-pan-controls button {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-10);
+  height: var(--space-10);
+  border: 1px solid var(--market-line);
+  border-radius: var(--market-control-radius);
+  color: var(--market-accent-ink);
+  background: var(--market-surface);
+  cursor: pointer;
+}
+.sheet-pan-controls button svg { width: var(--space-4); height: var(--space-4); }
+.sheet-pan-controls button:hover:not(:disabled) { background: var(--market-tint); }
+.sheet-pan-controls :disabled { opacity: .5; cursor: default; }
+@media (hover: hover) and (pointer: fine) {
+  .sheet-scroll[data-drag-scroll], .sheet-scroll[data-drag-scroll] tbody tr { cursor: grab; }
+}
+.sheet-scroll[data-dragging="true"], .sheet-scroll[data-dragging="true"] * { cursor: grabbing !important; user-select: none; }
+
 /* The outer region owns both axes; a second overflow ancestor breaks sticky cells. */
 .sheet-scroll > [data-slot="table-container"] {
   overflow: visible;
