@@ -1,0 +1,26 @@
+[
+  {
+    "clientWidth": 375,
+    "rows": 50,
+    "scrollWidth": 375,
+    "tableTop": 737.984375,
+    "tableWidth": 1200,
+    "width": 390
+  },
+  {
+    "clientWidth": 753,
+    "rows": 50,
+    "scrollWidth": 753,
+    "tableTop": 649.859375,
+    "tableWidth": 1200,
+    "width": 768
+  },
+  {
+    "clientWidth": 1265,
+    "rows": 50,
+    "scrollWidth": 1265,
+    "tableTop": 628.265625,
+    "tableWidth": 1200,
+    "width": 1280
+  }
+]

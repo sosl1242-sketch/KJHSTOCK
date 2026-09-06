@@ -1,0 +1,11 @@
+{
+  "surface": "KJHSTOCK futures Sheet",
+  "artifact": ".superloopy/evidence/frontend/readable-sheets/VISUAL_QA.md",
+  "visualReview": "pass",
+  "designCompliance": "pass",
+  "browserFlow": "pass",
+  "viewportWidths": [390, 768, 1280],
+  "lighthouse": "not measured; supported browser connection unavailable",
+  "liveErrorSimulation": "not performed",
+  "notes": "Evidence record written directly; no Superloopy orchestrator CLI installed. No Lighthouse score claimed."
+}

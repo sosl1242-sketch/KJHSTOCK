@@ -38,6 +38,7 @@ type BinanceKline = [
 ];
 
 type BinanceTickerStreamItem = {
+  st?: 1 | 2;
   s: string;
   c: string;
   h: string;
@@ -140,7 +141,11 @@ function subscribeTickerStream(
       try {
         const payload = JSON.parse(String(event.data)) as BinanceTickerStreamItem[];
         if (!Array.isArray(payload)) return;
-        const updates: BinanceFuturesTicker[] = payload.map(item => ({
+        // Migrated streams include both markets; legacy entries omit st.
+        const marketCode = marketType === "USD-M" ? 1 : 2;
+        const marketPayload = payload.filter(item => item.st === undefined || item.st === marketCode);
+        if (!marketPayload.length) return;
+        const updates: BinanceFuturesTicker[] = marketPayload.map(item => ({
           symbol: item.s,
           lastPrice: item.c,
           highPrice: item.h,
@@ -151,7 +156,12 @@ function subscribeTickerStream(
           quoteVolume: marketType === "USD-M" ? item.q : undefined,
           closeTime: item.E,
         }));
-        onRowsUpdate(rows => applyTickerUpdates(rows, updates));
+        onRowsUpdate(rows => {
+          const marketRows = rows.filter(row => row.marketType === marketType);
+          const updatedRows = applyTickerUpdates(marketRows, updates);
+          let marketIndex = 0;
+          return rows.map(row => row.marketType === marketType ? updatedRows[marketIndex++] : row);
+        });
       } catch {
         onStatusChange(marketType, "error");
       }

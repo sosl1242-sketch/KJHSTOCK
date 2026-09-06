@@ -1,12 +1,24 @@
 import { trpc } from "@/lib/trpc";
 import { supabase } from "@/lib/supabase";
-import { UNAUTHED_ERR_MSG } from '@shared/const';
+import { UNAUTHED_ERR_MSG } from "@shared/const";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import "./index.css";
+
+// Only request optional analytics when this deployment actually configures it.
+if (
+  import.meta.env.VITE_ANALYTICS_ENDPOINT &&
+  import.meta.env.VITE_ANALYTICS_WEBSITE_ID
+) {
+  const analytics = document.createElement("script");
+  analytics.defer = true;
+  analytics.src = `${import.meta.env.VITE_ANALYTICS_ENDPOINT.replace(/\/$/, "")}/umami`;
+  analytics.dataset.websiteId = import.meta.env.VITE_ANALYTICS_WEBSITE_ID;
+  document.head.appendChild(analytics);
+}
 
 const queryClient = new QueryClient();
 
