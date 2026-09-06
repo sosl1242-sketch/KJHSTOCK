@@ -1,0 +1,14 @@
+{
+  "surface": "KJHSTOCK Sheet filters and market research report",
+  "artifact": ".superloopy/evidence/frontend/rebuilt-reports/VISUAL_QA.md",
+  "visualReview": "pass",
+  "designCompliance": "pass",
+  "browserFlow": "pass",
+  "viewportWidths": [390, 768, 1280],
+  "tests": { "files": 19, "passed": 128 },
+  "typecheck": "pass",
+  "productionBuild": "pass",
+  "lighthouse": "not measured; supported browser connection unavailable",
+  "liveErrorSimulation": "not performed; transport failures and aborts tested with mocks",
+  "notes": "Direct evidence record; raw reference diff has different dimensions and is not a pixel-fidelity assertion."
+}

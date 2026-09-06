@@ -1,11 +1,15 @@
 /* The market workspace token contract is documented in DESIGN.md. */
 .market-search { position: relative; }
-.market-filter-disclosure { margin-top: var(--space-3); }
-.market-filter-disclosure summary { cursor: pointer; color: var(--market-accent-ink); font-size: var(--market-font-meta); font-weight: 600; }
-.market-filter-disclosure summary span { color: var(--market-muted); margin-left: var(--space-2); font-weight: 400; }
-.market-filter-disclosure[open] .market-filter-grid { margin-top: var(--space-3); }
-.market-filter-disclosure .market-filter-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-@media (max-width: 767px) { .market-filter-disclosure .market-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.market-filter-heading { display: flex; justify-content: space-between; gap: var(--space-3); margin-block: var(--space-4) var(--space-3); font-size: var(--market-font-meta); }
+.market-filter-heading h3 { font-weight: 600; }
+.market-filter-heading span { color: var(--market-muted); }
+.market-filters .market-filter-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: end; }
+.market-filters .market-filter-grid > :first-child { grid-column: auto; }
+.market-filter-field { min-width: 0; }
+.market-filter-field legend { padding: 0; margin-bottom: var(--space-2); font-size: var(--market-font-meta); color: var(--market-muted); }
+.market-filter-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-3); }
+.market-filter-actions > span { margin-left: auto; font-size: var(--market-font-meta); color: var(--market-muted); }
+@media (max-width: 767px) { .market-filters .market-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .market-workspace {
   --market-bg: #f5f7fa;
   --market-surface: #ffffff;

@@ -66,6 +66,7 @@ export type FuturesMarketRow = {
   nextFundingTime: string | null;
   openInterestUsd: number | null;
   openInterestToVolumePercent: number | null;
+  /** Exchange quote time; empty when the exchange timestamp is unavailable. */
   lastUpdated: string;
   signal: FuturesBias;
 };
@@ -206,6 +207,7 @@ export type BuildFuturesRowsInput = {
   tickers: BinanceFuturesTicker[];
   premiumIndex: BinancePremiumIndex[];
   openInterestBySymbol: Map<string, number | null>;
+  /** @deprecated Fetch time cannot establish quote freshness; ticker.closeTime is authoritative. */
   nowIso?: string;
 };
 
@@ -265,8 +267,9 @@ const biasName: Record<FuturesBias, string> = {
 };
 
 const isoFromMillis = (value: number | null | undefined) => {
-  if (!value || !Number.isFinite(value)) return null;
-  return new Date(value).toISOString();
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 };
 
 const signalFromRow = (change24hPercent: number, fundingRate: number | null, openInterestToVolumePercent: number | null): FuturesBias => {
@@ -380,7 +383,7 @@ export function buildFuturesRows(input: BuildFuturesRowsInput): FuturesMarketRow
         nextFundingTime: isoFromMillis(premium?.nextFundingTime),
         openInterestUsd,
         openInterestToVolumePercent,
-        lastUpdated: input.nowIso ?? isoFromMillis(ticker.closeTime) ?? new Date().toISOString(),
+        lastUpdated: isoFromMillis(ticker.closeTime) ?? "",
         signal: signalFromRow(change24hPercent, fundingRate, openInterestToVolumePercent),
       };
     })

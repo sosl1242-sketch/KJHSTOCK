@@ -1,0 +1,97 @@
+{
+  "report": [
+    {
+      "docWidth": 753,
+      "headline": "시장 분석 리포트",
+      "width": 768
+    },
+    {
+      "docWidth": 375,
+      "headline": "시장 분석 리포트",
+      "width": 390
+    }
+  ],
+  "sheet": [
+    {
+      "collapseCount": 0,
+      "docWidth": 375,
+      "filters": [
+        {
+          "label": "자산 유형",
+          "visible": true
+        },
+        {
+          "label": "마켓",
+          "visible": true
+        },
+        {
+          "label": "표시 통화",
+          "visible": true
+        },
+        {
+          "label": "시그널",
+          "visible": true
+        },
+        {
+          "label": "정렬 기준",
+          "visible": true
+        }
+      ],
+      "width": 390
+    },
+    {
+      "collapseCount": 0,
+      "docWidth": 753,
+      "filters": [
+        {
+          "label": "자산 유형",
+          "visible": true
+        },
+        {
+          "label": "마켓",
+          "visible": true
+        },
+        {
+          "label": "표시 통화",
+          "visible": true
+        },
+        {
+          "label": "시그널",
+          "visible": true
+        },
+        {
+          "label": "정렬 기준",
+          "visible": true
+        }
+      ],
+      "width": 768
+    },
+    {
+      "collapseCount": 0,
+      "docWidth": 1265,
+      "filters": [
+        {
+          "label": "자산 유형",
+          "visible": true
+        },
+        {
+          "label": "마켓",
+          "visible": true
+        },
+        {
+          "label": "표시 통화",
+          "visible": true
+        },
+        {
+          "label": "시그널",
+          "visible": true
+        },
+        {
+          "label": "정렬 기준",
+          "visible": true
+        }
+      ],
+      "width": 1280
+    }
+  ]
+}

@@ -1,3 +1,5 @@
+import { ResearchReportPanel } from "@/components/ResearchReportPanel";
+import { useFuturesResearchReport } from "@/hooks/useFuturesResearchReport";
 import "@/styles/market-workspace.css";
 import { SortableFuturesHeader } from "@/components/SortableFuturesHeader";
 import { sortFuturesRows, type FuturesTableSortKey as SortKey, type FuturesSortDirection as SortDirection } from "@/lib/futuresTableSort";
@@ -8,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
 import {
   fetchAllFuturesRows,
   fetchFuturesTechnicalDetail,
@@ -16,20 +17,14 @@ import {
 } from "@/lib/binanceFuturesClient";
 import { cn } from "@/lib/utils";
 import {
-  buildFuturesFinalJudgmentReport,
   buildFuturesSelectedSymbolAnalysis,
-  buildFuturesWatchReport,
-  buildFuturesWatchReportMarkdown,
   summarizeFuturesRows,
   type FuturesBias,
   type FuturesCandle,
   type FuturesMarketRow,
   type FuturesMarketType,
   type FuturesTechnicalIndicators,
-  type FuturesFinalJudgmentReport,
   type FuturesSelectedSymbolAnalysis,
-  type FuturesWatchReportItem,
-  type FuturesWatchTechnicalSnapshot,
 } from "@shared/binanceFuturesAnalysis";
 import {
   Activity,
@@ -38,9 +33,7 @@ import {
   BarChart3,
   Bitcoin,
   Clock3,
-  Clipboard,
   DatabaseZap,
-  Download,
   Gauge,
   LineChart as LineChartIcon,
   Loader2,
@@ -56,12 +49,10 @@ import {
 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { toast } from "sonner";
 
 type WsStatus = "idle" | "connecting" | "live" | "closed" | "error";
 
 type FuturesSelectionKey = `${FuturesMarketType}:${string}`;
-type ReportTechnicalByKey = Partial<Record<FuturesSelectionKey, FuturesWatchTechnicalSnapshot>>;
 type IndicatorJudgmentTone = "buy" | "watch" | "avoid" | "high" | "low";
 type IndicatorJudgment = {
   label: string;
@@ -82,7 +73,6 @@ type StableSymbolChartRow = {
 };
 
 const MARKET_METADATA_REFRESH_MS = 300_000;
-const REPORT_TECHNICAL_REFRESH_MS = 120_000;
 const FAVORITES_STORAGE_KEY = "kjhstock-binance-futures-favorites";
 const chartGridStroke = "#e2e8f0";
 const chartMutedText = "#64748b";
@@ -105,14 +95,6 @@ const signalMeta: Record<FuturesBias, { label: string; className: string }> = {
   bullish: { label: "강세", className: "border-emerald-200 bg-emerald-50 text-emerald-700" },
   neutral: { label: "중립", className: "border-slate-200 bg-slate-50 text-slate-600" },
   bearish: { label: "약세", className: "border-rose-200 bg-rose-50 text-rose-700" },
-};
-
-const reportCategoryLabel: Record<FuturesWatchReportItem["category"], string> = {
-  momentum_liquidity: "모멘텀",
-  volume_leader: "유동성",
-  funding_pressure: "펀딩",
-  pullback_liquidity: "변동성",
-  coin_margin_focus: "COIN-M",
 };
 
 const intervalLabels: Record<string, string> = {
@@ -402,43 +384,6 @@ function mergeRowsWithoutLayoutShift(previousRows: FuturesMarketRow[], nextRows:
     }));
 
   return [...mergedRows, ...appendedRows];
-}
-
-function technicalSnapshotFromIndicators(indicators: FuturesTechnicalIndicators): FuturesWatchTechnicalSnapshot {
-  return {
-    score: indicators.score,
-    bias: indicators.bias,
-    rsi14: indicators.rsi14,
-    ema20: indicators.ema20,
-    ema50: indicators.ema50,
-    macdHistogram: indicators.macdHistogram,
-    atrPercent: indicators.atrPercent,
-    volume20Ratio: indicators.volume20Ratio,
-  };
-}
-
-async function copyTextToClipboard(text: string) {
-  if (navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return;
-    } catch {
-      // Fall back to selection-based copy when the browser blocks async clipboard access.
-    }
-  }
-
-  const textArea = document.createElement("textarea");
-  textArea.value = text;
-  textArea.setAttribute("readonly", "true");
-  textArea.style.position = "fixed";
-  textArea.style.left = "-9999px";
-  document.body.appendChild(textArea);
-  textArea.focus();
-  textArea.select();
-  textArea.setSelectionRange(0, text.length);
-  const copied = document.execCommand("copy");
-  textArea.remove();
-  if (!copied) throw new Error("Clipboard copy failed");
 }
 
 function SummaryCard({
@@ -839,280 +784,6 @@ function MarketVisualBoard({ rows }: { rows: FuturesMarketRow[] }) {
   );
 }
 
-function WatchReport({
-  items,
-  markdown,
-  technicalLoading,
-  technicalUpdatedAt,
-  onSelect,
-  onCopyReport,
-  onDownloadReport,
-}: {
-  items: FuturesWatchReportItem[];
-  markdown: string;
-  technicalLoading: boolean;
-  technicalUpdatedAt: string | null;
-  onSelect: (key: FuturesSelectionKey) => void;
-  onCopyReport: () => void;
-  onDownloadReport: () => void;
-}) {
-  const hasItems = items.length > 0;
-
-  return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 ">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="flex items-center gap-2 text-base font-semibold text-slate-950">
-            <Sparkles className="h-4 w-4 text-amber-500" />
-            주목 후보 리포트
-          </h2>
-          <p className="mt-1 text-xs text-slate-500">거래대금, 24h 변동, 펀딩비, COIN-M 흐름을 조합한 관찰 후보입니다.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" variant="outline" size="sm" className="h-9 rounded-md bg-white" onClick={onCopyReport} disabled={!hasItems}>
-            <Clipboard className="mr-2 h-4 w-4" />
-            리포트 복사
-          </Button>
-          <Button type="button" variant="outline" size="sm" className="h-9 rounded-md bg-white" onClick={onDownloadReport} disabled={!hasItems}>
-            <Download className="mr-2 h-4 w-4" />
-            MD 저장
-          </Button>
-          <Badge variant="outline" className="h-9 w-fit rounded-md bg-slate-50 px-3 text-slate-600">
-            투자 조언 아님
-          </Badge>
-          <Badge variant="outline" className="h-9 w-fit rounded-md bg-slate-50 px-3 text-slate-600">
-            {technicalLoading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Gauge className="mr-1 h-3.5 w-3.5" />}
-            {technicalLoading ? "TA 갱신 중" : technicalUpdatedAt ? `TA ${formatDateTime(technicalUpdatedAt)}` : "TA 대기"}
-          </Badge>
-        </div>
-      </div>
-      <div className="mt-4 grid gap-3 lg:grid-cols-2 2xl:grid-cols-5">
-        {items.slice(0, 5).map(item => (
-          <button
-            key={`${item.category}-${item.symbol}`}
-            type="button"
-            onClick={() => onSelect(rowSelectionKey(item))}
-            className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-left transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <Badge variant="outline" className="rounded-md bg-white text-[11px] text-slate-500">
-                  {reportCategoryLabel[item.category]}
-                </Badge>
-                <h3 className="mt-2 text-lg font-semibold text-slate-950">{item.symbol}</h3>
-                <p className="mt-1 text-xs font-semibold text-slate-500">
-                  {item.marketType} · {item.contractType}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-bold text-slate-400">점수</p>
-                <p className="text-xl font-semibold text-slate-950">{item.priorityScore}</p>
-              </div>
-            </div>
-            <p className="mt-3 text-sm font-semibold text-slate-800">{item.title}</p>
-            <p className="mt-2 text-xs leading-5 text-slate-600">{item.why}</p>
-            <p className="mt-3 border-t border-slate-200 pt-3 text-xs leading-5 text-rose-700">{item.risk}</p>
-            <div className="mt-3 border-t border-slate-200 pt-3">
-              <p className="flex items-center gap-1 text-[11px] font-semibold uppercase text-slate-400">
-                <Target className="h-3 w-3" />
-                관찰 체크
-              </p>
-              <ul className="mt-2 space-y-1.5 text-xs leading-5 text-slate-600">
-                {item.watchPoints.slice(0, 2).map(point => (
-                  <li key={point} className="flex gap-2">
-                    <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-slate-400" />
-                    <span>{point}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 text-xs">
-              {item.technical ? (
-                <>
-                  <div>
-                    <p className="font-bold text-slate-400">TA 점수</p>
-                    <p className="mt-0.5 font-semibold text-slate-900">
-                      {item.technical.score} · {signalMeta[item.technical.bias].label}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-bold text-slate-400">RSI</p>
-                    <p className="mt-0.5 font-semibold text-slate-900">{item.technical.rsi14.toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <p className="font-bold text-slate-400">MACD</p>
-                    <p className={cn("mt-0.5 font-semibold", item.technical.macdHistogram >= 0 ? "text-emerald-700" : "text-rose-700")}>
-                      {item.technical.macdHistogram.toLocaleString("ko-KR", { maximumFractionDigits: 6 })}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-bold text-slate-400">ATR</p>
-                    <p className="mt-0.5 font-semibold text-slate-900">{item.technical.atrPercent.toFixed(2)}%</p>
-                  </div>
-                </>
-              ) : (
-                <p className="col-span-2 font-semibold text-slate-500">
-                  {technicalLoading ? "기술 지표 계산 중" : "기술 지표 대기"}
-                </p>
-              )}
-            </div>
-          </button>
-        ))}
-      </div>
-      <details className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
-        <summary className="cursor-pointer text-sm font-semibold text-slate-700">Markdown 리포트 원문</summary>
-        <Textarea
-          readOnly
-          value={markdown}
-          className="mt-3 min-h-64 resize-y rounded-md bg-white font-mono text-xs leading-5 text-slate-700"
-          onFocus={event => event.currentTarget.select()}
-        />
-      </details>
-    </section>
-  );
-}
-
-const finalJudgmentToneClass: Record<FuturesFinalJudgmentReport["tone"], string> = {
-  strong_watch: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  selective_watch: "border-cyan-200 bg-cyan-50 text-cyan-800",
-  neutral_watch: "border-slate-200 bg-slate-50 text-slate-700",
-  risk_first: "border-rose-200 bg-rose-50 text-rose-800",
-};
-
-function FinalJudgmentReport({
-  judgment,
-  technicalLoading,
-  technicalUpdatedAt,
-}: {
-  judgment: FuturesFinalJudgmentReport;
-  technicalLoading: boolean;
-  technicalUpdatedAt: string | null;
-}) {
-  return (
-    <section className="mt-5 rounded-lg border border-slate-200 bg-white p-4 ">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">시장 종합 판단</p>
-          <h2 className="mt-1 flex items-center gap-2 text-xl font-semibold text-slate-950">
-            <Sparkles className="h-5 w-5 text-amber-500" />
-            최종 종합판단
-          </h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{judgment.headline}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className={cn("h-9 rounded-md px-3 text-sm font-semibold", finalJudgmentToneClass[judgment.tone])}>
-            {judgment.label}
-          </Badge>
-          <Badge variant="outline" className="h-9 rounded-md bg-slate-950 px-3 text-sm font-semibold text-white">
-            종합 {judgment.score}
-          </Badge>
-          <Badge variant="outline" className="h-9 rounded-md bg-slate-50 px-3 text-slate-600">
-            {technicalLoading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Gauge className="mr-1 h-3.5 w-3.5" />}
-            {technicalLoading ? "TA 갱신 중" : technicalUpdatedAt ? `TA ${formatDateTime(technicalUpdatedAt)}` : "TA 대기"}
-          </Badge>
-        </div>
-      </div>
-
-      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold text-slate-400">1순위 후보</p>
-              <p className="mt-1 text-3xl font-semibold text-slate-950">{judgment.primarySymbol ?? "자료 부족"}</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{judgment.summary}</p>
-            </div>
-            <Badge variant="outline" className="w-fit rounded-md bg-white px-3 py-1.5 text-slate-700">
-              {judgment.primaryMarketType ?? "대기"}
-            </Badge>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <div className="rounded-md bg-white p-3">
-              <p className="text-[11px] font-semibold text-slate-400">후보 수</p>
-              <p className="mt-1 text-lg font-semibold text-slate-950">{judgment.evidence.candidateCount}</p>
-            </div>
-            <div className="rounded-md bg-white p-3">
-              <p className="text-[11px] font-semibold text-slate-400">TA 확보</p>
-              <p className="mt-1 text-lg font-semibold text-slate-950">{judgment.evidence.technicalCount}/{judgment.evidence.candidateCount}</p>
-            </div>
-            <div className="rounded-md bg-white p-3">
-              <p className="text-[11px] font-semibold text-slate-400">평균 TA</p>
-              <p className="mt-1 text-lg font-semibold text-slate-950">{judgment.evidence.averageTechnicalScore ?? "-"}</p>
-            </div>
-            <div className="rounded-md bg-white p-3">
-              <p className="text-[11px] font-semibold text-slate-400">강세 TA</p>
-              <p className="mt-1 text-lg font-semibold text-emerald-700">{judgment.evidence.bullishTechnicalCount}</p>
-            </div>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <div className="rounded-md bg-white p-3">
-              <p className="text-[11px] font-semibold text-slate-400">24h 거래대금</p>
-              <p className="mt-1 text-sm font-semibold text-slate-950">{formatUsd(judgment.evidence.totalVolume24hUsd)}</p>
-            </div>
-            <div className="rounded-md bg-white p-3">
-              <p className="text-[11px] font-semibold text-slate-400">평균 24h</p>
-              <p className={cn("mt-1 text-sm font-semibold", judgment.evidence.averageChange24hPercent >= 0 ? "text-emerald-700" : "text-rose-700")}>
-                {formatPercent(judgment.evidence.averageChange24hPercent)}
-              </p>
-            </div>
-            <div className="rounded-md bg-white p-3">
-              <p className="text-[11px] font-semibold text-slate-400">과열</p>
-              <p className="mt-1 text-sm font-semibold text-amber-700">{judgment.evidence.overboughtCount}</p>
-            </div>
-            <div className="rounded-md bg-white p-3">
-              <p className="text-[11px] font-semibold text-slate-400">펀딩 쏠림</p>
-              <p className="mt-1 text-sm font-semibold text-rose-700">{judgment.evidence.extremeFundingCount}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-3">
-          <div className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-4">
-            <h3 className="text-sm font-semibold text-emerald-900">종합 근거</h3>
-            <ul className="mt-3 space-y-2 text-sm leading-6 text-emerald-950">
-              {judgment.strengths.map(item => (
-                <li key={item} className="flex gap-2">
-                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="rounded-lg border border-rose-100 bg-rose-50/70 p-4">
-            <h3 className="text-sm font-semibold text-rose-900">주의 리스크</h3>
-            <ul className="mt-3 space-y-2 text-sm leading-6 text-rose-950">
-              {judgment.risks.map(item => (
-                <li key={item} className="flex gap-2">
-                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-3 rounded-lg border border-slate-200 bg-slate-950 p-4 text-white">
-        <h3 className="flex items-center gap-2 text-sm font-semibold">
-          <Target className="h-4 w-4 text-cyan-300" />
-          실행 체크
-        </h3>
-        <ol className="mt-3 grid gap-2 text-sm leading-6 text-slate-200 lg:grid-cols-2">
-          {judgment.actionPlan.map((item, index) => (
-            <li key={item} className="flex gap-2">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white text-[11px] font-semibold text-slate-950">{index + 1}</span>
-              <span>{item}</span>
-            </li>
-          ))}
-        </ol>
-      </div>
-
-      <p className="mt-3 text-xs leading-5 text-slate-500">
-        Binance USD-M 및 COIN-M 공개 API와 확보된 기술 지표 기준입니다. 데이터는 지연되거나 누락될 수 있으며, 표시된 점수와 리포트는 투자 조언이 아닙니다.
-      </p>
-    </section>
-  );
-}
-
 const selectedAnalysisToneClass: Record<FuturesSelectedSymbolAnalysis["tone"], string> = {
   strong: "border-emerald-200 bg-emerald-50 text-emerald-800",
   buy: "border-cyan-200 bg-cyan-50 text-cyan-800",
@@ -1429,6 +1100,7 @@ export default function BinanceFutures() {
   const sheetScrollRef = useRef<HTMLDivElement>(null);
   const moveFocusAfterNavigation = useRef(false);
   const [activeView, setActiveView] = useState("sheet");
+  const research = useFuturesResearchReport(activeView === "reports");
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState<FuturesMarketRow[]>([]);
   const [selectedKey, setSelectedKey] = useState<FuturesSelectionKey | "">("");
@@ -1448,10 +1120,6 @@ export default function BinanceFutures() {
   const [technicalLoading, setTechnicalLoading] = useState(false);
   const [technicalError, setTechnicalError] = useState<string | null>(null);
   const [technical, setTechnical] = useState<{ key: string; candles: FuturesCandle[]; indicators: FuturesTechnicalIndicators } | null>(null);
-  const [reportTechnicalByKey, setReportTechnicalByKey] = useState<ReportTechnicalByKey>({});
-  const [reportTechnicalLoading, setReportTechnicalLoading] = useState(false);
-  const [reportTechnicalUpdatedAt, setReportTechnicalUpdatedAt] = useState<string | null>(null);
-  const [reportTechnicalRefreshTick, setReportTechnicalRefreshTick] = useState(0);
   const [favoriteKeys, setFavoriteKeys] = useState<FuturesSelectionKey[]>(readFavoriteKeysFromStorage);
   const [favoriteOnly, setFavoriteOnly] = useState(false);
 
@@ -1504,12 +1172,6 @@ export default function BinanceFutures() {
     return () => window.clearInterval(timer);
   }, [reload, rows.length]);
 
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setReportTechnicalRefreshTick(current => current + 1);
-    }, REPORT_TECHNICAL_REFRESH_MS);
-    return () => window.clearInterval(timer);
-  }, []);
 
   const selectedRow = useMemo(() => rows.find(row => rowSelectionKey(row) === selectedKey), [rows, selectedKey]);
   const selectedTechnicalKey = selectedRow ? `${rowSelectionKey(selectedRow)}:${interval}` : "";
@@ -1534,18 +1196,6 @@ export default function BinanceFutures() {
   }, [selectedKey, selectedRow?.marketType, selectedRow?.symbol, interval]);
 
   const summary = useMemo(() => summarizeFuturesRows(rows), [rows]);
-  const report = useMemo(() => buildFuturesWatchReport(rows), [rows]);
-  const reportCandidates = useMemo(() => report.items.slice(0, 5), [report]);
-  const reportCandidateSignature = useMemo(() => reportCandidates.map(item => rowSelectionKey(item)).join("|"), [reportCandidates]);
-  const reportWithTechnical = useMemo(() => ({
-    ...report,
-    items: report.items.map(item => ({
-      ...item,
-      technical: reportTechnicalByKey[rowSelectionKey(item)],
-    })),
-  }), [report, reportTechnicalByKey]);
-  const finalJudgment = useMemo(() => buildFuturesFinalJudgmentReport(reportWithTechnical), [reportWithTechnical]);
-  const reportMarkdown = useMemo(() => buildFuturesWatchReportMarkdown(reportWithTechnical), [reportWithTechnical]);
   const quoteAssets = useMemo(() => Array.from(new Set(rows.map(row => row.quoteAsset))).sort(), [rows]);
   const favoriteKeySet = useMemo(() => new Set(favoriteKeys), [favoriteKeys]);
   const favoriteRows = useMemo(() => {
@@ -1573,61 +1223,6 @@ export default function BinanceFutures() {
     moveFocusAfterNavigation.current = true;
     setActiveView("detail");
   }, []);
-
-  useEffect(() => {
-    if (!reportCandidates.length) {
-      setReportTechnicalByKey({});
-      setReportTechnicalLoading(false);
-      setReportTechnicalUpdatedAt(null);
-      return;
-    }
-
-    const controller = new AbortController();
-    const candidates = reportCandidates;
-    setReportTechnicalLoading(true);
-
-    Promise.all(candidates.map(async item => {
-      try {
-        const detail = await fetchFuturesTechnicalDetail(item.symbol, item.marketType, interval, controller.signal);
-        return [rowSelectionKey(item), technicalSnapshotFromIndicators(detail.indicators)] as const;
-      } catch {
-        return null;
-      }
-    }))
-      .then(entries => {
-        if (controller.signal.aborted) return;
-        const nextTechnicalByKey = Object.fromEntries(entries.filter(entry => entry !== null));
-        setReportTechnicalByKey(nextTechnicalByKey);
-        if (Object.keys(nextTechnicalByKey).length > 0) {
-          setReportTechnicalUpdatedAt(new Date().toISOString());
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setReportTechnicalLoading(false);
-      });
-
-    return () => controller.abort();
-  }, [reportCandidateSignature, interval, reportTechnicalRefreshTick]);
-
-  const copyReport = useCallback(() => {
-    void copyTextToClipboard(reportMarkdown)
-      .then(() => toast.success("주목 후보 리포트를 복사했습니다."))
-      .catch(() => toast.error("클립보드 복사에 실패했습니다."));
-  }, [reportMarkdown]);
-
-  const downloadReport = useCallback(() => {
-    const generatedDate = (report.generatedAt ?? new Date().toISOString()).slice(0, 10);
-    const blob = new Blob([reportMarkdown], { type: "text/markdown;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `binance-futures-watch-report-${generatedDate}.md`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-    toast.success("Markdown 리포트를 저장했습니다.");
-  }, [report.generatedAt, reportMarkdown]);
 
   const visibleRows = useMemo(() => {
     const normalizedQuery = query.trim().toUpperCase();
@@ -1688,6 +1283,7 @@ export default function BinanceFutures() {
         </div>
       </header>
       <main className="market-main">
+        {activeView !== "reports" && <>
         <div className="market-intro">
           <div><h1>선물 시장 한눈에</h1><p>종목을 비교하고, 원하는 기준으로 정렬하세요.</p></div>
           <p className="market-updated" title={"전체 목록 갱신 " + formatDateTime(metadataLastRefreshedAt)}>시세 갱신 {formatDateTime(summary.lastUpdated)}</p>
@@ -1706,6 +1302,7 @@ export default function BinanceFutures() {
           <SummaryCard title="하락 1위" value={summary.topLoser?.symbol ?? "-"} detail={formatPercent(summary.topLoser?.change24hPercent)} icon={ArrowDown} />
         </section>
 
+        </>}
         <Tabs value={activeView} onValueChange={setActiveView} className="market-views">
           <TabsList className="market-tabs" aria-label="분석 화면">
             <TabsTrigger value="sheet" ref={sheetTabRef}>Sheet</TabsTrigger>
@@ -1726,9 +1323,9 @@ export default function BinanceFutures() {
                     aria-label="이름 또는 심볼 검색"
                   />
                 </div>
-              <details className="market-filter-disclosure">
-                <summary>필터 및 정렬 <span>{[assetFilter !== "crypto", marketFilter !== "all", quoteFilter !== "all", signalFilter !== "all", favoriteOnly].filter(Boolean).length}개 필터 적용</span></summary>
+              <div className="market-filter-heading"><h3>종목 필터</h3><span>{[assetFilter !== "crypto", marketFilter !== "all", quoteFilter !== "all", signalFilter !== "all", favoriteOnly, Boolean(query.trim())].filter(Boolean).length}개 필터 적용</span></div>
               <div className="market-filter-grid">
+                <fieldset className="market-filter-field"><legend>자산 유형</legend>
                 <Select value={assetFilter} onValueChange={setAssetFilter}>
                   <SelectTrigger aria-label="자산 유형" className="h-10 w-full rounded-md bg-white">
                     <SelectValue />
@@ -1739,6 +1336,8 @@ export default function BinanceFutures() {
                     <SelectItem value="tradefi">TradeFi</SelectItem>
                   </SelectContent>
                 </Select>
+                </fieldset>
+                <fieldset className="market-filter-field"><legend>마켓</legend>
                 <Select value={marketFilter} onValueChange={setMarketFilter}>
                   <SelectTrigger aria-label="마켓" className="h-10 w-full rounded-md bg-white">
                     <SelectValue />
@@ -1749,6 +1348,8 @@ export default function BinanceFutures() {
                     <SelectItem value="COIN-M">COIN-M</SelectItem>
                   </SelectContent>
                 </Select>
+                </fieldset>
+                <fieldset className="market-filter-field"><legend>표시 통화</legend>
                 <Select value={quoteFilter} onValueChange={setQuoteFilter}>
                   <SelectTrigger aria-label="표시 통화" className="h-10 w-full rounded-md bg-white">
                     <SelectValue />
@@ -1762,6 +1363,8 @@ export default function BinanceFutures() {
                     ))}
                   </SelectContent>
                 </Select>
+                </fieldset>
+                <fieldset className="market-filter-field"><legend>시그널</legend>
                 <Select value={signalFilter} onValueChange={setSignalFilter}>
                   <SelectTrigger aria-label="시그널" className="h-10 w-full rounded-md bg-white">
                     <SelectValue />
@@ -1773,6 +1376,8 @@ export default function BinanceFutures() {
                     <SelectItem value="bearish">약세</SelectItem>
                   </SelectContent>
                 </Select>
+                </fieldset>
+                <fieldset className="market-filter-field"><legend>정렬 기준</legend>
                 <Select
                   value={sortKey}
                   onValueChange={value => {
@@ -1792,6 +1397,9 @@ export default function BinanceFutures() {
                     ))}
                   </SelectContent>
                 </Select>
+                </fieldset>
+              </div>
+              <div className="market-filter-actions">
                 <Button
                   type="button"
                   variant="outline"
@@ -1814,8 +1422,8 @@ export default function BinanceFutures() {
                   즐겨찾기만
                 </Button>
                 <Button variant="ghost" onClick={resetFilters}>필터 초기화</Button>
+                <span>{visibleRows.length.toLocaleString("ko-KR")}개 계약 표시</span>
               </div>
-              </details>
             </section>
 
             {favoriteKeys.length > 0 ? (
@@ -1972,8 +1580,7 @@ export default function BinanceFutures() {
           </TabsContent>
           <TabsContent value="charts" className="market-view"><div className="view-intro"><h2>시장 흐름 비교</h2><p>거래대금, 등락률, 펀딩비를 함께 확인하세요.</p></div><MarketVisualBoard rows={rows} /></TabsContent>
           <TabsContent value="reports" className="market-view">
-            <WatchReport items={reportWithTechnical.items} markdown={reportMarkdown} technicalLoading={reportTechnicalLoading} technicalUpdatedAt={reportTechnicalUpdatedAt} onSelect={selectContract} onCopyReport={copyReport} onDownloadReport={downloadReport} />
-            <FinalJudgmentReport judgment={finalJudgment} technicalLoading={reportTechnicalLoading} technicalUpdatedAt={reportTechnicalUpdatedAt} />
+            <ResearchReportPanel state={research} onSelect={selectContract} />
           </TabsContent>
           <TabsContent value="detail" className="market-view" ref={detailPanelRef} tabIndex={-1}>
             <div className="detail-toolbar"><Button variant="outline" onClick={() => { moveFocusAfterNavigation.current = true; setActiveView("sheet"); }}>← Sheet로 돌아가기</Button><span>표의 이름을 누르면 분석 종목이 바뀝니다.</span></div>
