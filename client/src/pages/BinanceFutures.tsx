@@ -1,4 +1,5 @@
 import { ResearchReportPanel } from "@/components/ResearchReportPanel";
+import { CoinPurpose } from "@/components/CoinPurpose";
 import { useFuturesResearchReport } from "@/hooks/useFuturesResearchReport";
 import "@/styles/market-workspace.css";
 import { SortableFuturesHeader } from "@/components/SortableFuturesHeader";
@@ -939,6 +940,8 @@ function TechnicalPanel({
             {signalMeta[bias].label}
           </Badge>
         </div>
+
+        <CoinPurpose row={row} />
 
         <div className="mt-4 grid grid-cols-2 gap-3">
           <div className="rounded-lg bg-slate-50 p-3">

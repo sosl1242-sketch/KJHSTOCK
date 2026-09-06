@@ -1,0 +1,14 @@
+{
+  "surface": "selected-contract coin purpose",
+  "artifact": ".superloopy/evidence/frontend/coin-purpose/VISUAL_QA.md",
+  "visualReview": "pass",
+  "designCompliance": "pass",
+  "browserFlow": "pass",
+  "viewportWidths": [390, 768, 1280],
+  "catalogCount": 69,
+  "explicitDenominationAliases": 4,
+  "tests": {"files": 20, "passed": 135},
+  "typecheck": "pass",
+  "productionBuild": "pass",
+  "lighthouse": "not measured; supported debugging connection unavailable"
+}
