@@ -19,6 +19,10 @@ export function useVisitorChat() {
     status: endpoint ? "loading" : "unconfigured",
     error: null,
     sending: false,
+    hasOlder: false,
+    loadingOlder: false,
+    historyError: null,
+    sentMessageIds: [],
   }));
 
   useEffect(() => {
@@ -58,5 +62,9 @@ export function useVisitorChat() {
       void sessionRef.current?.refresh();
   }, []);
 
-  return { ...state, send, refresh };
+  const loadOlder = useCallback((): void => {
+    void sessionRef.current?.loadOlder();
+  }, []);
+
+  return { ...state, send, refresh, loadOlder };
 }

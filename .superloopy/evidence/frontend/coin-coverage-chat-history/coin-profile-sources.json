@@ -1,0 +1,3684 @@
+[
+  {
+    "asset": "BTC",
+    "name": "비트코인",
+    "sourceUrl": "https://bitcoin.org/en/faq",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ETH",
+    "name": "이더리움",
+    "sourceUrl": "https://ethereum.org/developers/docs/intro-to-ether",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SOL",
+    "name": "솔라나",
+    "sourceUrl": "https://solana.com/learn/introduction-to-solana-tokens",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BNB",
+    "name": "비앤비",
+    "sourceUrl": "https://docs.bnbchain.org/bnb-smart-chain/introduction/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "XRP",
+    "name": "엑스알피",
+    "sourceUrl": "https://xrpl.org/about/faq",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "DOGE",
+    "name": "도지코인",
+    "sourceUrl": "https://dogecoin.com/dogepedia/articles/what-is-dogecoin/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ADA",
+    "name": "에이다",
+    "sourceUrl": "https://cardano.org/what-is-ada/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AVAX",
+    "name": "아발란체",
+    "sourceUrl": "https://build.avax.network/docs/primary-network/avax-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SUI",
+    "name": "수이",
+    "sourceUrl": "https://docs.sui.io/develop/sui-architecture/tokenomics-overview",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "LINK",
+    "name": "체인링크",
+    "sourceUrl": "https://chain.link/economics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AAVE",
+    "name": "에이브",
+    "sourceUrl": "https://aave.com/help/aave-101/introduction-to-aave",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "UNI",
+    "name": "유니스왑",
+    "sourceUrl": "https://developers.uniswap.org/docs/ecosystem/governance/overview",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ARB",
+    "name": "아비트럼",
+    "sourceUrl": "https://docs.arbitrum.foundation/gentle-intro-dao-governance",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "OP",
+    "name": "옵티미즘",
+    "sourceUrl": "https://docs.optimism.io/governance/capital-allocation",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "HYPE",
+    "name": "하이퍼리퀴드",
+    "sourceUrl": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/hyperevm",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ZEC",
+    "name": "지캐시",
+    "sourceUrl": "https://www.z.cash/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "DASH",
+    "name": "대시",
+    "sourceUrl": "https://docs.dash.org/en/stable/docs/user/masternodes/index.html",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "HEMI",
+    "name": "헤미",
+    "sourceUrl": "https://hemi.xyz/token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "WLD",
+    "name": "월드",
+    "sourceUrl": "https://whitepaper.world.org/designing-for-scale",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TON",
+    "name": "톤코인 / Gram",
+    "sourceUrl": "https://ton.org/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "DOT",
+    "name": "폴카닷",
+    "sourceUrl": "https://wiki.polkadot.com/general/faq/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "LTC",
+    "name": "라이트코인",
+    "sourceUrl": "https://litecoin.com/what-is-litecoin",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "NEAR",
+    "name": "니어 프로토콜",
+    "sourceUrl": "https://docs.near.org/protocol/network/tokens",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ATOM",
+    "name": "코스모스 허브",
+    "sourceUrl": "https://docs.cosmos.network/hub/latest/validators/validator-faq",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "APT",
+    "name": "Aptos",
+    "sourceUrl": "https://aptosfoundation.org/whitepaper/aptos-whitepaper_en.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "INJ",
+    "name": "Injective",
+    "sourceUrl": "https://docs.injective.network/defi/tokens/inj-coin",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "RENDER",
+    "name": "Render Network",
+    "sourceUrl": "https://know.rendernetwork.com/basics/the-render-spl-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "FIL",
+    "name": "Filecoin",
+    "sourceUrl": "https://docs.filecoin.io/basics/what-is-filecoin",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ETC",
+    "name": "Ethereum Classic",
+    "sourceUrl": "https://ethereumclassic.org/faqs/users/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TRX",
+    "name": "TRON",
+    "sourceUrl": "https://developers.tron.network/docs/resource-model",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "POL",
+    "name": "Polygon Ecosystem Token",
+    "sourceUrl": "https://docs.polygon.technology/pos/concepts/tokens/pol",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "LDO",
+    "name": "Lido DAO",
+    "sourceUrl": "https://docs.lido.fi/guides/lido-tokens-integration-guide/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "DYDX",
+    "name": "dYdX",
+    "sourceUrl": "https://www.dydx.foundation/blog/dydx-token-utility-explaned",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "JUP",
+    "name": "Jupiter",
+    "sourceUrl": "https://docs.jup.ag/user-docs/more/jup-token/tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SEI",
+    "name": "Sei",
+    "sourceUrl": "https://docs.sei.io/learn/sei-giga",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "FET",
+    "name": "Artificial Superintelligence Alliance",
+    "sourceUrl": "https://network.fetch.ai/docs/introduction/native-and-erc-fet",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TAO",
+    "name": "Bittensor",
+    "sourceUrl": "https://docs.learnbittensor.org/dynamic-tao/dtao-guide",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "GRT",
+    "name": "The Graph",
+    "sourceUrl": "https://thegraph.com/docs/en/resources/tokenomics/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PYTH",
+    "name": "Pyth Network",
+    "sourceUrl": "https://docs.pyth.network/pyth-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ENA",
+    "name": "Ethena",
+    "sourceUrl": "https://docs.ethena.fi/ena",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ONDO",
+    "name": "Ondo",
+    "sourceUrl": "https://docs.ondo.foundation/ondo-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PENDLE",
+    "name": "Pendle",
+    "sourceUrl": "https://docs.pendle.finance/pendle-v2/ProtocolMechanics/Mechanisms/sPENDLE",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TIA",
+    "name": "Celestia",
+    "sourceUrl": "https://docs.celestia.org/learn/TIA/overview/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AR",
+    "name": "Arweave",
+    "sourceUrl": "https://www.arweave.org/yellow-paper.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "STORJ",
+    "name": "Storj",
+    "sourceUrl": "https://www.storj.io/blog/storj-fully-evm-compatible-decentralized-storage-for-ethereum-and-l2-applications",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "JASMY",
+    "name": "JasmyCoin",
+    "sourceUrl": "https://www.jasmy.co.jp/images/company/Jasmy-Whitepaper.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "IOTX",
+    "name": "IoTeX",
+    "sourceUrl": "https://cdn.iotex.io/whitepaper/iotex_whitepaper_eu.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ENS",
+    "name": "Ethereum Name Service",
+    "sourceUrl": "https://docs.ens.domains/dao/token/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "API3",
+    "name": "Api3",
+    "sourceUrl": "https://dao-docs.api3.org/overview/governance.html",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SHIB",
+    "name": "시바이누 (Shiba Inu)",
+    "sourceUrl": "https://shib.io/tokens/shib",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PEPE",
+    "name": "페페 (Pepe)",
+    "sourceUrl": "https://www.pepe.vip/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BONK",
+    "name": "봉크 (Bonk)",
+    "sourceUrl": "https://www.bonkcoin.com/about",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "FLOKI",
+    "name": "플로키 (Floki)",
+    "sourceUrl": "https://floki.com/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "WIF",
+    "name": "도그위프햇 (dogwifhat)",
+    "sourceUrl": "https://dogwifcoin.org/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "1INCH",
+    "name": "원인치 (1inch)",
+    "sourceUrl": "https://1inch.com/blog/post/1inch-token-pioneering-defi-governance-and-utility",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CAKE",
+    "name": "팬케이크스왑 (PancakeSwap)",
+    "sourceUrl": "https://docs.pancakeswap.finance/protocol/voting",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CRV",
+    "name": "커브 (Curve)",
+    "sourceUrl": "https://docs.curve.finance/assets/pdf/whitepaper_curvedao.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "COMP",
+    "name": "컴파운드 (Compound)",
+    "sourceUrl": "https://compound.finance/governance/comp",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SNX",
+    "name": "신세틱스 (Synthetix)",
+    "sourceUrl": "https://synthetix.io/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SUSHI",
+    "name": "스시 (Sushi)",
+    "sourceUrl": "https://www.sushi.com/blog/sushi-bar-is-back",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "GMX",
+    "name": "지엠엑스 (GMX)",
+    "sourceUrl": "https://docs.gmx.io/docs/governance/voting-power/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "RUNE",
+    "name": "토르체인 (THORChain)",
+    "sourceUrl": "https://docs.thorchain.org/understanding-thorchain/rune",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "XLM",
+    "name": "스텔라 루멘 (Stellar)",
+    "sourceUrl": "https://stellar.org/learn/lumens",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BCH",
+    "name": "비트코인 캐시 (Bitcoin Cash)",
+    "sourceUrl": "https://bitcoincash.org/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "HBAR",
+    "name": "헤데라 (Hedera)",
+    "sourceUrl": "https://hedera.com/faq/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ALGO",
+    "name": "알고랜드 (Algorand)",
+    "sourceUrl": "https://algorand.co/technology/the-algo",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ICP",
+    "name": "인터넷 컴퓨터 (Internet Computer)",
+    "sourceUrl": "https://docs.internetcomputer.org/concepts/governance/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "KAS",
+    "name": "카스파 (Kaspa)",
+    "sourceUrl": "https://kaspa.org/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "VET",
+    "name": "비체인 (VeChain)",
+    "sourceUrl": "https://vechain.org/get-started/buy-vet",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "0G",
+    "name": "0G",
+    "sourceUrl": "https://www.binance.com/en/research/projects/0g",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "1000000BOB",
+    "name": "Build On BNB",
+    "sourceUrl": "https://www.bobonbnb.com/project",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "1000000MOG",
+    "name": "Mog Coin",
+    "sourceUrl": "https://mogcoin.xyz/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "1000CAT",
+    "name": "Simon's Cat",
+    "sourceUrl": "https://docs.simonscat.xyz/simons-cat-token/info-and-exchange-listings",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "1000CHEEMS",
+    "name": "Cheems",
+    "sourceUrl": "https://cheems.pet/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "1000LUNC",
+    "name": "Terra Classic",
+    "sourceUrl": "https://www.binance.com/en/research/projects/terra-classic",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "1000RATS",
+    "name": "RATS",
+    "sourceUrl": "https://www.binance.com/en/square/profile/brc20-rats",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "1000SATS",
+    "name": "SATS (Ordinals)",
+    "sourceUrl": "https://www.binance.com/zh-CN/support/announcement/detail/67d516a4ecec4c3ca17760d9afe04570",
+    "sourceLabel": "Binance 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "1000XEC",
+    "name": "eCash",
+    "sourceUrl": "https://e.cash/about",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "1MBABYDOGE",
+    "name": "Baby Doge Coin",
+    "sourceUrl": "https://babydoge.com/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "2Z",
+    "name": "DoubleZero",
+    "sourceUrl": "https://www.binance.com/en/research/projects/doublezero",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "4",
+    "name": "4",
+    "sourceUrl": "https://www.binance.com/en/square/post/30733581796233",
+    "sourceLabel": "Binance 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "A",
+    "name": "Vaulta",
+    "sourceUrl": "https://www.vaulta.com/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ACE",
+    "name": "Fusionist",
+    "sourceUrl": "https://www.binance.com/en/research/analysis/fusionist",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ACH",
+    "name": "Alchemy Pay",
+    "sourceUrl": "https://www.binance.com/en/research/projects/alchemy-pay",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ACT",
+    "name": "Act I: The AI Prophecy",
+    "sourceUrl": "https://assets-cms.kraken.com/files/51n36hrp/facade/5f9fa786f449e7f613e7a52252cf09a0267786d6.pdf",
+    "sourceLabel": "Kraken 자산 공시",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ACU",
+    "name": "Acurast",
+    "sourceUrl": "https://docs.acurast.com/token/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AERO",
+    "name": "Aerodrome",
+    "sourceUrl": "https://aerodrome.finance/docs",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AEVO",
+    "name": "Aevo",
+    "sourceUrl": "https://docs.aevo.xyz/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AGLD",
+    "name": "Adventure Gold",
+    "sourceUrl": "https://www.binance.com/en/research/projects/adventure-gold",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AGT",
+    "name": "Alaya AI",
+    "sourceUrl": "https://alaya-ai.gitbook.io/alaya-ai/user-manual/usdagt-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AIA",
+    "name": "DeAgentAI",
+    "sourceUrl": "https://deagentai.gitbook.io/deagentai/tokenomics/the-value-flywheel-for-an-autonomous-ai-economy",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AIGENSYN",
+    "name": "Gensyn",
+    "sourceUrl": "https://www.binance.com/en/research/projects/aigensyn",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AIN",
+    "name": "Infinity Ground",
+    "sourceUrl": "https://infinity-ground.gitbook.io/whitepaper/tokenomics/4.-multifunctional-ain-token-utility",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AIO",
+    "name": "OlaXBT",
+    "sourceUrl": "https://olaxbt-docs.gitbook.io/olaxbt-doc/project-info/tokenomic",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AIOT",
+    "name": "OKZOO",
+    "sourceUrl": "https://support.digifinex.com/hc/en-us/articles/54163612639513-DigiFinex-Launches-The-OKZOO-AIOT",
+    "sourceLabel": "거래소 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AIXBT",
+    "name": "aixbt",
+    "sourceUrl": "https://docs.aixbt.tech/resources/tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AKE",
+    "name": "AKEDO",
+    "sourceUrl": "https://learn.akedo.fun/farming/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AKT",
+    "name": "Akash Network",
+    "sourceUrl": "https://akash.network/roadmap/aep-22/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ALCH",
+    "name": "Alchemist AI",
+    "sourceUrl": "https://docs.alchemistai.app/docs/get-started/marketplace",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ALICE",
+    "name": "My Neighbor Alice",
+    "sourceUrl": "https://www.binance.com/en/research/projects/my-neighbor-alice",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ALLO",
+    "name": "Allora",
+    "sourceUrl": "https://docs.allora.network/learn/tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ALPINE",
+    "name": "Alpine F1 Team Fan Token",
+    "sourceUrl": "https://www.binance.com/en/research/projects/alpine-f1",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ALT",
+    "name": "AltLayer",
+    "sourceUrl": "https://docs.altlayer.io/altlayer-documentation/alt-restaking/restake-alt",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ANIME",
+    "name": "Animecoin",
+    "sourceUrl": "https://www.binance.com/en/research/projects/animecoin",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ANKR",
+    "name": "Ankr",
+    "sourceUrl": "https://www.ankr.com/docs/delegated-staking/ankr/overview/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "APE",
+    "name": "ApeCoin",
+    "sourceUrl": "https://www.binance.com/en/research/projects/apecoin",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "APR",
+    "name": "aPriori",
+    "sourceUrl": "https://www.apr.io/whitepaper.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ARC",
+    "name": "AI Rig Complex",
+    "sourceUrl": "https://www.arc.fun/handshake",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ARIA",
+    "name": "AriaAI",
+    "sourceUrl": "https://docs.playariagame.com/tokenomics/token-details",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ARK",
+    "name": "ARK",
+    "sourceUrl": "https://ark.io/Whitepaper.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ARKM",
+    "name": "Arkham",
+    "sourceUrl": "https://assets-global.website-files.com/62879326fd745f7489b43224/64abc4471879916bc4e2aeb0_Arkham_Whitepaper_FINAL.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ARPA",
+    "name": "ARPA Network",
+    "sourceUrl": "https://www.binance.com/en/research/projects/arpa",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ARX",
+    "name": "Arcium",
+    "sourceUrl": "https://www.arcium.com/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ASR",
+    "name": "AS Roma Fan Token",
+    "sourceUrl": "https://www.socios.com/legal-hub/tokens/whitepapers/asr-whitepaper/en",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ASTER",
+    "name": "Aster",
+    "sourceUrl": "https://docs.asterdex.com/usdaster/tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ASTR",
+    "name": "Astar",
+    "sourceUrl": "https://www.binance.com/en/research/projects/astar",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AT",
+    "name": "APRO",
+    "sourceUrl": "https://www.binance.com/en/research/analysis/apro",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ATH",
+    "name": "Aethir",
+    "sourceUrl": "https://docs.aethir.com/aethir-introduction/aethir-token-usdath",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AUCTION",
+    "name": "Bounce",
+    "sourceUrl": "https://bouncefinance.medium.com/bounce-launchpad-partners-with-bouncebit-to-support-projects-on-bouncebit-chain-3b7a5b45b47f",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AVA",
+    "name": "AVA",
+    "sourceUrl": "https://www.avafoundation.org/ava-2-0-overview/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AVAAI",
+    "name": "Ava AI",
+    "sourceUrl": "https://docs.holoworld.com/holoworld/agent-market/credits-system",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AVNT",
+    "name": "Avantis",
+    "sourceUrl": "https://www.binance.com/en/research/analysis/avnt",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AWE",
+    "name": "AWE Network",
+    "sourceUrl": "https://docs.awenetwork.ai/stp-ecosystem/world.fun",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AXL",
+    "name": "Axelar",
+    "sourceUrl": "https://community.axelar.network/t/axelar-axl-token-faqs/2282",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AXS",
+    "name": "Axie Infinity",
+    "sourceUrl": "https://axieinfinity.com/axs",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "AZTEC",
+    "name": "Aztec",
+    "sourceUrl": "https://docs.aztec.network/participate/token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "B",
+    "name": "BUILDon",
+    "sourceUrl": "https://www.buildon.online/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "B2",
+    "name": "B² Network",
+    "sourceUrl": "https://docs.bsquared.network/b2_tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BABY",
+    "name": "Babylon",
+    "sourceUrl": "https://www.binance.com/en/research/analysis/babylon",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BAN",
+    "name": "Comedian",
+    "sourceUrl": "https://webseahelp.zendesk.com/hc/en-us/articles/11377806253199",
+    "sourceLabel": "거래소 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BANANA",
+    "name": "Banana Gun",
+    "sourceUrl": "https://www.binance.com/en/research/projects/bananagun",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BANANAS31",
+    "name": "Banana For Scale",
+    "sourceUrl": "https://www.bitmart.com/en-US/support/articles/7923014477723/360001026214/35127637639707",
+    "sourceLabel": "거래소 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BAND",
+    "name": "Band Protocol",
+    "sourceUrl": "https://faq.bandprotocol.com/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BANK",
+    "name": "Lorenzo Protocol",
+    "sourceUrl": "https://medium.com/@lorenzoprotocol/ylrz-rewards-maximizing-user-rewards-while-strengthening-the-lorenzo-ecosystem-ebf07fa4ff9c",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BARD",
+    "name": "Lombard",
+    "sourceUrl": "https://www.binance.com/en/research/analysis/lombard",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BAS",
+    "name": "BNB Attestation Service",
+    "sourceUrl": "https://www.kucoin.com/es/blog/en-kucoin-ama-with-bnb-attestation-service-bas-enabling-reusable-proofs-for-secure-decentralized-applications",
+    "sourceLabel": "KuCoin 프로젝트 인터뷰",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BASED",
+    "name": "Based",
+    "sourceUrl": "https://litepaper.based.one/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BAT",
+    "name": "Basic Attention Token",
+    "sourceUrl": "https://basicattentiontoken.org/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BB",
+    "name": "BounceBit",
+    "sourceUrl": "https://www.binance.com/en/research/analysis/bouncebit",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BEAMX",
+    "name": "Beam",
+    "sourceUrl": "https://docs.onbeam.com/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BEAT",
+    "name": "Audiera",
+    "sourceUrl": "https://docs.audiera.fi/protocol-design/system-architecture/economic-flow/editor",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BEL",
+    "name": "Bella Protocol",
+    "sourceUrl": "https://bellafi.gitbook.io/bella-protocol/frequently-asked-questions-faq",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BERA",
+    "name": "Berachain",
+    "sourceUrl": "https://www.binance.com/en/research/analysis/berachain",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BICO",
+    "name": "Biconomy",
+    "sourceUrl": "https://token.biconomy.io/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BIGTIME",
+    "name": "Big Time",
+    "sourceUrl": "https://www.bigtime.gg/mica-bigtime-whitepaper",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BILL",
+    "name": "Billions Network",
+    "sourceUrl": "https://billions.network/tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BIO",
+    "name": "Bio Protocol",
+    "sourceUrl": "https://docs.bio.xyz/bio/introduction/bio-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BIRB",
+    "name": "Moonbirds",
+    "sourceUrl": "https://claim.moonbirds.com/nesting",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BLESS",
+    "name": "Bless",
+    "sourceUrl": "https://bless.network/bless_whitepaper_english.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BLUAI",
+    "name": "Bluwhale",
+    "sourceUrl": "https://bluwhale.gitbook.io/bluwhaleai/tokens/usdbluai/tokenomics/utility",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BLUR",
+    "name": "Blur",
+    "sourceUrl": "https://docs.blur.foundation/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BMT",
+    "name": "Bubblemaps",
+    "sourceUrl": "https://www.binance.com/en/research/projects/bubblemaps",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BNT",
+    "name": "Bancor",
+    "sourceUrl": "https://support.bancor.network/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BOME",
+    "name": "BOOK OF MEME",
+    "sourceUrl": "https://www.bitmart.com/es-ES/launchpad/detail/578",
+    "sourceLabel": "BitMart 프로젝트 소개",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BR",
+    "name": "Bedrock",
+    "sourceUrl": "https://docs.bedrockdao.com/governance/br-and-vebr",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BRETT",
+    "name": "Brett",
+    "sourceUrl": "https://static.upbit.com/reports/brett_report.pdf",
+    "sourceLabel": "거래소 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BREV",
+    "name": "Brevis",
+    "sourceUrl": "https://www.binance.com/en/research/projects/brevis",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BROCCOLI714",
+    "name": "CZ’s Dog",
+    "sourceUrl": "https://support.poloniex.com/hc/en-us/articles/30930876617879-New-Listing-Broccoli-BROCCOLI714",
+    "sourceLabel": "Poloniex 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BROCCOLIF3B",
+    "name": "First Broccoli",
+    "sourceUrl": "https://support.poloniex.com/hc/en-us/articles/30110020946839-New-Listing-First-Broccoli-BROCCOLIF3B",
+    "sourceLabel": "Poloniex 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BSB",
+    "name": "Block Street",
+    "sourceUrl": "https://docs.blockstreet.money/blog/introducing-bsb",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BSV",
+    "name": "Bitcoin SV",
+    "sourceUrl": "https://hub.bsvblockchain.org/bsv-academy/bsv-academy/bsv-basics-protocol-and-design-1/coins-and-transactions/transaction-fees",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BTR",
+    "name": "Bitlayer",
+    "sourceUrl": "https://blog.bitlayer.org/_bl_announcement/en/2025-08-26-btr_tokenomics/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BTW",
+    "name": "Bitway",
+    "sourceUrl": "https://docs.bitway.com/resources/btw-bitway-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "BULLA",
+    "name": "Bulla",
+    "sourceUrl": "https://www.binance.com/en/support/announcement/detail/ace718d550c546b6a0e6db56af71f956",
+    "sourceLabel": "Binance 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "C",
+    "name": "Chainbase",
+    "sourceUrl": "https://www.binance.com/en/research/analysis/chainbase",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "C98",
+    "name": "Coin98",
+    "sourceUrl": "https://docs.coin98.com/products/coin98-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CAP",
+    "name": "Cap",
+    "sourceUrl": "https://docs.cap.app/cap-tokens",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CARV",
+    "name": "CARV",
+    "sourceUrl": "https://docs.carv.io/carv-token/utility",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CATI",
+    "name": "Catizen",
+    "sourceUrl": "https://docs.catizen.ai/usdcati-tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CC",
+    "name": "Canton",
+    "sourceUrl": "https://docs.canton.network/overview/understand/canton-coin",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CELO",
+    "name": "Celo",
+    "sourceUrl": "https://docs.celo.org/home/protocol/epoch-rewards/index",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CELR",
+    "name": "Celer Network",
+    "sourceUrl": "https://celer.network/technology/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CETUS",
+    "name": "Cetus",
+    "sourceUrl": "https://cetus-1.gitbook.io/cetus-docs/tokenomics/cetus",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CFG",
+    "name": "Centrifuge",
+    "sourceUrl": "https://docs.centrifuge.io/getting-started/token-summary/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CFX",
+    "name": "Conflux",
+    "sourceUrl": "https://www.confluxnetwork.org/en",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CGPT",
+    "name": "ChainGPT",
+    "sourceUrl": "https://docs.chaingpt.org/our-ecosystem/cgpt-utility-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CHILLGUY",
+    "name": "Chill Guy",
+    "sourceUrl": "https://www.chillguy.io/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CHIP",
+    "name": "USD.AI",
+    "sourceUrl": "https://www.binance.com/en/research/projects/USD.AI",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CHR",
+    "name": "Chromia",
+    "sourceUrl": "https://chromia.com/token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CHZ",
+    "name": "Chiliz",
+    "sourceUrl": "https://docs.chiliz.com/learn/about-chiliz-chain",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CKB",
+    "name": "Nervos Network",
+    "sourceUrl": "https://www.nervos.org/ckbpage",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CLANKER",
+    "name": "tokenbot",
+    "sourceUrl": "https://assets-cms.kraken.com/files/51n36hrp/facade/a8bf667a86234ac156aae3e8e7059ce4e60810cf.pdf",
+    "sourceLabel": "Kraken 자산 설명서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CLO",
+    "name": "Yei Finance",
+    "sourceUrl": "https://claim.yei.finance/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "COAI",
+    "name": "ChainOpera AI",
+    "sourceUrl": "https://paper.chainopera.ai/tokenomics-and-protocol-design/overview-and-token-utility",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "COLLECT",
+    "name": "Collect on Fanable",
+    "sourceUrl": "https://collectfoundation.xyz/en/collect/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "COOKIE",
+    "name": "Cookie DAO",
+    "sourceUrl": "https://docs.cookie.community/cookie-dao",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CTK",
+    "name": "Shentu",
+    "sourceUrl": "https://www.binance.com/en/research/projects/shentu",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CYBER",
+    "name": "Cyber",
+    "sourceUrl": "https://www.binance.com/en/research/projects/cyberconnect",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "DOGS",
+    "name": "Dogs",
+    "sourceUrl": "https://www.binance.com/en/research/projects/dogs",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "DOLO",
+    "name": "Dolomite",
+    "sourceUrl": "https://docs.dolomite.io/dolo/token-mechanics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "EGLD",
+    "name": "MultiversX",
+    "sourceUrl": "https://www.binance.com/en/research/projects/multiversx",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ENSO",
+    "name": "Enso",
+    "sourceUrl": "https://www.binance.com/en/research/projects/enso",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ERA",
+    "name": "Caldera",
+    "sourceUrl": "https://www.binance.com/en/research/projects/caldera",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ETHFI",
+    "name": "ether.fi",
+    "sourceUrl": "https://www.binance.com/en/research/analysis/etherfi",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "EUL",
+    "name": "Euler",
+    "sourceUrl": "https://www.binance.com/en/research/projects/euler",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "FF",
+    "name": "Falcon Finance",
+    "sourceUrl": "https://www.binance.com/en/research/projects/falcon-finance",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "FLUX",
+    "name": "Flux",
+    "sourceUrl": "https://www.binance.com/en/research/projects/zel",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "GALA",
+    "name": "Gala",
+    "sourceUrl": "https://www.binance.com/en/research/projects/gala",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "GMT",
+    "name": "STEPN",
+    "sourceUrl": "https://www.binance.com/en/research/projects/stepn",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "GUN",
+    "name": "GUNZ",
+    "sourceUrl": "https://www.binance.com/en/research/projects/gunz",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "GWEI",
+    "name": "ETHGas",
+    "sourceUrl": "https://docs.ethgas.com/foundation/faq",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "HAEDAL",
+    "name": "Haedal",
+    "sourceUrl": "https://www.binance.com/en/research/projects/haedal",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "HMSTR",
+    "name": "Hamster Kombat",
+    "sourceUrl": "https://www.binance.com/en/research/analysis/hamster-kombat",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "HOLO",
+    "name": "Holoworld AI",
+    "sourceUrl": "https://www.binance.com/en/research/projects/holoworld-ai",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "HOME",
+    "name": "Defi App",
+    "sourceUrl": "https://www.binance.com/en/research/projects/home",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "HYPER",
+    "name": "Hyperlane",
+    "sourceUrl": "https://www.binance.com/en/research/projects/hyper",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ICNT",
+    "name": "Impossible Cloud Network",
+    "sourceUrl": "https://www.icn.global/token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ID",
+    "name": "SPACE ID",
+    "sourceUrl": "https://www.binance.com/en/research/projects/space-id",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "IDOL",
+    "name": "MEET48",
+    "sourceUrl": "https://meet48-1.gitbook.io/meet48-docs/iii.-tokenomics-usdidol-as-ecosystem-backbone",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ILV",
+    "name": "Illuvium",
+    "sourceUrl": "https://www.binance.com/en/square/post/42954",
+    "sourceLabel": "Binance Academy",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "IMX",
+    "name": "Immutable",
+    "sourceUrl": "https://www.binance.com/en/academy/articles/what-is-immutable-x-imx",
+    "sourceLabel": "Binance Academy",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "IN",
+    "name": "INFINIT",
+    "sourceUrl": "https://docs.infinit.tech/tokenomics/token-utility",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "INIT",
+    "name": "Initia",
+    "sourceUrl": "https://initiafoundation.com/documents/initia-whitepaper-20250619.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "INX",
+    "name": "Infinex",
+    "sourceUrl": "https://infinex.xyz/inx",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "IO",
+    "name": "io.net",
+    "sourceUrl": "https://io.net/docs/guides/coin/io-tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "IOST",
+    "name": "IOST",
+    "sourceUrl": "https://docs.iost.io/tokenomics/economic-model",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "IOTA",
+    "name": "IOTA",
+    "sourceUrl": "https://www.iota.org/learn/staking",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "IRYS",
+    "name": "Irys",
+    "sourceUrl": "https://irys.xyz/assets/IrysWhitepaper.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "JCT",
+    "name": "Janction",
+    "sourceUrl": "https://docs.janction.ai/token/tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "JELLYJELLY",
+    "name": "JellyJelly",
+    "sourceUrl": "https://jellyjelly.com/about",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "JOE",
+    "name": "LFJ",
+    "sourceUrl": "https://docs.lfj.gg/getting-setup/common_issues_and_fixes_6707527",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "JST",
+    "name": "JUST",
+    "sourceUrl": "https://just.network/docs/white_paper_en.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "JTO",
+    "name": "Jito",
+    "sourceUrl": "https://www.jito.network/docs/governance/the-jito-governance-token-jto/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "KAIA",
+    "name": "Kaia",
+    "sourceUrl": "https://docs.kaia.io/learn/token-economics/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "KAITO",
+    "name": "Kaito",
+    "sourceUrl": "https://docs.kaito.ai/introducing-usdkaito",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "KAT",
+    "name": "Katana",
+    "sourceUrl": "https://docs.katana.network/katana/how-to/kat-token-overview/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "KAVA",
+    "name": "Kava",
+    "sourceUrl": "https://docs.kava.io/docs/faq/earn/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "KERNEL",
+    "name": "KernelDAO",
+    "sourceUrl": "https://blogs.kerneldao.com/blog/tokenomics-token-utility-the-foundation-of-kernel-s-ecosystem",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "KGEN",
+    "name": "Kratos Gamer Network",
+    "sourceUrl": "https://token.kgen.io/KGEN%20-%20MiCA%20Whitepaper.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "KITE",
+    "name": "Kite",
+    "sourceUrl": "https://www.binance.com/en/research/projects/kite",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "KMNO",
+    "name": "Kamino Finance",
+    "sourceUrl": "https://kamino.com/governance-and-staking",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "KNC",
+    "name": "Kyber Network",
+    "sourceUrl": "https://kyber.network/about/knc",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "KOMA",
+    "name": "Koma Inu",
+    "sourceUrl": "https://greenfield-sp.bnbchain.org/view/koma/index.html",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "KSM",
+    "name": "Kusama",
+    "sourceUrl": "https://guide.kusama.network/docs/learn-kusama-inflation",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "LA",
+    "name": "Lagrange",
+    "sourceUrl": "https://lagrange.dev/blog/deepprove-zkml",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "LAB",
+    "name": "LAB Terminal",
+    "sourceUrl": "https://docs.lab.pro/intro/introducing-lab-terminal-your-new-way-to-trade/unique-features-and-benefits",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "LAYER",
+    "name": "Solayer",
+    "sourceUrl": "https://docs.solayer.org/documentation/Tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "LIGHT",
+    "name": "Bitlight",
+    "sourceUrl": "https://bitlightlabs.com/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "LINEA",
+    "name": "Linea",
+    "sourceUrl": "https://linea.build/blog/linea-tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "LISTA",
+    "name": "Lista DAO",
+    "sourceUrl": "https://docs.bsc.lista.org/for-developer/overview",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "LIT",
+    "name": "Lighter",
+    "sourceUrl": "https://docs.lighter.xyz/about-lighter/lit-utility",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "LPT",
+    "name": "Livepeer",
+    "sourceUrl": "https://livepeer.org/token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "LQTY",
+    "name": "Liquity",
+    "sourceUrl": "https://docs.liquity.org/liquity-v1/faq/lqty-distribution-and-rewards",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "LSK",
+    "name": "Lisk",
+    "sourceUrl": "https://lisk.com/token/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "LUMIA",
+    "name": "Lumia",
+    "sourceUrl": "https://docs.lumia.org/lumia/lumia-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "LUNA2",
+    "name": "Terra 2.0",
+    "sourceUrl": "https://docs.terra.money/learn/protocol/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "LYN",
+    "name": "Everlyn AI",
+    "sourceUrl": "https://www.everlyn.ai/about",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "M",
+    "name": "MemeCore",
+    "sourceUrl": "https://docs.memecore.com/memecore/token/usdm",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MAGIC",
+    "name": "Treasure",
+    "sourceUrl": "https://docs.treasure.lol/magic",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MAGMA",
+    "name": "Magma Finance",
+    "sourceUrl": "https://magma-finance-1.gitbook.io/magma-finance/tokenomics/introducing-usdmagma",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MANA",
+    "name": "Decentraland",
+    "sourceUrl": "https://docs.decentraland.org/faqs/decentraland-101",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MANTA",
+    "name": "Manta Network",
+    "sourceUrl": "https://manta.network/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MANTRA",
+    "name": "MANTRA",
+    "sourceUrl": "https://docs.mantrachain.io/mantra-token-background",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MARSCOIN",
+    "name": "MarsCoin",
+    "sourceUrl": "https://www.binance.com/fr-AF/support/announcement/detail/4d9ae75c02114187b699cfe1380ac81e",
+    "sourceLabel": "Binance 공식 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MASK",
+    "name": "Mask Network",
+    "sourceUrl": "https://www.mask.io/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MAV",
+    "name": "Maverick Protocol",
+    "sourceUrl": "https://docs.mav.xyz/mav-token/mav-token-and-tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MAVIA",
+    "name": "Heroes of Mavia",
+    "sourceUrl": "https://statics.mavia.com/landing/public/mavia_game_deck.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ME",
+    "name": "Magic Eden",
+    "sourceUrl": "https://mefoundation.com/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MEGA",
+    "name": "MegaETH",
+    "sourceUrl": "https://static.megaeth.com/MiCA%20Crypto-Asset%20White%20Paper%20-%20MEGA%20Token.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MELANIA",
+    "name": "Melania Meme",
+    "sourceUrl": "https://melaniameme.com/faq",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MEME",
+    "name": "Memecoin",
+    "sourceUrl": "https://www.memecoin.org/whitepaper",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MERL",
+    "name": "Merlin Chain",
+    "sourceUrl": "https://docs.merlinchain.io/merlin-docs/about-merlin/tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MET",
+    "name": "Meteora",
+    "sourceUrl": "https://static.meteora.ag/whitepaper/mica.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "METIS",
+    "name": "Metis",
+    "sourceUrl": "https://www.metis.io/blog/metis-hyperion-the-next-evolution-of-high-performance-layer-2",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MEW",
+    "name": "cat in a dogs world",
+    "sourceUrl": "https://mew.xyz/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MINA",
+    "name": "Mina Protocol",
+    "sourceUrl": "https://minaprotocol.com/get-started-with-mina",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MIRA",
+    "name": "Mira",
+    "sourceUrl": "https://mira.network/docs/compliance/2025-05-23/MiCA.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MITO",
+    "name": "Mitosis",
+    "sourceUrl": "https://university.mitosis.org/mito-utility-the-dna-program-powering-the-mitosis-ecosystem/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MMT",
+    "name": "Momentum",
+    "sourceUrl": "https://docs.mmt.finance/overview/mmt-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MOCA",
+    "name": "Moca Network",
+    "sourceUrl": "https://docs.moca.network/learn/moca-coin",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MON",
+    "name": "Monad",
+    "sourceUrl": "https://www.monad.xyz/announcements/mon-tokenomics-overview",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MOODENG",
+    "name": "Moo Deng",
+    "sourceUrl": "https://www.kucoin.com/announcement/de-moo-deng-moodeng-gets-listed-on-kucoin?x=de_DE",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MORPHO",
+    "name": "Morpho",
+    "sourceUrl": "https://morpho.org/terms-of-use",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MOVE",
+    "name": "Movement",
+    "sourceUrl": "https://www.movementnetwork.xyz/article/movement-foundation-move-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MOVR",
+    "name": "Moonriver",
+    "sourceUrl": "https://moonbeam.foundation/moonriver-token-tokenomics/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MTL",
+    "name": "Metal DAO",
+    "sourceUrl": "https://cdn.metallicus.com/Metal_DAO_Whitepaper_v1.0.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MUBARAK",
+    "name": "Mubarak",
+    "sourceUrl": "https://assets-cms.kraken.com/files/51n36hrp/facade/c7589dc8a01c063a3250d4de7e7d20fbb0e77423.pdf",
+    "sourceLabel": "Kraken 공개 백서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "MYX",
+    "name": "MYX Finance",
+    "sourceUrl": "https://myxfinance.gitbook.io/myx/protocol/keeper-network",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "NAORIS",
+    "name": "Naoris Protocol",
+    "sourceUrl": "https://github.com/Naoris-Protocol/naoris-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "NEIRO",
+    "name": "First Neiro On Ethereum",
+    "sourceUrl": "https://www.neiroeth.io/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "NEO",
+    "name": "Neo",
+    "sourceUrl": "https://neo.org/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "NEWT",
+    "name": "Newton Protocol",
+    "sourceUrl": "https://blog.newton.xyz/newt-token-airdrop/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "NIGHT",
+    "name": "Midnight",
+    "sourceUrl": "https://midnight.network/night",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "NIL",
+    "name": "Nillion",
+    "sourceUrl": "https://nillion.com/wp-content/uploads/2025/10/251010-White-Paper_NIL-Token_Update-ID-3362558.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "NMR",
+    "name": "Numeraire",
+    "sourceUrl": "https://docs.numer.ai/nmr",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "NOM",
+    "name": "Nomina",
+    "sourceUrl": "https://www.nomina.io/blog/nomina-whitepaper",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "NOT",
+    "name": "Notcoin",
+    "sourceUrl": "https://notco.in/?locale=en",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "NXPC",
+    "name": "Nexpace",
+    "sourceUrl": "https://docs.msu.io/welcome-to-msu/neso-and-nxpc",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "O",
+    "name": "o1.exchange",
+    "sourceUrl": "https://www.binance.com/en-AE/support/announcement/detail/a6b7d5a8a14a44c1b6a6a34813c6d93f",
+    "sourceLabel": "Binance 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "OG",
+    "name": "OG Fan Token",
+    "sourceUrl": "https://www.socios.com/legal-hub/tokens/whitepapers/og-whitepaper/en/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "OGN",
+    "name": "Origin Protocol",
+    "sourceUrl": "https://docs.originprotocol.com/ogn/introduction-to-ogn",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ON",
+    "name": "Orochi",
+    "sourceUrl": "https://docs.orochi.network/additional-info/on-token/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ONE",
+    "name": "Harmony",
+    "sourceUrl": "https://docs.harmony.one/home/general/technology/tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ONG",
+    "name": "Ontology Gas",
+    "sourceUrl": "https://www.ont.io/tokens/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ONT",
+    "name": "Ontology",
+    "sourceUrl": "https://www.ont.io/tokens/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "OPEN",
+    "name": "OpenLedger",
+    "sourceUrl": "https://docs.openledgerfoundation.com/open-tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "OPG",
+    "name": "OpenGradient",
+    "sourceUrl": "https://www.binance.com/en/research/projects/opengradient",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "OPN",
+    "name": "Opinion",
+    "sourceUrl": "https://static.opinion.trade/OPINION_Whitepaper_EN.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ORCA",
+    "name": "Orca",
+    "sourceUrl": "https://docs.orca.so/governance/tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ORDER",
+    "name": "Orderly",
+    "sourceUrl": "https://orderly.network/docs/introduction/tokenomics/overview-of-order",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ORDI",
+    "name": "ORDI",
+    "sourceUrl": "https://research.binance.com/static/pdf/BRC-20%20Tokens%20-%20A%20Primer.pdf",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PARTI",
+    "name": "Particle Network",
+    "sourceUrl": "https://whitepaper.particle.network/tokenomics/usdparti-utility-and-purpose",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PAXG",
+    "name": "PAX Gold",
+    "sourceUrl": "https://docs.paxos.com/guides/stablecoin/paxg",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PENGU",
+    "name": "Pudgy Penguins",
+    "sourceUrl": "https://claim.pudgypenguins.com/privacy-policy",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PEOPLE",
+    "name": "ConstitutionDAO",
+    "sourceUrl": "https://www.binance.com/en/research/projects/constitutiondao",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PHA",
+    "name": "Phala Network",
+    "sourceUrl": "https://phala.network/phala-network-2024-year-in-review",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PHAROS",
+    "name": "Pharos",
+    "sourceUrl": "https://www.binance.com/az-AZ/support/announcement/detail/12bcf9092e9c46358de3e49f8ef17f88",
+    "sourceLabel": "Binance 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PIEVERSE",
+    "name": "Pieverse",
+    "sourceUrl": "https://www.pieverse.io/litepaper",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PIPPIN",
+    "name": "Pippin",
+    "sourceUrl": "https://github.com/yoheinakajima/pippin-website/blob/main/token.html",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PIXEL",
+    "name": "Pixels",
+    "sourceUrl": "https://docs.pixels.xyz/economics/tokens/usdpixel",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PLAY",
+    "name": "PlaysOut",
+    "sourceUrl": "https://www.playsout.com/docs/MiCA-PlaysOut.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PLUME",
+    "name": "Plume",
+    "sourceUrl": "https://www.plume.org/blog/genesis",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PNUT",
+    "name": "Peanut the Squirrel",
+    "sourceUrl": "https://www.binance.com/zh-CN/support/announcement/detail/d16d96c136154680a6373225d592bca1",
+    "sourceLabel": "Binance 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "POLYX",
+    "name": "Polymesh",
+    "sourceUrl": "https://developers.polymesh.network/polyx/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "POPCAT",
+    "name": "Popcat",
+    "sourceUrl": "https://about.popcatsolana.xyz/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PORTAL",
+    "name": "Portal",
+    "sourceUrl": "https://www.binance.com/en/research/projects/portal",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "POWER",
+    "name": "Power Protocol",
+    "sourceUrl": "https://www.binance.com/en/support/announcement/detail/97c003f1e70f497e98f606ae8b3f1822",
+    "sourceLabel": "Binance 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "POWR",
+    "name": "Powerledger",
+    "sourceUrl": "https://powerledger.io/media/powerledger-completes-integration-with-solana-accelerating-the-pace-of-innovation-in-sustainability/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PRL",
+    "name": "Perle",
+    "sourceUrl": "https://www.binance.com/en-IN/support/announcement/detail/0116dd83010043bd95c37626e2277bbe",
+    "sourceLabel": "Binance 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PROM",
+    "name": "Prom",
+    "sourceUrl": "https://prom.io/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PROMPT",
+    "name": "Wayfinder",
+    "sourceUrl": "https://wayfinder.ai/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PROVE",
+    "name": "Succinct",
+    "sourceUrl": "https://blog.succinct.xyz/network/introducing-the-succinct-network-architecture-and-the-prove-token/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PTB",
+    "name": "Portal to Bitcoin",
+    "sourceUrl": "https://portaltobitcoin.com/ptb-mica-whitepaper.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PUMP",
+    "name": "Pump.fun",
+    "sourceUrl": "https://pump.fun/pump-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PUMPBTC",
+    "name": "PumpBTC Governance Token",
+    "sourceUrl": "https://xtsupport.zendesk.com/hc/en-us/articles/45237577060889-XT-Announcement-on-the-Initial-Listing-of-PUMPBSC-pumpBTC-Governance-token",
+    "sourceLabel": "XT 공식 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "PUNDIX",
+    "name": "Pundi X",
+    "sourceUrl": "https://www.pundix.com/pundix/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "Q",
+    "name": "Quack AI",
+    "sourceUrl": "https://quackai.ai/blog/introducing-q-powering-the-future-of-ai-governance",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "QNT",
+    "name": "Quant",
+    "sourceUrl": "https://quant.network/news/overledger-2-1-5-release/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "QTUM",
+    "name": "Qtum",
+    "sourceUrl": "https://qtum.org/blog/understanding-staking-on-qtum",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "RARE",
+    "name": "SuperRare",
+    "sourceUrl": "https://help.superrare.com/en/articles/10658642-everything-rare",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "RAVE",
+    "name": "RaveDAO",
+    "sourceUrl": "https://ravedao.gitbook.io/ravedao-whitepaper/readme/ravedao-tokenomics/token-utilities",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "RAYSOL",
+    "name": "Raydium",
+    "sourceUrl": "https://docs.raydium.io/introduction",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "RE",
+    "name": "Re Protocol",
+    "sourceUrl": "https://re.xyz/re-mica-whitepaper",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "RECALL",
+    "name": "Recall",
+    "sourceUrl": "https://docs.recall.network/get-started/token-overview",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "RED",
+    "name": "RedStone",
+    "sourceUrl": "https://www.redstone.finance/red-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "RESOLV",
+    "name": "Resolv",
+    "sourceUrl": "https://resolv.xyz/resolv",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "REZ",
+    "name": "Renzo",
+    "sourceUrl": "https://docs.renzoprotocol.com/docs/rez/tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "RIF",
+    "name": "Rootstock Infrastructure Framework",
+    "sourceUrl": "https://docs.rifos.org/rif-whitepaper-en.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "RIVER",
+    "name": "River",
+    "sourceUrl": "https://app.river.inc/file/River_WhitePaper.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "RLC",
+    "name": "iExec",
+    "sourceUrl": "https://iex.ec/blog/iexec-tokenomics-new-ways-to-use-earn-rlc",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ROBO",
+    "name": "Fabric Protocol",
+    "sourceUrl": "https://www.binance.com/en/research/projects/fabric-protocol",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "RONIN",
+    "name": "Ronin",
+    "sourceUrl": "https://www.roninchain.com/ron",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ROSE",
+    "name": "Oasis Network",
+    "sourceUrl": "https://oasis.net/blog/a-beginners-guide-to-oasis",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "RPL",
+    "name": "Rocket Pool",
+    "sourceUrl": "https://docs.rocketpool.net/protocol/glossary",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "RSR",
+    "name": "Reserve Rights",
+    "sourceUrl": "https://docs.reserve.org/faq",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "RVN",
+    "name": "Ravencoin",
+    "sourceUrl": "https://ravencoin.org/assets/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ZEST",
+    "name": "제스트 프로토콜 (Zest Protocol)",
+    "sourceUrl": "https://www.kucoin.com/announcement/en-world-premiere-zest-protocol-zest-listed-on-kucoin",
+    "sourceLabel": "KuCoin 공식 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "我踏马来了",
+    "name": "워타마라이러 (我踏马来了)",
+    "sourceUrl": "https://www.kucoin.com/announcement/ua-kucoin-futures-new-listing-usdt-perpetual-contract-with-up-to-20x-leverage",
+    "sourceLabel": "KuCoin 공식 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "牛来",
+    "name": "니우라이 (牛来)",
+    "sourceUrl": "https://www.binance.com/es-MX/support/announcement/detail/6e9e9784397745f4a49d3f69b1cfebda",
+    "sourceLabel": "Binance 공식 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "币安人生",
+    "name": "비안런성 (币安人生)",
+    "sourceUrl": "https://www.binance.com/fr/support/announcement/detail/a6aeec228c6a403da616e873011317ea",
+    "sourceLabel": "Binance 공식 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "龙虾",
+    "name": "룽샤 (龙虾)",
+    "sourceUrl": "https://www.binance.com/ru-KZ/support/announcement/detail/d9c05581552140eba3f393ef0a9a23b3",
+    "sourceLabel": "Binance 공식 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TRUMP",
+    "name": "오피셜 트럼프 (Official Trump)",
+    "sourceUrl": "https://gettrumpmemes.com/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TURBO",
+    "name": "터보 (Turbo)",
+    "sourceUrl": "https://turbotoken.io/memes",
+    "sourceLabel": "TURBO 커뮤니티 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "UB",
+    "name": "유니베이스 (Unibase)",
+    "sourceUrl": "https://unibaseio.gitbook.io/unibase-docs/unibase-whitepaper-summary",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "WET",
+    "name": "휴미디파이 (HumidiFi)",
+    "sourceUrl": "https://www.humidifi.xyz/tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "XMR",
+    "name": "모네로 (Monero)",
+    "sourceUrl": "https://www.getmonero.org/get-started/what-is-monero/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ZORA",
+    "name": "조라 (Zora)",
+    "sourceUrl": "https://support.zora.co/en/articles/8192065",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "WAL",
+    "name": "월러스 (Walrus)",
+    "sourceUrl": "https://docs.wal.app/docs/system-overview/wal-tokenomics-faq",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "WAXP",
+    "name": "왁스 (WAX)",
+    "sourceUrl": "https://docs.wax.io/learn/about-wax/what-is-waxp-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "WCT",
+    "name": "월렛커넥트 토큰 (WalletConnect Token)",
+    "sourceUrl": "https://docs.walletconnect.network/token-dynamics/intro",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "WLFI",
+    "name": "월드 리버티 파이낸셜 (World Liberty Financial)",
+    "sourceUrl": "https://docs.worldlibertyfinancial.com/resources/faq",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "WOO",
+    "name": "우 (WOO)",
+    "sourceUrl": "https://woo.org/token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "XAI",
+    "name": "자이 (Xai)",
+    "sourceUrl": "https://gov.xai.games/info",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "XAN",
+    "name": "아노마 (Anoma)",
+    "sourceUrl": "https://anoma.net/blog/xan-is-live",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "XAUT",
+    "name": "테더 골드 (Tether Gold)",
+    "sourceUrl": "https://gold.tether.to/faq",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "XNY",
+    "name": "코다타 (Codatta)",
+    "sourceUrl": "https://docs.codatta.io/en/protocol-token/token-utility",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "XPIN",
+    "name": "엑스핀 네트워크 (XPIN Network)",
+    "sourceUrl": "https://docs.xpin.network/token-use-cases",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "XPL",
+    "name": "플라즈마 (Plasma)",
+    "sourceUrl": "https://www.binance.com/en/research/projects/plasma",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "XTZ",
+    "name": "테조스 (Tezos)",
+    "sourceUrl": "https://tezos.com/governance",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "XVG",
+    "name": "버지 (Verge)",
+    "sourceUrl": "https://vergecurrency.com/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "XVS",
+    "name": "비너스 (Venus)",
+    "sourceUrl": "https://docs-v4.venus.io/tokens/xvs",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "YB",
+    "name": "일드베이시스 (YieldBasis)",
+    "sourceUrl": "https://docs.yieldbasis.com/pdf/mica-whitepaper.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "YFI",
+    "name": "연 파이낸스 (Yearn Finance)",
+    "sourceUrl": "https://gov.yearn.fi/t/yip-73-activate-veyfi-rewards-with-oyfi-gauges/13414/1",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "YGG",
+    "name": "일드 길드 게임즈 (Yield Guild Games)",
+    "sourceUrl": "https://www.yieldguild.io/YGG-Whitepaper-English.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ZAMA",
+    "name": "자마 (Zama)",
+    "sourceUrl": "https://docs.zama.org/auction/faq",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ZBT",
+    "name": "제로베이스 (ZEROBASE)",
+    "sourceUrl": "https://zerobase.pro/docs/ZEROBASE_WhitePaper_EN.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ZEN",
+    "name": "호라이즌 (Horizen)",
+    "sourceUrl": "https://www.horizen.io/zen",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ZEREBRO",
+    "name": "제레브로 (Zerebro)",
+    "sourceUrl": "https://assets-cms.kraken.com/files/51n36hrp/facade/70183b5aa92fe09ef15a80bff9fee69673e59f74.pdf",
+    "sourceLabel": "Kraken 공개 백서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ZETA",
+    "name": "제타체인 (ZetaChain)",
+    "sourceUrl": "https://www.zetachain.com/en/company",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ZIL",
+    "name": "질리카 (Zilliqa)",
+    "sourceUrl": "https://www.zilliqa.com/what-is-zil",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ZK",
+    "name": "지케이싱크 (ZKsync)",
+    "sourceUrl": "https://www.zksync.io/token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ZKC",
+    "name": "바운드리스 (Boundless)",
+    "sourceUrl": "https://docs.boundless.network/zkc/quick-start",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ZKP",
+    "name": "지케이패스 (zkPass)",
+    "sourceUrl": "https://docs.zkpass.org/zkpass-dao/zkp",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ZRO",
+    "name": "레이어제로 (LayerZero)",
+    "sourceUrl": "https://layerzero.network/blog/the-zro-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ZRX",
+    "name": "제로엑스 (0x)",
+    "sourceUrl": "https://governance.0xprotocol.org/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TURTLE",
+    "name": "터틀 (Turtle)",
+    "sourceUrl": "https://docs.turtle.xyz/token/governance",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TUT",
+    "name": "튜토리얼 (Tutorial)",
+    "sourceUrl": "https://www.tutorialtoken.com/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TWT",
+    "name": "트러스트 월렛 토큰 (Trust Wallet Token)",
+    "sourceUrl": "https://trustwallet.com/zh-TW/blog/academy/how-to-buy-twt-token-using-trust-wallet",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "UAI",
+    "name": "유니파이 (UnifAI Network)",
+    "sourceUrl": "https://docs.unifai.network/tokenomics/token-utility/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "UMA",
+    "name": "우마 (UMA)",
+    "sourceUrl": "https://docs.uma.xyz/faqs",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "US",
+    "name": "탈러스 (Talus)",
+    "sourceUrl": "https://docs.talus.foundation/token/us/utility",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "USDC",
+    "name": "유에스디 코인 (USDC)",
+    "sourceUrl": "https://developers.circle.com/stablecoins/what-is-usdc",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "USELESS",
+    "name": "유슬리스 코인 (Useless Coin)",
+    "sourceUrl": "https://www.binance.com/en-AE/support/announcement/detail/76c269080e8247fea630b60c7449532e",
+    "sourceLabel": "Binance 공식 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "USTC",
+    "name": "테라클래식USD (TerraClassicUSD)",
+    "sourceUrl": "https://www.binance.com/en/research/projects/terraclassicusd",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "USUAL",
+    "name": "유주얼 (Usual)",
+    "sourceUrl": "https://docs.usual.money/start-here/faq",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "VANA",
+    "name": "바나 (Vana)",
+    "sourceUrl": "https://docs.vana.org/network/vana-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "VELODROME",
+    "name": "벨로드롬 (Velodrome Finance)",
+    "sourceUrl": "https://velodrome.finance/docs",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "VELVET",
+    "name": "벨벳 캐피털 (Velvet Capital)",
+    "sourceUrl": "https://docs.velvet.capital/governance/tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "VIRTUAL",
+    "name": "버추얼스 프로토콜 (Virtuals Protocol)",
+    "sourceUrl": "https://whitepaper.virtuals.io/info-hub/usdvirtual",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "VTHO",
+    "name": "비토르 (VeThor)",
+    "sourceUrl": "https://docs.vechain.org/introduction-to-vechain/dual-token-economic-model/vethor-vtho",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "VVV",
+    "name": "베니스 (Venice)",
+    "sourceUrl": "https://featurebase.venice.ai/help/articles/2413543-how-does-the-venice-token-vvv-work-and-what-are",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "W",
+    "name": "웜홀 (Wormhole)",
+    "sourceUrl": "https://wormhole.com/blog/stake-for-governance-is-now-live-for-w-token-holders",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "STRK",
+    "name": "스타크넷 (Starknet)",
+    "sourceUrl": "https://docs.starknet.io/learn/protocol/strk",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "STX",
+    "name": "스택스 (Stacks)",
+    "sourceUrl": "https://docs.stacks.co/learn/network-fundamentals/network-basics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SUN",
+    "name": "썬 (SUN)",
+    "sourceUrl": "https://docs.sun.io/ecosystem/tokenomics/overview/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SUPER",
+    "name": "슈퍼버스 (SuperVerse)",
+    "sourceUrl": "https://docs.superverse.co/superverse-docs/introduction",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SXT",
+    "name": "스페이스 앤 타임 (Space and Time)",
+    "sourceUrl": "https://www.spaceandtime.io/blog/introducing-the-space-and-time-sxt-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SYN",
+    "name": "시냅스 (Synapse)",
+    "sourceUrl": "https://docs.synapseprotocol.com/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SYRUP",
+    "name": "메이플 파이낸스 (Maple Finance)",
+    "sourceUrl": "https://maple.finance/syrup",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "T",
+    "name": "쓰레스홀드 (Threshold)",
+    "sourceUrl": "https://www.threshold.network/blog/tbtc-redemption-fee-waivers-for-t-stakers",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TAC",
+    "name": "택 (TAC)",
+    "sourceUrl": "https://www.tac.build/blog/introducing-tac-token-utility-and-tokenomics-of-the-tac-protocol-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TAG",
+    "name": "태거 (Tagger)",
+    "sourceUrl": "https://tagger.gitbook.io/tagger-documentation/tokenomics/task-reward-calculation",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "THETA",
+    "name": "쎄타 네트워크 (Theta Network)",
+    "sourceUrl": "https://docs.thetatoken.org/docs/what-is-theta-network",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TLM",
+    "name": "에일리언 월드 (Alien Worlds)",
+    "sourceUrl": "https://support.alienworlds.io/help-center/articles/game/guides/how-do-i-know-which-mission-to-embark-upon",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TNSR",
+    "name": "텐서 (Tensor)",
+    "sourceUrl": "https://docs.tensor.foundation/governance",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TOSHI",
+    "name": "토시 (Toshi)",
+    "sourceUrl": "https://www.toshithecat.com/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TOWNS",
+    "name": "타운스 (Towns)",
+    "sourceUrl": "https://docs.towns.com/towns-token/utility",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TRB",
+    "name": "텔러 (Tellor)",
+    "sourceUrl": "https://tellor.io/more-about-trb/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TREE",
+    "name": "트리하우스 (Treehouse)",
+    "sourceUrl": "https://docs.treehouse.finance/protocol/tree-token/token-details/utility",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TRIA",
+    "name": "트리아 (Tria)",
+    "sourceUrl": "https://www.tria.so/legal/whitepaper",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TRUST",
+    "name": "인튜이션 (Intuition)",
+    "sourceUrl": "https://www.docs.intuition.systems/docs/intuition-concepts/economics/tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TRUTH",
+    "name": "스웜 네트워크 (Swarm Network)",
+    "sourceUrl": "https://www.binance.com/en/square/post/330033606702209",
+    "sourceLabel": "Binance Academy",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TST",
+    "name": "테스트 (Test)",
+    "sourceUrl": "https://www.weex.com/help/articles/43212723652761",
+    "sourceLabel": "WEEX 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SOLV",
+    "name": "솔브 프로토콜 (Solv Protocol)",
+    "sourceUrl": "https://docs.solv.finance/solv-token/solv-tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SOMI",
+    "name": "솜니아 (Somnia)",
+    "sourceUrl": "https://docs.somnia.network/concepts/tokenomics/overview",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SONIC",
+    "name": "소닉 SVM (Sonic SVM)",
+    "sourceUrl": "https://airdrop.sonic.game/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SOON",
+    "name": "순 (SOON)",
+    "sourceUrl": "https://docs.soo.network/introduction/tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SOPH",
+    "name": "소폰 (Sophon)",
+    "sourceUrl": "https://docs.sophon.xyz/tokenomics/soph",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SPELL",
+    "name": "스펠 (Spell)",
+    "sourceUrl": "https://docs.abracadabra.money/learn/tokens/tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SPX",
+    "name": "SPX6900",
+    "sourceUrl": "https://www.spx6900.com/about",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SQD",
+    "name": "에스큐디 (SQD)",
+    "sourceUrl": "https://docs.sqd.dev/en/network/tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SSV",
+    "name": "SSV 네트워크",
+    "sourceUrl": "https://docs.ssv.network/learn/tokenomics/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "STABLE",
+    "name": "스테이블 (Stable)",
+    "sourceUrl": "https://docs.stable.xyz/en/introduction/tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "STBL",
+    "name": "에스티비엘 (STBL)",
+    "sourceUrl": "https://docs.stbl.com/docs/introduction/three-tokens",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "STEEM",
+    "name": "스팀 (Steem)",
+    "sourceUrl": "https://steem.com/about",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "STG",
+    "name": "스타게이트 (Stargate)",
+    "sourceUrl": "https://stargate.finance/redemptionterms",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "STO",
+    "name": "스테이크스톤 (StakeStone)",
+    "sourceUrl": "https://docs.stakestone.io/stakestone/governance/sto",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "S",
+    "name": "소닉 (Sonic)",
+    "sourceUrl": "https://docs.soniclabs.com/sonic/s-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SAFE",
+    "name": "세이프 (Safe)",
+    "sourceUrl": "https://safefoundation.org/token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SAGA",
+    "name": "사가 (Saga)",
+    "sourceUrl": "https://www.binance.com/en/research/projects/saga",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SAHARA",
+    "name": "사하라 AI (Sahara AI)",
+    "sourceUrl": "https://www.binance.com/en-TR/research/projects/sahara",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SAND",
+    "name": "더 샌드박스 (The Sandbox)",
+    "sourceUrl": "https://docs.sandbox.game/en/owners/sand",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SANTOS",
+    "name": "산투스 FC 팬 토큰",
+    "sourceUrl": "https://www.binance.com/en/research/projects/santos-fc",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SAPIEN",
+    "name": "사피엔 (Sapien)",
+    "sourceUrl": "https://www.binance.com/en/academy/articles/what-is-sapien-sapien",
+    "sourceLabel": "Binance Academy",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SCR",
+    "name": "스크롤 (Scroll)",
+    "sourceUrl": "https://gov.scroll.io/info",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SENT",
+    "name": "센티언트 (Sentient)",
+    "sourceUrl": "https://sentient.foundation/news/sent-tokenomics",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SFP",
+    "name": "세이프팔 (SafePal)",
+    "sourceUrl": "https://www.safepal.com/en/sfp/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SHELL",
+    "name": "마이셸 (MyShell)",
+    "sourceUrl": "https://www.binance.com/en/research/projects/myshell",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SIGN",
+    "name": "사인 (Sign)",
+    "sourceUrl": "https://sign.global/Sign_SIGN_MiCA_Whitepaper.pdf",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SKL",
+    "name": "스케일 (SKALE)",
+    "sourceUrl": "https://docs.skale.space/get-started/skl-token/skl-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SKR",
+    "name": "시커 (Seeker)",
+    "sourceUrl": "https://solanamobile.com/skr",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SKY",
+    "name": "스카이 (Sky)",
+    "sourceUrl": "https://sky.money/blog/understanding-the-sky-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SLP",
+    "name": "스무스 러브 포션 (Smooth Love Potion)",
+    "sourceUrl": "https://whitepaper.axieinfinity.com/gameplay/breeding",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "THE",
+    "name": "테나 (THENA)",
+    "sourceUrl": "https://www.binance.com/en/research/projects/thena",
+    "sourceLabel": "Binance Research",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "COTI",
+    "name": "코티",
+    "sourceUrl": "https://www.coti.io/files/COTI-technical-whitepaper.pdf",
+    "sourceLabel": "COTI 공식 백서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "COW",
+    "name": "카우 프로토콜",
+    "sourceUrl": "https://cow.fi/",
+    "sourceLabel": "CoW DAO 공식 소개",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CROSS",
+    "name": "크로스",
+    "sourceUrl": "https://docs.crosstoken.io/docs/main-service",
+    "sourceLabel": "CROSS 공식 문서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CTR",
+    "name": "시트리아",
+    "sourceUrl": "https://www.mexc.com/en-GB/learn/article/what-is-citrea-ctr-the-complete-guide-to-verifiable-bitcoin-scaling-on-the-blockchain/1",
+    "sourceLabel": "MEXC 프로젝트 설명",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CTSI",
+    "name": "카르테시",
+    "sourceUrl": "https://www.cartesi.io/ctsi-token/",
+    "sourceLabel": "Cartesi 공식 토큰 소개",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CVC",
+    "name": "시빅",
+    "sourceUrl": "https://www.civic.com/blog/cvc-token-transfer-and-identity-com-nonprofit",
+    "sourceLabel": "Civic 공식 토큰 설명",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CVX",
+    "name": "컨벡스 파이낸스",
+    "sourceUrl": "https://docs.convexfinance.com/convexfinance/general-information/understanding-cvx",
+    "sourceLabel": "Convex 공식 문서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "CYS",
+    "name": "시식",
+    "sourceUrl": "https://docs.cysic.xyz/cysic-network-overview/key-components-of-cysic-network",
+    "sourceLabel": "Cysic 공식 문서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "DATAIP",
+    "name": "데이터 네트워크",
+    "sourceUrl": "https://academy.binance.com/ur-PK/articles/what-is-data-network-data",
+    "sourceLabel": "Binance Academy 프로젝트 설명",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "DEEP",
+    "name": "딥북",
+    "sourceUrl": "https://www.deepbook.tech/deep-token",
+    "sourceLabel": "DeepBook 공식 토큰 소개",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "DEXE",
+    "name": "덱스",
+    "sourceUrl": "https://whitepaper.dexe.network/dexe-protocol-dao/token-and-treasury",
+    "sourceLabel": "DeXe 공식 백서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "DIA",
+    "name": "디아",
+    "sourceUrl": "https://www.diadata.org/token/",
+    "sourceLabel": "DIA 공식 토큰 소개",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "DODOX",
+    "name": "도도",
+    "sourceUrl": "https://docs.dodoex.io/en/home/token-economy",
+    "sourceLabel": "DODO 공식 토큰 경제 문서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "DOOD",
+    "name": "두들스",
+    "sourceUrl": "https://blog.mexc.com/token-reviews/what-is-dood-doodles/",
+    "sourceLabel": "MEXC 프로젝트 설명",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "DOS",
+    "name": "디앱오에스",
+    "sourceUrl": "https://www.mexc.com/en-GB/learn/article/what-is-dappos-dos-complete-guide-to-the-web3-ai-operating-system/1",
+    "sourceLabel": "MEXC 프로젝트 설명",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "DRIFT",
+    "name": "드리프트",
+    "sourceUrl": "https://www.drift.trade/governance/introducing-the-drift-governance-token",
+    "sourceLabel": "Drift 공식 거버넌스 소개",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "DUSK",
+    "name": "더스크",
+    "sourceUrl": "https://docs.dusk.network/learn/tokenomics/",
+    "sourceLabel": "Dusk 공식 문서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "DYM",
+    "name": "디멘션",
+    "sourceUrl": "https://docs.dymension.xyz/earn/stake",
+    "sourceLabel": "Dymension 공식 문서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "EDEN",
+    "name": "오픈에덴",
+    "sourceUrl": "https://docs.openeden.com/openeden-foundation/eden/token-utility",
+    "sourceLabel": "OpenEden 공식 문서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "EDGE",
+    "name": "엣지엑스",
+    "sourceUrl": "https://pro.edgex.exchange/en-US/tokenomics",
+    "sourceLabel": "edgeX 공식 토큰 설명",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "EDU",
+    "name": "오픈캠퍼스",
+    "sourceUrl": "https://static.opencampus.xyz/documents/MiCA_Whitepaper_V3_OpenCampus_EDU_202509.pdf",
+    "sourceLabel": "Open Campus 공식 백서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "EIGEN",
+    "name": "아이겐클라우드",
+    "sourceUrl": "https://docs.eigencloud.xyz/assets/files/EigenCloud_Whitepaper-127a6743029d2c4858e7633196c47ea4.pdf",
+    "sourceLabel": "EigenCloud 공식 백서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ELSA",
+    "name": "헤이엘사",
+    "sourceUrl": "https://docs.heyelsa.ai/heyelsa-mica-whitepaper",
+    "sourceLabel": "HeyElsa 공식 백서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ENJ",
+    "name": "엔진 코인",
+    "sourceUrl": "https://enjin.io/enjin-coin/",
+    "sourceLabel": "Enjin 공식 토큰 소개",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "EPIC",
+    "name": "에픽 체인",
+    "sourceUrl": "https://www.epicchain.io/",
+    "sourceLabel": "Epic 공식 소개",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ESP",
+    "name": "에스프레소",
+    "sourceUrl": "https://www.espressosys.com/faq",
+    "sourceLabel": "Espresso 공식 FAQ",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ESPORTS",
+    "name": "욜도",
+    "sourceUrl": "https://www.gate.com/es/learn/articles/what-is-esports-exploring-the-universal-token-in-the-web3-gaming-world/10812",
+    "sourceLabel": "Gate 프로젝트 설명",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "ETHW",
+    "name": "이더리움피오더블유",
+    "sourceUrl": "https://blog.kraken.com/product/asset-listings/ethereumpow-ethw-trading-starts-now-token-distribution",
+    "sourceLabel": "Kraken 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "EVAA",
+    "name": "에바",
+    "sourceUrl": "https://token22.evaa.finance/",
+    "sourceLabel": "EVAA 공식 토큰 소개",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "F",
+    "name": "신퓨처스",
+    "sourceUrl": "https://www.synfutures.com/synfutures-MiCA-whitepaper.pdf",
+    "sourceLabel": "SynFutures 공식 백서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "FARTCOIN",
+    "name": "파트코인",
+    "sourceUrl": "https://assets-cms.kraken.com/files/51n36hrp/facade/ac31559c5e17862832cb8d34e034f78724431078.pdf",
+    "sourceLabel": "Kraken 암호자산 설명",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "FHE",
+    "name": "마인드 네트워크",
+    "sourceUrl": "https://docs.mindnetwork.xyz/minddocs/governance/usdfhe",
+    "sourceLabel": "Mind Network 공식 문서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "FIDA",
+    "name": "본피다",
+    "sourceUrl": "https://guide.sns.id/marketplace.html",
+    "sourceLabel": "Solana Name Service 공식 문서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "FIGHT",
+    "name": "파이트",
+    "sourceUrl": "https://app.fight.id/",
+    "sourceLabel": "Fight.ID 공식 소개",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "FLOCK",
+    "name": "플록",
+    "sourceUrl": "https://docs.flock.io/flock-tokenomics/token-utility/demand",
+    "sourceLabel": "FLock 공식 토큰 문서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "FLOW",
+    "name": "플로우",
+    "sourceUrl": "https://flow.com/flow-tokenomics/technical-overview",
+    "sourceLabel": "Flow 공식 토큰 경제 문서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "FLUID",
+    "name": "플루이드",
+    "sourceUrl": "https://gov.fluid.io/t/proposal-establish-fluid-foundation/1768",
+    "sourceLabel": "Fluid 공식 거버넌스",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "FOGO",
+    "name": "포고",
+    "sourceUrl": "https://www.fogo.io/blog/introducing-fogo-tokenomics---performance-without-compromise",
+    "sourceLabel": "Fogo 공식 토큰 경제 소개",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "FOLKS",
+    "name": "포크스 파이낸스",
+    "sourceUrl": "https://docs.folks.finance/folks-token/utilities",
+    "sourceLabel": "Folks Finance 공식 토큰 문서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "FORM",
+    "name": "포",
+    "sourceUrl": "https://blog.mexc.com/crypto-knowledge/what-is-four-token-form-a-binaryx-rebranding/",
+    "sourceLabel": "MEXC 프로젝트 설명",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "FRAX",
+    "name": "프랙스",
+    "sourceUrl": "https://docs.frax.com/protocol/frax/overview",
+    "sourceLabel": "Frax 공식 문서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "G",
+    "name": "그래비티",
+    "sourceUrl": "https://docs.gravity.xyz/tokens-on-gravity/g-token",
+    "sourceLabel": "Gravity 공식 토큰 문서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "GAS",
+    "name": "가스",
+    "sourceUrl": "https://neo.org/neogas",
+    "sourceLabel": "Neo 공식 토큰 소개",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "GENIUS",
+    "name": "지니어스 터미널",
+    "sourceUrl": "https://www.binance.com/en/square/post/326896468520369",
+    "sourceLabel": "Binance Academy 공식 설명",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "GIGGLE",
+    "name": "기글 펀드",
+    "sourceUrl": "https://www.binance.com/en/support/announcement/detail/9de462f111c64723ac54331163e2652c",
+    "sourceLabel": "Binance 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "GLM",
+    "name": "골렘",
+    "sourceUrl": "https://www.golem.network/glm",
+    "sourceLabel": "Golem 공식 토큰 소개",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "GOAT",
+    "name": "고트세우스 맥시무스",
+    "sourceUrl": "https://assets-cms.kraken.com/files/51n36hrp/facade/60d729ac4e6a22959954cb182b9b526d93a7b527.pdf",
+    "sourceLabel": "Kraken 암호자산 설명",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "GPS",
+    "name": "고플러스 시큐리티",
+    "sourceUrl": "https://gopluslabs.io/micar-whitepaper.html",
+    "sourceLabel": "GoPlus 공식 백서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "GRAM",
+    "name": "그램",
+    "sourceUrl": "https://docs.ton.org/start-here",
+    "sourceLabel": "TON 공식 시작 문서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "GRASS",
+    "name": "그래스",
+    "sourceUrl": "https://www.grass.io/",
+    "sourceLabel": "Grass 공식 FAQ",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "GRIFFAIN",
+    "name": "그리핀",
+    "sourceUrl": "https://assets-cms.kraken.com/files/51n36hrp/facade/a9a2a19befd5049e2a8bf2698036984963f03410.pdf",
+    "sourceLabel": "Kraken 공시 백서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "GRVT",
+    "name": "그라빗",
+    "sourceUrl": "https://grvt.io/blog/introducing-grvt-token/",
+    "sourceLabel": "GRVT 공식 토큰 소개",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "GTC",
+    "name": "깃코인",
+    "sourceUrl": "https://gtc.gitcoin.co/",
+    "sourceLabel": "Gitcoin 공식 토큰 센터",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "GUA",
+    "name": "슈퍼포춘",
+    "sourceUrl": "https://www.mexc.com/price/GUA/info",
+    "sourceLabel": "MEXC 프로젝트 소개",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "H",
+    "name": "휴머니티 프로토콜",
+    "sourceUrl": "https://www.humanity.org/h-token",
+    "sourceLabel": "Humanity 공식 토큰 소개",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "HANA",
+    "name": "하나 네트워크",
+    "sourceUrl": "https://www.gate.com/zh-tw/learn/articles/hana-tokenomics-how-the-token-drives-growth-in-the-hana-network-social-finance-ecosystem",
+    "sourceLabel": "Gate 토큰 경제 설명",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "HEI",
+    "name": "헤이마",
+    "sourceUrl": "https://docs.heima.network/overview-what-is-heima/introduction/hei-token",
+    "sourceLabel": "Heima 공식 토큰 문서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "HIVE",
+    "name": "하이브",
+    "sourceUrl": "https://hive.io/whitepaper.pdf",
+    "sourceLabel": "Hive 공식 백서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "HOT",
+    "name": "홀로",
+    "sourceUrl": "https://holo.host/resources/currency/",
+    "sourceLabel": "Holo 공식 결제 설명",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "HUMA",
+    "name": "휴마 파이낸스",
+    "sourceUrl": "https://blog.huma.finance/introducing-huma-powering-the-future-of-payfi",
+    "sourceLabel": "Huma 공식 토큰 경제 설명",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SIREN",
+    "name": "Siren",
+    "sourceUrl": "https://bitmart.zendesk.com/hc/en-us/articles/48137400655003-siren-SIREN",
+    "sourceLabel": "BitMart 프로젝트 소개",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SKYAI",
+    "name": "SkyAI",
+    "sourceUrl": "https://coinone.co.kr/info/notice/4094",
+    "sourceLabel": "코인원 상장 안내",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SLX",
+    "name": "Solstice Finance",
+    "sourceUrl": "https://109607783-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F44900wRUr08Ym1oXIDzr%2Fuploads%2FVucckfkZ2G1FAZdpiOm2%2FSolstice%20Whitepaper%20May%2026.pdf?alt=media&token=ed7a28ec-f40f-4d5e-91ba-4d6fd7257682",
+    "sourceLabel": "프로젝트 공식 백서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SPACE",
+    "name": "Spacecoin",
+    "sourceUrl": "https://medium.com/@_spacecoin/space-utility-network-effects-tokenomics-0583f7f7a772",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SPK",
+    "name": "Spark",
+    "sourceUrl": "https://docs.spark.finance/governance/spk-token",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SPORTFUN",
+    "name": "Sport.Fun",
+    "sourceUrl": "https://docs.sport.fun/usdfun-token/usdfun/usdfun-incentives",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "STAR",
+    "name": "Starpower",
+    "sourceUrl": "https://starpower.gitbook.io/starpower-lite-paper/what-is-usdstar",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "SWARMS",
+    "name": "Swarms",
+    "sourceUrl": "https://dao.swarms.world/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TA",
+    "name": "Trusta AI",
+    "sourceUrl": "https://static.trustalabs.ai/staticfiles/app/home/Trusta_MiCAR_Whitepaper.pdf",
+    "sourceLabel": "프로젝트 공식 백서",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TAIKO",
+    "name": "Taiko",
+    "sourceUrl": "https://dao-docs.taiko.xyz/understanding-the-dao/how-the-dao-works/",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TAKE",
+    "name": "OVERTAKE",
+    "sourceUrl": "https://overtake.gitbook.io/whitepaper/usdtake-token-economy/glossary",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  },
+  {
+    "asset": "TRADOOR",
+    "name": "Tradoor",
+    "sourceUrl": "https://docs.tradoor.io/tradoor-user-guide-v2/earn-rewards-on-tradoor/what-are-usddoor-points",
+    "sourceLabel": "프로젝트 공식 자료",
+    "verifiedAt": "2026-09-06"
+  }
+]

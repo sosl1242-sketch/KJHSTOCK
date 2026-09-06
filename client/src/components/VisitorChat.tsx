@@ -1,6 +1,6 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
-import { ArrowUp, ChevronDown, MessageSquare, RefreshCw, Send } from "lucide-react";
+import { ArrowDown, ChevronDown, MessageSquare, RefreshCw, Send } from "lucide-react";
 import { useVisitorChat } from "@/hooks/useVisitorChat";
 import "@/styles/visitor-chat.css";
 
@@ -71,17 +71,21 @@ function NameForm({ name, onSave, onCancel }: {
   );
 }
 
-function MessageItem({ message }: { message: ChatMessage }) {
+function messageDay(message: ChatMessage) {
+  return new Date(message.createdAt).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
+}
+
+function MessageItem({ message, own }: { message: ChatMessage; own: boolean }) {
   const date = new Date(message.createdAt);
   const validDate = Number.isFinite(date.getTime());
   const time = validDate
-    ? date.toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    ? date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })
     : "시간 확인 불가";
 
   return (
-    <li className="visitor-chat-message" data-message-id={message.id}>
+    <li className={`visitor-chat-message${own ? " visitor-chat-message-own" : ""}`} data-message-id={message.id}>
       <div className="visitor-chat-message-heading">
-        <span className="visitor-chat-message-name">{message.name}</span>
+        <span className="visitor-chat-message-name">{message.name}{own ? " (나)" : ""}</span>
         <time dateTime={validDate ? message.createdAt : undefined} title={validDate ? date.toLocaleString("ko-KR") : undefined}>
           {time}
         </time>
@@ -91,22 +95,29 @@ function MessageItem({ message }: { message: ChatMessage }) {
   );
 }
 
-function MessageList({ messages, status, expanded }: {
+function MessageList({ messages, status, expanded, hasOlder, loadingOlder, historyError, loadOlder, sentMessageIds }: {
   messages: ChatMessage[];
   status: ReturnType<typeof useVisitorChat>["status"];
   expanded: boolean;
+  hasOlder: boolean;
+  loadingOlder: boolean;
+  historyError: string | null;
+  loadOlder: () => void;
+  sentMessageIds: string[];
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const atTopRef = useRef(true);
+  const atBottomRef = useRef(true);
   const anchorRef = useRef<{ id: string; offset: number } | null>(null);
-  const previousHeadRef = useRef<string | undefined>(undefined);
+  const previousTailRef = useRef<string | undefined>(undefined);
+  const initializedRef = useRef(false);
   const [hasNewMessages, setHasNewMessages] = useState(false);
+  const ownIds = new Set(sentMessageIds);
 
   function captureAnchor() {
     const region = scrollRef.current;
     if (!region) return;
-    atTopRef.current = region.scrollTop <= 16;
-    if (atTopRef.current) setHasNewMessages(false);
+    atBottomRef.current = region.scrollHeight - region.clientHeight - region.scrollTop <= 16;
+    if (atBottomRef.current) setHasNewMessages(false);
     const top = region.getBoundingClientRect().top;
     const firstVisible = Array.from(region.querySelectorAll<HTMLElement>("[data-message-id]"))
       .find(item => item.getBoundingClientRect().bottom > top);
@@ -118,25 +129,26 @@ function MessageList({ messages, status, expanded }: {
   useLayoutEffect(() => {
     const region = scrollRef.current;
     if (!region || !expanded) return;
-    const nextHead = messages[0]?.id;
-    const changedHead = previousHeadRef.current !== undefined && nextHead !== previousHeadRef.current;
-    if (changedHead && !atTopRef.current) {
+    const nextTail = messages[messages.length - 1]?.id;
+    const changedTail = previousTailRef.current !== undefined && nextTail !== previousTailRef.current;
+    if (!initializedRef.current || atBottomRef.current) {
+      region.scrollTop = region.scrollHeight;
+      if (messages.length) initializedRef.current = true;
+    } else {
       const anchor = anchorRef.current;
       const existingItem = anchor && Array.from(region.querySelectorAll<HTMLElement>("[data-message-id]"))
         .find(item => item.dataset.messageId === anchor.id);
       if (anchor && existingItem) {
         region.scrollTop += existingItem.getBoundingClientRect().top - region.getBoundingClientRect().top - anchor.offset;
       }
-      if (nextHead) setHasNewMessages(true);
-    } else if (atTopRef.current) {
-      region.scrollTop = 0;
+      if (changedTail && nextTail) setHasNewMessages(true);
     }
-    previousHeadRef.current = nextHead;
+    previousTailRef.current = nextTail;
     captureAnchor();
-  }, [messages, expanded]);
+  }, [messages, expanded, hasOlder, loadingOlder, historyError]);
 
   function showNewest() {
-    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     setHasNewMessages(false);
     captureAnchor();
     scrollRef.current?.focus({ preventScroll: true });
@@ -155,13 +167,27 @@ function MessageList({ messages, status, expanded }: {
       {hasNewMessages && (
         <div className="visitor-chat-new-message" role="status">
           <button className="visitor-chat-button" type="button" onClick={showNewest}>
-            <ArrowUp aria-hidden="true" />새 대화 보기
+            <ArrowDown aria-hidden="true" />새 대화 보기
           </button>
         </div>
       )}
-      <div className="visitor-chat-messages" ref={scrollRef} onScroll={captureAnchor} tabIndex={0} role="region" aria-label="방문자 대화, 최신순" aria-busy={status === "loading"}>
+      <div className="visitor-chat-messages" ref={scrollRef} onScroll={captureAnchor} tabIndex={0} role="region" aria-label="방문자 대화, 시간순" aria-busy={status === "loading" || loadingOlder}>
+        {hasOlder && (
+          <div className="visitor-chat-history">
+            <button className="visitor-chat-button" type="button" disabled={loadingOlder} onClick={loadOlder}>
+              {loadingOlder ? "이전 대화 불러오는 중" : historyError ? "이전 대화 다시 불러오기" : "이전 대화 불러오기"}
+            </button>
+            {historyError && <p className="visitor-chat-error" role="alert">{historyError}</p>}
+          </div>
+        )}
         {messages.length > 0
-          ? <ol>{messages.map(message => <MessageItem key={message.id} message={message} />)}</ol>
+          ? <ol>{messages.map((message, index) => (
+            <Fragment key={message.id}>
+              {(index === 0 || messageDay(messages[index - 1]) !== messageDay(message)) &&
+                <li className="visitor-chat-date"><span>{messageDay(message)}</span></li>}
+              <MessageItem message={message} own={ownIds.has(message.id)} />
+            </Fragment>
+          ))}</ol>
           : <p className="visitor-chat-empty" role="status">{emptyText}</p>}
       </div>
     </div>
@@ -256,7 +282,7 @@ function Composer({ name, disabled, sending, send }: {
 }
 
 export function VisitorChat() {
-  const { messages, status, error, sending, send, refresh } = useVisitorChat();
+  const { messages, status, error, sending, send, refresh, hasOlder, loadingOlder, historyError, loadOlder, sentMessageIds } = useVisitorChat();
   const [name, setName] = useState(readSavedName);
   const [editingName, setEditingName] = useState(false);
   const [expanded, setExpanded] = useState(() => typeof window !== "undefined" && window.matchMedia(DESKTOP_QUERY).matches);
@@ -274,7 +300,7 @@ export function VisitorChat() {
         <summary className="visitor-chat-summary">
           <MessageSquare aria-hidden="true" />
           <span className="visitor-chat-title">방문자 대화</span>
-          <span className="visitor-chat-order">최신순</span>
+          <span className="visitor-chat-order">시간순</span>
           <ChevronDown className="visitor-chat-chevron" aria-hidden="true" />
         </summary>
         <div className="visitor-chat-content">
@@ -285,6 +311,7 @@ export function VisitorChat() {
               <button className="visitor-chat-button" type="button" onClick={refresh}><RefreshCw aria-hidden="true" />다시 연결</button>
             </div>
           )}
+          <MessageList messages={messages} status={status} expanded={expanded} hasOlder={hasOlder} loadingOlder={loadingOlder} historyError={historyError} loadOlder={loadOlder} sentMessageIds={sentMessageIds} />
           <div className="visitor-chat-writing">
             {!name || editingName ? (
               <NameForm name={name} onSave={nextName => { setName(nextName); setEditingName(false); }} onCancel={() => setEditingName(false)} />
@@ -296,7 +323,6 @@ export function VisitorChat() {
             )}
             <Composer name={name} disabled={editingName || status === "unconfigured" || status === "loading"} sending={sending} send={send} />
           </div>
-          <MessageList messages={messages} status={status} expanded={expanded} />
         </div>
       </details>
     </aside>

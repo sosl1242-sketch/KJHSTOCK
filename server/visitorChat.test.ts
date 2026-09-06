@@ -4,8 +4,10 @@ import {
   mergeVisitorChatMessages,
   parseVisitorChatMessage,
   parseVisitorChatMessages,
+  parseVisitorChatPage,
   resolveVisitorChatEndpoint,
   validateVisitorChatDraft,
+  visitorChatCursor,
   type VisitorChatMessage,
 } from "../client/src/lib/visitorChat";
 
@@ -123,7 +125,7 @@ describe("visitor chat payloads", () => {
     expect(() => validateVisitorChatDraft(name, body)).toThrow();
   });
 
-  it("orders by the UTC instant and descending ID for equal times without mutating inputs", () => {
+  it("orders by the UTC instant and ascending ID for equal times without mutating inputs", () => {
     const older = message("older", "2026-09-06T09:00:00+09:00");
     const newestB = message("b", "2026-09-06T02:00:00Z");
     const newestA = message("a", "2026-09-05T22:00:00-04:00");
@@ -133,16 +135,16 @@ describe("visitor chat payloads", () => {
       Object.freeze(newestA),
     ]);
     const parsed = parseVisitorChatMessages({ messages: input });
-    expect(parsed.map(item => item.id)).toEqual(["b", "a", "older"]);
+    expect(parsed.map(item => item.id)).toEqual(["older", "a", "b"]);
     expect(parsed.map(item => item.createdAt)).toEqual([
-      "2026-09-06T02:00:00.000Z",
-      "2026-09-06T02:00:00.000Z",
       "2026-09-06T00:00:00.000Z",
+      "2026-09-06T02:00:00.000Z",
+      "2026-09-06T02:00:00.000Z",
     ]);
     expect(input[0].createdAt).toBe("2026-09-06T09:00:00+09:00");
   });
 
-  it("deduplicates server IDs and caps merged history at the newest 100 messages", () => {
+  it("deduplicates server IDs and retains all loaded history beyond 100 messages", () => {
     const existing = Array.from({ length: 100 }, (_, index) =>
       message(
         String(index),
@@ -152,9 +154,9 @@ describe("visitor chat payloads", () => {
     const updated = { ...existing[50], body: "수정된 본문" };
     const newest = message("latest", "2026-09-06T03:00:00Z");
     const merged = mergeVisitorChatMessages(existing, [updated, newest]);
-    expect(merged).toHaveLength(100);
-    expect(merged[0].id).toBe("latest");
-    expect(merged.some(item => item.id === "0")).toBe(false);
+    expect(merged).toHaveLength(101);
+    expect(merged[100].id).toBe("latest");
+    expect(merged[0].id).toBe("0");
     expect(merged.filter(item => item.id === "50")).toEqual([updated]);
     expect(existing[50].body).toBe("안녕하세요");
     expect(parseVisitorChatMessages({ messages: [updated, updated] })).toEqual([
@@ -219,6 +221,10 @@ describe("visitor chat sessions", () => {
       status: "unconfigured",
       error: null,
       sending: false,
+      hasOlder: false,
+      loadingOlder: false,
+      historyError: null,
+      sentMessageIds: [],
     });
     expect(fetcher).not.toHaveBeenCalled();
     expect(getClientId).not.toHaveBeenCalled();
@@ -241,6 +247,10 @@ describe("visitor chat sessions", () => {
       status: "ready",
       error: null,
       sending: false,
+      hasOlder: false,
+      loadingOlder: false,
+      historyError: null,
+      sentMessageIds: [],
     });
     session.dispose();
   });
@@ -486,5 +496,176 @@ describe("visitor chat browser identity", () => {
       "kjhstock.visitorChat.clientId.v1",
       CLIENT_ID
     );
+  });
+});
+
+function history(start: number, count: number) {
+  return Array.from({ length: count }, (_, index) => message(
+    `message-${String(start + index).padStart(4, "0")}`,
+    new Date(Date.UTC(2026, 8, 6) + (start + index) * 1000).toISOString()
+  ));
+}
+
+function page(messages: VisitorChatMessage[], hasMore = false, direction: "before" | "after" = "before") {
+  const sorted = mergeVisitorChatMessages([], messages);
+  const boundary = direction === "before" ? sorted[0] : sorted[sorted.length - 1];
+  return { messages, hasMore, nextCursor: hasMore ? visitorChatCursor(boundary) : null };
+}
+
+describe("visitor chat accumulated history", () => {
+  it("validates page boundaries and remains compatible with the original envelope", () => {
+    const messages = history(1, 2);
+    expect(parseVisitorChatPage(page(messages, true)).nextCursor).toBe(visitorChatCursor(messages[0]));
+    expect(parseVisitorChatPage(page(messages, true, "after"), "after").nextCursor).toBe(visitorChatCursor(messages[1]));
+    expect(parseVisitorChatPage({ messages }).paginationSupported).toBe(false);
+    for (const payload of [
+      { messages, hasMore: "yes", nextCursor: null },
+      { messages, hasMore: false, nextCursor: "unexpected" },
+      { messages: [], hasMore: true, nextCursor: "0:!" },
+      { messages, hasMore: true, nextCursor: visitorChatCursor(messages[1]) },
+    ]) expect(() => parseVisitorChatPage(payload)).toThrow("응답 형식");
+  });
+
+  it("loads all older pages and drains more than 100 new arrivals without discarding history", async () => {
+    const { session, fetcher } = setupSession();
+    fetcher
+      .mockResolvedValueOnce(response(page(history(151, 100).reverse(), true)))
+      .mockResolvedValueOnce(response(page(history(51, 100).reverse(), true)))
+      .mockResolvedValueOnce(response(page(history(1, 50).reverse())))
+      .mockResolvedValueOnce(response(page(history(251, 100), true, "after")))
+      .mockResolvedValueOnce(response(page(history(351, 100), true, "after")))
+      .mockResolvedValueOnce(response(page(history(451, 25), false, "after")));
+    await session.refresh();
+    await session.loadOlder();
+    await session.loadOlder();
+    expect(session.getState().messages).toEqual(history(1, 250));
+    expect(session.getState().hasOlder).toBe(false);
+    await session.refresh();
+    expect(session.getState().messages).toEqual(history(1, 475));
+    const urls = fetcher.mock.calls.map(([url]) => new URL(String(url)));
+    expect(urls[1].searchParams.get("before")).toBe(visitorChatCursor(history(151, 1)[0]));
+    expect(urls[2].searchParams.get("before")).toBe(visitorChatCursor(history(51, 1)[0]));
+    expect(urls.slice(3).map(url => url.searchParams.get("after"))).toEqual(
+      [250, 350, 450].map(index => visitorChatCursor(history(index, 1)[0]))
+    );
+    expect(new Set(session.getState().messages.map(item => item.id)).size).toBe(475);
+    session.dispose();
+  });
+
+  it("merges an older-page response with concurrent polling and deduplicates repeated older clicks", async () => {
+    const older = deferred<Response>();
+    const { session, fetcher } = setupSession();
+    fetcher
+      .mockResolvedValueOnce(response(page(history(101, 100), true)))
+      .mockReturnValueOnce(older.promise)
+      .mockResolvedValueOnce(response(page(history(201, 1), false, "after")));
+    await session.refresh();
+    const pending = session.loadOlder();
+    await session.loadOlder();
+    await session.refresh();
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(session.getState().loadingOlder).toBe(true);
+    older.resolve(response(page(history(1, 100))));
+    await pending;
+    expect(session.getState().messages).toEqual(history(1, 201));
+    expect(session.getState().loadingOlder).toBe(false);
+    session.dispose();
+  });
+
+  it("keeps its contiguous poll cursor when a POST acknowledges a later message", async () => {
+    const { session, fetcher } = setupSession();
+    const sameNameElsewhere = history(1, 1)[0];
+    const posted = history(4, 1)[0];
+    fetcher
+      .mockResolvedValueOnce(response(page([sameNameElsewhere])))
+      .mockResolvedValueOnce(response({ message: posted }))
+      .mockResolvedValueOnce(response(page(history(2, 3), false, "after")));
+    await session.refresh();
+    await session.send(posted.name, posted.body);
+    expect(session.getState().sentMessageIds).toEqual([posted.id]);
+    await session.refresh();
+    expect(new URL(String(fetcher.mock.calls[2][0])).searchParams.get("after"))
+      .toBe(visitorChatCursor(sameNameElsewhere));
+    expect(session.getState().messages).toEqual(history(1, 4));
+    session.dispose();
+  });
+
+  it("resumes from the last complete incremental page after a network failure", async () => {
+    const { session, fetcher } = setupSession();
+    fetcher
+      .mockResolvedValueOnce(response(page(history(1, 100))))
+      .mockResolvedValueOnce(response(page(history(101, 100), true, "after")))
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce(response(page(history(201, 50), false, "after")));
+    await session.refresh();
+    await session.refresh();
+    expect(session.getState().messages).toEqual(history(1, 200));
+    expect(session.getState().status).toBe("error");
+    await session.refresh();
+    expect(session.getState().messages).toEqual(history(1, 250));
+    expect(session.getState().status).toBe("ready");
+    expect(new URL(String(fetcher.mock.calls[3][0])).searchParams.get("after"))
+      .toBe(visitorChatCursor(history(200, 1)[0]));
+    session.dispose();
+  });
+
+  it("retries an older-page failure at the same position without changing the live connection state", async () => {
+    const { session, fetcher } = setupSession();
+    fetcher
+      .mockResolvedValueOnce(response(page(history(101, 100), true)))
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce(response(page(history(1, 100))));
+    await session.refresh();
+    await session.loadOlder();
+    expect(session.getState()).toMatchObject({ status: "ready", hasOlder: true, loadingOlder: false });
+    expect(session.getState().historyError).toContain("연결하지 못했습니다");
+    await session.loadOlder();
+    expect(fetcher.mock.calls[1][0]).toEqual(fetcher.mock.calls[2][0]);
+    expect(session.getState().messages).toEqual(history(1, 200));
+    expect(session.getState().historyError).toBeNull();
+    session.dispose();
+  });
+
+  it("rejects non-progressing incremental pages and preserves the retry cursor", async () => {
+    const { session, fetcher } = setupSession();
+    fetcher
+      .mockResolvedValueOnce(response(page(history(1, 1))))
+      .mockResolvedValueOnce(response(page(history(1, 1), true, "after")))
+      .mockResolvedValueOnce(response(page(history(2, 1), false, "after")));
+    await session.refresh();
+    await session.refresh();
+    expect(session.getState().status).toBe("error");
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    await session.refresh();
+    expect(fetcher.mock.calls[1][0]).toBe(fetcher.mock.calls[2][0]);
+    expect(session.getState().messages).toEqual(history(1, 2));
+    session.dispose();
+  });
+
+  it("catches all arrivals after an initially empty room", async () => {
+    const { session, fetcher } = setupSession();
+    fetcher
+      .mockResolvedValueOnce(response(page([])))
+      .mockResolvedValueOnce(response(page(history(1, 100), true, "after")))
+      .mockResolvedValueOnce(response(page(history(101, 20), false, "after")));
+    await session.refresh();
+    await session.refresh();
+    expect(new URL(String(fetcher.mock.calls[1][0])).searchParams.get("after")).toBe("0:!");
+    expect(session.getState().messages).toEqual(history(1, 120));
+    session.dispose();
+  });
+
+  it("aborts older-page work on disposal without publishing its late response", async () => {
+    const older = deferred<Response>();
+    const { session, fetcher, onChange } = setupSession();
+    fetcher.mockResolvedValueOnce(response(page(history(101, 100), true))).mockReturnValueOnce(older.promise);
+    await session.refresh();
+    const pending = session.loadOlder();
+    session.dispose();
+    expect(fetcher.mock.calls[1][1]!.signal!.aborted).toBe(true);
+    onChange.mockClear();
+    older.resolve(response(page(history(1, 100))));
+    await pending;
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

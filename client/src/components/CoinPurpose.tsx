@@ -17,7 +17,7 @@ export function CoinPurpose({ row }: { row: FuturesMarketRow | undefined }) {
       <p className="coin-purpose-summary">{coinSummaryText(profile.summary)}</p>
       {row && row.baseAsset.trim().toUpperCase() !== profile.asset && <p className="coin-purpose-unit">{row.baseAsset}는 {profile.asset} 1,000개 단위의 계약 표기입니다.</p>}
       <div className="coin-purpose-source">
-        <a href={profile.sourceUrl} target="_blank" rel="noreferrer">공식 자료 보기 <ExternalLink aria-hidden="true" /></a>
+        <a href={profile.sourceUrl} target="_blank" rel="noreferrer">{profile.sourceLabel ?? "프로젝트 공식 자료"} <ExternalLink aria-hidden="true" /></a>
         <span>자료 확인 <time dateTime={profile.verifiedAt}>{profile.verifiedAt.replaceAll("-", ".")}</time></span>
       </div>
     </> : <p className="coin-purpose-empty">

@@ -12,6 +12,10 @@ export type VisitorChatState = {
   status: VisitorChatStatus;
   error: string | null;
   sending: boolean;
+  hasOlder: boolean;
+  loadingOlder: boolean;
+  historyError: string | null;
+  sentMessageIds: string[];
 };
 
 export type VisitorChatDraft = { name: string; body: string };
@@ -22,7 +26,7 @@ const UUID =
 const INVISIBLE_CONTROLS =
   /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/;
 const REQUEST_TIMEOUT_MS = 10_000;
-const MAX_MESSAGES = 100;
+const PAGE_SIZE = 100;
 let memoryClientId: string | undefined;
 
 class VisitorChatError extends Error {}
@@ -132,20 +136,18 @@ function parseMessage(value: unknown): VisitorChatMessage {
   return { id: value.id, ...draft, createdAt: parseTimestamp(value.createdAt) };
 }
 
-/** Incoming records replace the same ID; UTC time and ID both sort descending. */
+/** Incoming records replace the same ID; accumulated history stays chronological. */
 export function mergeVisitorChatMessages(
   existing: readonly VisitorChatMessage[],
   incoming: readonly VisitorChatMessage[]
 ): VisitorChatMessage[] {
   const byId = new Map(existing.map(message => [message.id, message]));
   for (const message of incoming) byId.set(message.id, message);
-  return Array.from(byId.values())
-    .sort(
+  return Array.from(byId.values()).sort(
       (a, b) =>
-        Date.parse(b.createdAt) - Date.parse(a.createdAt) ||
-        (a.id < b.id ? 1 : a.id > b.id ? -1 : 0)
-    )
-    .slice(0, MAX_MESSAGES);
+        Date.parse(a.createdAt) - Date.parse(b.createdAt) ||
+        (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+    );
 }
 
 export function parseVisitorChatMessages(
@@ -154,10 +156,39 @@ export function parseVisitorChatMessages(
   if (
     !isRecord(payload) ||
     !Array.isArray(payload.messages) ||
-    payload.messages.length > MAX_MESSAGES
+    payload.messages.length > PAGE_SIZE
   )
     throw invalidPayload();
   return mergeVisitorChatMessages([], payload.messages.map(parseMessage));
+}
+
+export function visitorChatCursor(message: VisitorChatMessage): string {
+  return `${Date.parse(message.createdAt)}:${message.id}`;
+}
+
+export type VisitorChatPage = {
+  messages: VisitorChatMessage[];
+  hasMore: boolean;
+  nextCursor: string | null;
+  paginationSupported: boolean;
+};
+
+export function parseVisitorChatPage(
+  payload: unknown,
+  direction: "before" | "after" = "before"
+): VisitorChatPage {
+  const messages = parseVisitorChatMessages(payload);
+  if (!isRecord(payload)) throw invalidPayload();
+  // Keep the existing service usable during a rolling backend/frontend update.
+  if (!("hasMore" in payload) && !("nextCursor" in payload))
+    return { messages, hasMore: false, nextCursor: null, paginationSupported: false };
+  if (typeof payload.hasMore !== "boolean") throw invalidPayload();
+  const boundary = direction === "before" ? messages[0] : messages[messages.length - 1];
+  if (payload.hasMore
+    ? !boundary || payload.nextCursor !== visitorChatCursor(boundary)
+    : payload.nextCursor !== null) throw invalidPayload();
+  return { messages, hasMore: payload.hasMore, nextCursor: payload.nextCursor as string | null,
+    paginationSupported: true };
 }
 
 export function parseVisitorChatMessage(payload: unknown): VisitorChatMessage {
@@ -287,11 +318,19 @@ export function createVisitorChatSession(
     status: endpoint ? "loading" : "unconfigured",
     error: null,
     sending: false,
+    hasOlder: false,
+    loadingOlder: false,
+    historyError: null,
+    sentMessageIds: [],
   };
   let disposed = false;
   let readVersion = 0;
   let reading: AbortController | null = null;
+  let readingOlder: AbortController | null = null;
   let sending: AbortController | null = null;
+  let newestCursor: string | null = null;
+  let oldestCursor: string | null = null;
+  let paginationSupported = false;
   let pendingDraft: (VisitorChatDraft & { requestId: string }) | null = null;
   const fetcher = options.fetcher ?? globalThis.fetch;
 
@@ -313,20 +352,72 @@ export function createVisitorChatSession(
     reading = controller;
     const version = ++readVersion;
     try {
-      const payload = await request(
-        endpoint,
-        { method: "GET" },
-        controller,
-        fetcher
-      );
-      const messages = parseVisitorChatMessages(payload);
-      if (disposed || version !== readVersion) return;
-      update({ messages, status: "ready", error: null });
+      let hasMore = false;
+      do {
+        const after = paginationSupported ? newestCursor : null;
+        const url = new URL(endpoint);
+        if (after) url.searchParams.set("after", after);
+        const payload = await request(url.toString(), { method: "GET" }, controller, fetcher);
+        const page = parseVisitorChatPage(payload, after ? "after" : "before");
+        if (disposed || version !== readVersion) return;
+        if (after && !page.paginationSupported) throw invalidPayload();
+        const last = page.messages[page.messages.length - 1];
+        if (after && page.messages.some(message => {
+          const [time, id] = [Number(after.slice(0, after.indexOf(":"))), after.slice(after.indexOf(":") + 1)];
+          return Date.parse(message.createdAt) < time ||
+            (Date.parse(message.createdAt) === time && message.id <= id);
+        })) throw invalidPayload();
+        paginationSupported = page.paginationSupported;
+        if (!after) {
+          oldestCursor = page.messages[0] ? visitorChatCursor(page.messages[0]) : null;
+        }
+        // A POST acknowledgement must never move this cursor: only a contiguous
+        // GET page proves that all earlier arrivals have been received.
+        newestCursor = last ? visitorChatCursor(last) : (newestCursor ?? "0:!");
+        update({
+          messages: mergeVisitorChatMessages(state.messages, page.messages),
+          status: "ready", error: null,
+          ...(!after ? { hasOlder: page.hasMore } : {}),
+        });
+        hasMore = Boolean(after && page.hasMore);
+      } while (hasMore);
     } catch (error) {
       if (!disposed && version === readVersion)
         update({ status: "error", error: errorMessage(error, controller) });
     } finally {
       if (reading === controller) reading = null;
+    }
+  };
+
+  const loadOlder = async (): Promise<void> => {
+    if (disposed || !endpoint || readingOlder || !state.hasOlder || !oldestCursor) return;
+    const controller = new AbortController();
+    readingOlder = controller;
+    const before = oldestCursor;
+    update({ loadingOlder: true, historyError: null });
+    try {
+      const url = new URL(endpoint);
+      url.searchParams.set("before", before);
+      const payload = await request(url.toString(), { method: "GET" }, controller, fetcher);
+      const page = parseVisitorChatPage(payload);
+      if (disposed || readingOlder !== controller) return;
+      if (!page.paginationSupported) throw invalidPayload();
+      const boundary = state.messages.find(message => visitorChatCursor(message) === before);
+      if (!boundary || page.messages.some(message =>
+        Date.parse(message.createdAt) > Date.parse(boundary.createdAt) ||
+        (Date.parse(message.createdAt) === Date.parse(boundary.createdAt) && message.id >= boundary.id)
+      )) throw invalidPayload();
+      oldestCursor = page.messages[0] ? visitorChatCursor(page.messages[0]) : oldestCursor;
+      update({ messages: mergeVisitorChatMessages(state.messages, page.messages),
+        hasOlder: page.hasMore, historyError: null });
+    } catch (error) {
+      if (!disposed && readingOlder === controller)
+        update({ historyError: errorMessage(error, controller) });
+    } finally {
+      if (readingOlder === controller) {
+        readingOlder = null;
+        update({ loadingOlder: false });
+      }
     }
   };
 
@@ -377,6 +468,7 @@ export function createVisitorChatSession(
       pendingDraft = null;
       update({
         messages: mergeVisitorChatMessages(state.messages, [message]),
+        sentMessageIds: Array.from(new Set([...state.sentMessageIds, message.id])),
         status: "ready",
         error: null,
       });
@@ -395,6 +487,7 @@ export function createVisitorChatSession(
   return {
     getState: () => state,
     refresh,
+    loadOlder,
     send,
     cancelRefresh,
     dispose: () => {
@@ -402,6 +495,8 @@ export function createVisitorChatSession(
       cancelRefresh();
       sending?.abort();
       sending = null;
+      readingOlder?.abort();
+      readingOlder = null;
     },
   };
 }
