@@ -1,6 +1,7 @@
 import { ResearchReportPanel } from "@/components/ResearchReportPanel";
 import { CoinPurpose } from "@/components/CoinPurpose";
 import { VisitorChat } from "@/components/VisitorChat";
+import { SheetScrollArea } from "@/components/SheetScrollArea";
 import { useFuturesResearchReport } from "@/hooks/useFuturesResearchReport";
 import "@/styles/market-workspace.css";
 import { SortableFuturesHeader } from "@/components/SortableFuturesHeader";
@@ -1482,7 +1483,7 @@ export default function BinanceFutures() {
                     <Signal className="h-4 w-4 text-emerald-600" />
                     시장 Sheet
                   </h2>
-                  <p className="sheet-help" id="sheet-instructions">열 제목을 누르면 정렬됩니다. 이름을 누르면 종목 분석을 볼 수 있습니다.</p>
+                  <p className="sheet-help" id="sheet-instructions">표를 잡고 좌우로 끌거나 아래 이동 바를 사용하세요. 열 제목은 정렬, 이름은 종목 분석입니다.</p>
                   <p className="sheet-sort-status" role="status">{visibleRows.length.toLocaleString("ko-KR")}개 계약 · {sortLabel} {sortDirection === "asc" ? "오름차순" : "내림차순"}</p>
                 </div>
                 {loading ? (
@@ -1492,7 +1493,7 @@ export default function BinanceFutures() {
                   </Badge>
                 ) : null}
               </div>
-              <div className="sheet-scroll" ref={sheetScrollRef} tabIndex={0} role="region" aria-label="좌우로 스크롤 가능한 선물 표">
+              <SheetScrollArea ref={sheetScrollRef}>
                 <Table aria-label="Binance 선물 시세" aria-describedby="sheet-instructions" aria-busy={loading}>
                   <TableHeader className="sticky top-0 z-10 bg-white">
                     <TableRow>
@@ -1574,7 +1575,7 @@ export default function BinanceFutures() {
                     ) : null}
                   </TableBody>
                 </Table>
-              </div>
+              </SheetScrollArea>
               <div className="sheet-pagination">
                 <span>{visibleRows.length ? (currentPage - 1) * 50 + 1 : 0}~{Math.min(currentPage * 50, visibleRows.length)} / {visibleRows.length.toLocaleString("ko-KR")}개</span>
                 <span className="sheet-live-note">시세 갱신 시 선택한 정렬을 유지합니다.</span>
