@@ -42,6 +42,7 @@ jobs:
         env:
           VITE_BASE_PATH: /KJHSTOCK/
           VITE_ROUTER_MODE: hash
+          VITE_CHAT_API_URL: https://kjhstock-visitor-chat.arcane-chord-3426.chatgpt.site
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

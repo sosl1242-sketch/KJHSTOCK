@@ -178,6 +178,20 @@
   padding-bottom: var(--space-8);
 }
 
+.market-chat-layout {
+  display: grid;
+  grid-template-columns: 288px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-6);
+  max-width: var(--market-content-width);
+  margin-inline: auto;
+  padding: var(--space-6) var(--market-gutter);
+}
+.market-chat-layout > .market-main { min-width: 0; padding: 0; }
+@media (max-width: 1279px) {
+  .market-chat-layout { grid-template-columns: minmax(0, 1fr); }
+}
+
 .market-intro {
   display: flex;
   align-items: flex-end;

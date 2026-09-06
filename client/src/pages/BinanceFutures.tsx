@@ -1,5 +1,6 @@
 import { ResearchReportPanel } from "@/components/ResearchReportPanel";
 import { CoinPurpose } from "@/components/CoinPurpose";
+import { VisitorChat } from "@/components/VisitorChat";
 import { useFuturesResearchReport } from "@/hooks/useFuturesResearchReport";
 import "@/styles/market-workspace.css";
 import { SortableFuturesHeader } from "@/components/SortableFuturesHeader";
@@ -1285,6 +1286,8 @@ export default function BinanceFutures() {
           </div>
         </div>
       </header>
+      <div className="market-chat-layout">
+      <VisitorChat />
       <main className="market-main">
         {activeView !== "reports" && <>
         <div className="market-intro">
@@ -1598,6 +1601,7 @@ export default function BinanceFutures() {
         </dl></details>
         <footer className="market-footer">Binance 공개 시세 기준. 점수와 시그널은 계산된 참고 지표이며, 데이터가 지연되거나 누락될 수 있습니다.</footer>
       </main>
+      </div>
     </div>
   );
 }
