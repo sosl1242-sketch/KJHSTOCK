@@ -5,6 +5,8 @@ export type CoinProfile = {
   category: string;
   sourceUrl: string;
   verifiedAt: string;
+  sourceLabel?: string;
+  sourceType?: "project" | "exchange";
 };
 
 /** Original Korean summaries checked against the linked project sources. */

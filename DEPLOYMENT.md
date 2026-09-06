@@ -27,7 +27,12 @@ the dashboard host. The service root redirects to the existing dashboard.
 Sites project: `appgprj_6a9cf9a1c6e881918d09dd3b565f01dd`. Its separately versioned
 source checkout is `../KJHSTOCK-chat-service`; source is also saved in Sites.
 
-`GET /api/messages` returns the latest 100 messages, newest first.
+`GET /api/messages` returns the latest 100 messages, newest first. Responses carry
+`hasMore` and `nextCursor`. `?before=<created_at:id>` pages through older history;
+`?after=<created_at:id>` retrieves subsequent messages oldest first, so polling
+can catch up across more than 100 arrivals. History is retained in D1. The UI
+merges pages chronologically without a total-count cap and preserves the reading
+position while earlier or new messages arrive.
 `POST /api/messages` requires a display name (1–20 Unicode characters), a body
 (1–500), a browser client UUID and an idempotent request UUID. Names are unverified
 display names. Only public message fields are returned. SQL uses bound values,

@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { ALL_COIN_PROFILES, COIN_PROFILE_ALIASES, coinSummaryText, getCoinProfile } from "../shared/coinProfiles";
+import currentUniverse from "./fixtures/coin-profile-universe-2026-09-06.json";
 
 describe("source-backed coin purpose profiles", () => {
+  it("covers every active crypto underlying in the checked USD-M and COIN-M universe", () => {
+    expect(currentUniverse.assets).toHaveLength(524);
+    for (const baseAsset of currentUniverse.assets) {
+      expect(getCoinProfile({ baseAsset, assetClass: "crypto" }), baseAsset).toBeDefined();
+    }
+  });
   it("keeps every complete Korean description within the requested 300 characters", () => {
     expect(ALL_COIN_PROFILES.length).toBeGreaterThan(0);
     for (const profile of ALL_COIN_PROFILES) {
@@ -17,7 +24,7 @@ describe("source-backed coin purpose profiles", () => {
   it("has exactly one identity per asset and explicit HTTPS provenance", () => {
     expect(new Set(ALL_COIN_PROFILES.map(profile => profile.asset)).size).toBe(ALL_COIN_PROFILES.length);
     for (const profile of ALL_COIN_PROFILES) {
-      expect(profile.asset).toMatch(/^[A-Z0-9]+$/);
+      expect(profile.asset).toMatch(/^[A-Z0-9\p{Script=Han}]+$/u);
       const url = new URL(profile.sourceUrl);
       expect(url.protocol, profile.asset).toBe("https:");
       expect(url.username + url.password, profile.asset).toBe("");
@@ -42,9 +49,12 @@ describe("source-backed coin purpose profiles", () => {
 
   it("does not strip digits or merge similarly named and migrated projects", () => {
     expect(getCoinProfile({ assetClass: "crypto", baseAsset: "1INCH" })?.asset).toBe("1INCH");
-    for (const asset of ["INCH", "1000BTC", "LUNA", "LUNC", "RNDR", "MATIC", "AGIX", "OCEAN"]) {
+    for (const asset of ["INCH", "1000BTC", "RNDR", "MATIC", "AGIX"]) {
       expect(getCoinProfile({ assetClass: "crypto", baseAsset: asset }), asset).toBeUndefined();
     }
+    expect(getCoinProfile({ assetClass: "crypto", baseAsset: "LUNA2" })?.asset).toBe("LUNA2");
+    expect(getCoinProfile({ assetClass: "crypto", baseAsset: "1000LUNC" })?.asset).toBe("1000LUNC");
+    expect(getCoinProfile({ assetClass: "crypto", baseAsset: "币安人生" })?.asset).toBe("币安人生");
   });
 
   it("only resolves explicit denomination aliases to existing profiles", () => {

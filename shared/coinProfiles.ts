@@ -2,9 +2,16 @@ import type { FuturesMarketRow } from "./binanceFuturesAnalysis";
 import { COIN_PROFILE_CATALOG, type CoinProfile } from "./coinProfileCatalog";
 import { EXTENDED_COIN_PROFILES } from "./coinProfileCatalogExtended";
 import { COMMUNITY_COIN_PROFILES } from "./coinProfileCatalogCommunity";
+import { RESEARCH_COIN_PROFILES_A } from "./coinProfileCatalogResearchA";
+import { RESEARCH_COIN_PROFILES_B } from "./coinProfileCatalogResearchB";
+import { RESEARCH_COIN_PROFILES_C } from "./coinProfileCatalogResearchC";
+import { RESEARCH_COIN_PROFILES_D } from "./coinProfileCatalogResearchD";
+import { RESEARCH_COIN_PROFILES_E } from "./coinProfileCatalogResearchE";
 
 export const ALL_COIN_PROFILES: readonly CoinProfile[] = [
   ...COIN_PROFILE_CATALOG, ...EXTENDED_COIN_PROFILES, ...COMMUNITY_COIN_PROFILES,
+  ...RESEARCH_COIN_PROFILES_A, ...RESEARCH_COIN_PROFILES_B, ...RESEARCH_COIN_PROFILES_C,
+  ...RESEARCH_COIN_PROFILES_D, ...RESEARCH_COIN_PROFILES_E,
 ];
 
 const profilesByAsset = new Map(ALL_COIN_PROFILES.map(profile => [profile.asset, profile]));
