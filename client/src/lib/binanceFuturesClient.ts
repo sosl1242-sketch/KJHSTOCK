@@ -50,7 +50,11 @@ type BinanceTickerStreamItem = {
 };
 
 async function fetchJson<T>(baseUrl: string, path: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(`${baseUrl}${path}`, { signal });
+  const timeout = AbortSignal.timeout(12_000);
+  const response = await fetch(`${baseUrl}${path}`, {
+    signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+    cache: "no-store",
+  });
   if (!response.ok) {
     throw new Error(`Binance API ${path} returned ${response.status}`);
   }
@@ -83,15 +87,37 @@ async function fetchMarketRows(marketType: FuturesMarketType, signal?: AbortSign
   });
 }
 
-export async function fetchAllFuturesRows(signal?: AbortSignal): Promise<FuturesMarketRow[]> {
-  const [usdMRows, coinMRows] = await Promise.all([
-    fetchMarketRows("USD-M", signal),
-    fetchMarketRows("COIN-M", signal),
-  ]);
-
-  return [...usdMRows, ...coinMRows]
+export async function fetchFuturesMarketSnapshot(signal?: AbortSignal) {
+  const markets: FuturesMarketType[] = ["USD-M", "COIN-M"];
+  const results = await Promise.allSettled(markets.map(market => fetchMarketRows(market, signal)));
+  if (signal?.aborted) throw signal.reason;
+  const refreshedMarkets: FuturesMarketType[] = [];
+  const marketErrors: string[] = [];
+  const rows: FuturesMarketRow[] = [];
+  results.forEach((result, index) => {
+    if (result.status === "fulfilled") {
+      refreshedMarkets.push(markets[index]);
+      rows.push(...result.value);
+    } else {
+      const detail = result.reason instanceof Error ? result.reason.message : "연결 실패";
+      marketErrors.push(`${markets[index]}: ${detail}`);
+    }
+  });
+  if (!refreshedMarkets.length) throw new Error(marketErrors.join(" / "));
+  return {
+    rows: rows
     .sort((a, b) => b.volume24hUsd - a.volume24hUsd || a.symbol.localeCompare(b.symbol))
-    .map((row, index) => ({ ...row, rank: index + 1 }));
+    .map((row, index) => ({ ...row, rank: index + 1 })),
+    refreshedMarkets,
+    marketErrors,
+  };
+}
+
+export async function fetchAllFuturesRows(signal?: AbortSignal): Promise<FuturesMarketRow[]> {
+  const snapshot = await fetchFuturesMarketSnapshot(signal);
+  // Reports require a complete universe; the dashboard handles partial markets explicitly.
+  if (snapshot.marketErrors.length) throw new Error(snapshot.marketErrors.join(" / "));
+  return snapshot.rows;
 }
 
 function subscribeTickerStream(

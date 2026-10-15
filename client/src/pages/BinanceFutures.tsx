@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  fetchAllFuturesRows,
+  fetchFuturesMarketSnapshot,
   fetchFuturesTechnicalDetail,
   subscribeAllFuturesTicker,
 } from "@/lib/binanceFuturesClient";
@@ -75,7 +75,7 @@ type StableSymbolChartRow = {
   fullSymbol: string;
 };
 
-const MARKET_METADATA_REFRESH_MS = 300_000;
+const MARKET_METADATA_REFRESH_MS = 60_000;
 const FAVORITES_STORAGE_KEY = "kjhstock-binance-futures-favorites";
 const chartGridStroke = "#e2e8f0";
 const chartMutedText = "#64748b";
@@ -1100,6 +1100,7 @@ function TechnicalPanel({
 }
 
 export default function BinanceFutures() {
+  const reloadInFlight = useRef(false);
   const detailPanelRef = useRef<HTMLDivElement>(null);
   const sheetTabRef = useRef<HTMLButtonElement>(null);
   const sheetScrollRef = useRef<HTMLDivElement>(null);
@@ -1120,6 +1121,7 @@ export default function BinanceFutures() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [marketWarnings, setMarketWarnings] = useState<string[]>([]);
   const [metadataLastRefreshedAt, setMetadataLastRefreshedAt] = useState<string | null>(null);
   const [wsStatus, setWsStatus] = useState<Record<FuturesMarketType, WsStatus>>({ "USD-M": "idle", "COIN-M": "idle" });
   const [technicalLoading, setTechnicalLoading] = useState(false);
@@ -1129,14 +1131,22 @@ export default function BinanceFutures() {
   const [favoriteOnly, setFavoriteOnly] = useState(false);
 
   const reload = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    if (reloadInFlight.current) return;
+    reloadInFlight.current = true;
     if (!silent) setRefreshing(true);
     setError(null);
     try {
-      const nextRows = await fetchAllFuturesRows();
-      setRows(previousRows => mergeRowsWithoutLayoutShift(previousRows, nextRows));
+      const snapshot = await fetchFuturesMarketSnapshot();
+      const nextRows = snapshot.rows;
+      setRows(previousRows => mergeRowsWithoutLayoutShift(previousRows, [
+        ...nextRows,
+        ...previousRows.filter(row => !snapshot.refreshedMarkets.includes(row.marketType)),
+      ]));
+      setMarketWarnings(snapshot.marketErrors);
       setMetadataLastRefreshedAt(new Date().toISOString());
       setSelectedKey(previous => {
-        if (previous && nextRows.some(row => rowSelectionKey(row) === previous)) return previous;
+        if (previous && (nextRows.some(row => rowSelectionKey(row) === previous)
+          || !snapshot.refreshedMarkets.includes(previous.split(":")[0] as FuturesMarketType))) return previous;
         const fallback = nextRows.find(row => row.symbol === "BTCUSDT")
           ?? nextRows.find(row => row.symbol === "BTCUSD_PERP")
           ?? nextRows[0];
@@ -1145,6 +1155,7 @@ export default function BinanceFutures() {
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Binance 데이터를 불러오지 못했습니다.");
     } finally {
+      reloadInFlight.current = false;
       setLoading(false);
       if (!silent) setRefreshing(false);
     }
@@ -1170,12 +1181,18 @@ export default function BinanceFutures() {
   }, [rows.length]);
 
   useEffect(() => {
-    if (!rows.length) return;
     const timer = window.setInterval(() => {
-      void reload({ silent: true });
+      if (document.visibilityState === "visible") void reload({ silent: true });
     }, MARKET_METADATA_REFRESH_MS);
-    return () => window.clearInterval(timer);
-  }, [reload, rows.length]);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void reload({ silent: true });
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [reload]);
 
 
   const selectedRow = useMemo(() => rows.find(row => rowSelectionKey(row) === selectedKey), [rows, selectedKey]);
@@ -1214,6 +1231,7 @@ export default function BinanceFutures() {
     const coinM = rows.filter(row => row.marketType === "COIN-M").length;
     return { usdM, coinM };
   }, [rows]);
+  const cryptoCount = rows.filter(row => row.assetClass === "crypto").length;
 
   const toggleFavorite = useCallback((row: Pick<FuturesMarketRow, "marketType" | "symbol">) => {
     const key = rowSelectionKey(row);
@@ -1248,6 +1266,9 @@ export default function BinanceFutures() {
   }, [query, assetFilter, favoriteKeySet, favoriteOnly, marketFilter, quoteFilter, rows, signalFilter, sortDirection, sortKey]);
 
   const pageCount = Math.max(1, Math.ceil(visibleRows.length / 50));
+  const searchMatchCount = query.trim() ? rows.filter(row =>
+    [row.symbol, row.baseAsset, row.pair].some(value => value.includes(query.trim().toUpperCase()))
+  ).length : 0;
   const currentPage = Math.min(page, pageCount);
   const pageRows = visibleRows.slice((currentPage - 1) * 50, currentPage * 50);
   useEffect(() => { setPage(1); }, [query, assetFilter, marketFilter, quoteFilter, signalFilter, favoriteOnly, sortKey, sortDirection]);
@@ -1292,15 +1313,24 @@ export default function BinanceFutures() {
       <main className="market-main">
         {activeView !== "reports" && <>
         <div className="market-intro">
-          <div><h1>선물 시장 한눈에</h1><p>종목을 비교하고, 원하는 기준으로 정렬하세요.</p></div>
-          <p className="market-updated" title={"전체 목록 갱신 " + formatDateTime(metadataLastRefreshedAt)}>시세 갱신 {formatDateTime(summary.lastUpdated)}</p>
+          <div><h1>Binance 선물 시장</h1><p>USD-M · COIN-M</p></div>
+          <div className="market-freshness">
+            <p className="market-updated">목록 확인 {formatDateTime(metadataLastRefreshedAt)}</p>
+            <p className="market-updated">시세 갱신 {formatDateTime(summary.lastUpdated)}</p>
+          </div>
         </div>
         {error ? (
-          <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800">
+          <div className="market-data-warning" role="alert">
             <ShieldAlert className="mr-2 inline h-4 w-4" />
-            {error}
+            <span>{error}{rows.length > 0 ? " · 이전 데이터를 표시 중입니다." : ""}</span>
+            <Button variant="outline" onClick={() => void reload()} disabled={refreshing}>다시 연결</Button>
           </div>
         ) : null}
+        {marketWarnings.length > 0 && !error ? <div className="market-data-warning" role="status">
+          <ShieldAlert className="h-4 w-4" />
+          <span>{marketWarnings.join(" / ")} · 해당 마켓은 이전 데이터가 있으면 유지됩니다.</span>
+          <Button variant="outline" onClick={() => void reload()} disabled={refreshing}>다시 연결</Button>
+        </div> : null}
 
         <section className="market-summary" aria-label="전체 선물 시장 요약">
           <SummaryCard title="선물 계약" value={loading ? "불러오는 중" : summary.totalSymbols.toLocaleString("ko-KR")} detail={`USD-M ${marketCounts.usdM} / COIN-M ${marketCounts.coinM}`} icon={DatabaseZap} />
@@ -1338,9 +1368,9 @@ export default function BinanceFutures() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="crypto">크립토</SelectItem>
-                    <SelectItem value="all">전체 계약</SelectItem>
-                    <SelectItem value="tradefi">TradeFi</SelectItem>
+                    <SelectItem value="crypto">크립토 ({cryptoCount})</SelectItem>
+                    <SelectItem value="all">전체 계약 ({rows.length})</SelectItem>
+                    <SelectItem value="tradefi">TradeFi ({rows.length - cryptoCount})</SelectItem>
                   </SelectContent>
                 </Select>
                 </fieldset>
@@ -1431,6 +1461,10 @@ export default function BinanceFutures() {
                 <Button variant="ghost" onClick={resetFilters}>필터 초기화</Button>
                 <span>{visibleRows.length.toLocaleString("ko-KR")}개 계약 표시</span>
               </div>
+              {searchMatchCount > visibleRows.length ? <div className="market-search-hidden" role="status">
+                <span>다른 필터에 가려진 검색 결과 {searchMatchCount - visibleRows.length}개</span>
+                <Button variant="ghost" onClick={() => { setAssetFilter("all"); setMarketFilter("all"); setQuoteFilter("all"); setSignalFilter("all"); setFavoriteOnly(false); }}>전체 계약에서 검색</Button>
+              </div> : null}
             </section>
 
             {favoriteKeys.length > 0 ? (

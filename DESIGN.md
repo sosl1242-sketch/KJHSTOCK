@@ -50,6 +50,13 @@ fixed at the leading edge. Name width 184px desktop / 156px mobile.
 Breakpoints 640, 768, 1024, 1280px; existing charts may retain 1536px layout.
 
 ## 5. Components
+Market freshness: show the successful contract-list check time separately from
+stream price time, using existing 12px muted metadata. Use a wrapped, unframed
+coverage line with market counts. Partial-market errors use warning text and
+an explicit retry button; retained quotes are labelled as previous data.
+Search with hidden filter matches offers a single action to view those matches
+across all contracts without clearing the search query. Use the existing accent,
+12px metadata, 8px/12px gaps and 16px inset. No new visual tokens are needed.
 Surface radius 12px, input/button 8px, badges 4px. Border 1px.
 Research semantic rule and optical chart separation: --research-rule-width=2px.
 Header: white, brand left, connection health and reload right.

@@ -1,6 +1,11 @@
 # Current public site deployment
 
 The public URL is https://sosl1242-sketch.github.io/KJHSTOCK/.
+The separate `sosl1242-sketch.github.io` repository redirects the root URL to this
+canonical dashboard. Do not publish another frozen copy of the dashboard there.
+Contract metadata refreshes every minute while visible and on returning to the
+tab. Failed markets retain previous rows with a warning; healthy markets refresh
+independently. All REST reads bypass the browser cache and time out after 12s.
 
 Verified GitHub Pages settings on 2026-09-06 use branch publishing (legacy build),
 with source `gh-pages` at `/`. The `github-pages` environment permits that branch.
