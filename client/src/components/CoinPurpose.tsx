@@ -22,7 +22,8 @@ export function CoinPurpose({ row }: { row: FuturesMarketRow | undefined }) {
       </div>
     </> : <p className="coin-purpose-empty">
       {!row ? "Sheet에서 종목을 선택하면 코인의 용도와 토큰 역할을 확인할 수 있습니다."
-        : nonCrypto ? `${row.baseAsset}는 주식·지수·상품 등을 기초로 하는 TradeFi 계약입니다. 코인 소개 대상이 아닙니다.`
+        : row.assetClass === "preipo" ? `${row.baseAsset}는 비상장 기업을 기초로 하는 Pre-IPO 선물 계약입니다. 주식 자체의 소유권을 뜻하지 않습니다.`
+        : nonCrypto ? `${row.baseAsset}는 주식·지수·상품 등을 기초로 하는 TradFi 계약입니다. 코인 소개 대상이 아닙니다.`
           : `${row.baseAsset}의 용도와 토큰 역할을 확인한 소개가 아직 없습니다. 공식 프로젝트 자료 확인이 필요합니다.`}
     </p>}
   </section>;

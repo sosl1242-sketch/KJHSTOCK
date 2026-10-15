@@ -21,6 +21,8 @@ import {
 import { cn } from "@/lib/utils";
 import {
   buildFuturesSelectedSymbolAnalysis,
+  DEFAULT_FUTURES_ASSET_FILTER,
+  matchesFuturesAssetFilter,
   summarizeFuturesRows,
   type FuturesBias,
   type FuturesCandle,
@@ -1111,7 +1113,7 @@ export default function BinanceFutures() {
   const [rows, setRows] = useState<FuturesMarketRow[]>([]);
   const [selectedKey, setSelectedKey] = useState<FuturesSelectionKey | "">("");
   const [query, setQuery] = useState("");
-  const [assetFilter, setAssetFilter] = useState("crypto");
+  const [assetFilter, setAssetFilter] = useState(DEFAULT_FUTURES_ASSET_FILTER);
   const [marketFilter, setMarketFilter] = useState("all");
   const [quoteFilter, setQuoteFilter] = useState("all");
   const [signalFilter, setSignalFilter] = useState("all");
@@ -1232,6 +1234,7 @@ export default function BinanceFutures() {
     return { usdM, coinM };
   }, [rows]);
   const cryptoCount = rows.filter(row => row.assetClass === "crypto").length;
+  const preIpoCount = rows.filter(row => row.assetClass === "preipo").length;
 
   const toggleFavorite = useCallback((row: Pick<FuturesMarketRow, "marketType" | "symbol">) => {
     const key = rowSelectionKey(row);
@@ -1256,7 +1259,7 @@ export default function BinanceFutures() {
         row.baseAsset.includes(normalizedQuery) ||
         row.pair.includes(normalizedQuery);
       const matchesMarket = marketFilter === "all" || row.marketType === marketFilter;
-      const matchesAsset = assetFilter === "all" || row.assetClass === assetFilter;
+      const matchesAsset = matchesFuturesAssetFilter(row, assetFilter);
       const matchesQuote = quoteFilter === "all" || row.quoteAsset === quoteFilter;
       const matchesSignal = signalFilter === "all" || row.signal === signalFilter;
       const matchesFavorite = !favoriteOnly || favoriteKeySet.has(rowSelectionKey(row));
@@ -1289,7 +1292,7 @@ export default function BinanceFutures() {
     setSortKey(key);
     setPage(1);
   };
-  const resetFilters = () => { setQuery(""); setAssetFilter("crypto"); setMarketFilter("all"); setQuoteFilter("all"); setSignalFilter("all"); setFavoriteOnly(false); setPage(1); };
+  const resetFilters = () => { setQuery(""); setAssetFilter(DEFAULT_FUTURES_ASSET_FILTER); setMarketFilter("all"); setQuoteFilter("all"); setSignalFilter("all"); setFavoriteOnly(false); setPage(1); };
   const selectContract = (key: FuturesSelectionKey) => { setSelectedKey(key); moveFocusAfterNavigation.current = true; setActiveView("detail"); };
   const sortLabel = sortOptions.find(option => option.value === sortKey)?.label;
   const header = (label: string, key: SortKey, numeric = false, sticky = false) => <SortableFuturesHeader label={label} sortKey={key} activeKey={sortKey} direction={sortDirection} onSort={onSort} numeric={numeric} sticky={sticky} />;
@@ -1360,7 +1363,7 @@ export default function BinanceFutures() {
                     aria-label="이름 또는 심볼 검색"
                   />
                 </div>
-              <div className="market-filter-heading"><h3>종목 필터</h3><span>{[assetFilter !== "crypto", marketFilter !== "all", quoteFilter !== "all", signalFilter !== "all", favoriteOnly, Boolean(query.trim())].filter(Boolean).length}개 필터 적용</span></div>
+              <div className="market-filter-heading"><h3>종목 필터</h3><span>{[assetFilter !== DEFAULT_FUTURES_ASSET_FILTER, marketFilter !== "all", quoteFilter !== "all", signalFilter !== "all", favoriteOnly, Boolean(query.trim())].filter(Boolean).length}개 필터 적용</span></div>
               <div className="market-filter-grid">
                 <fieldset className="market-filter-field"><legend>자산 유형</legend>
                 <Select value={assetFilter} onValueChange={setAssetFilter}>
@@ -1368,9 +1371,10 @@ export default function BinanceFutures() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="crypto">크립토 ({cryptoCount})</SelectItem>
                     <SelectItem value="all">전체 계약 ({rows.length})</SelectItem>
-                    <SelectItem value="tradefi">TradeFi ({rows.length - cryptoCount})</SelectItem>
+                    <SelectItem value="crypto">크립토 ({cryptoCount})</SelectItem>
+                    <SelectItem value="tradefi">TradFi ({rows.length - cryptoCount})</SelectItem>
+                    <SelectItem value="preipo">Pre-IPO ({preIpoCount})</SelectItem>
                   </SelectContent>
                 </Select>
                 </fieldset>
@@ -1559,7 +1563,7 @@ export default function BinanceFutures() {
                         >
                           <TableCell className="sheet-name">
                             <button type="button" className="sheet-symbol" onClick={event => { event.stopPropagation(); selectContract(favoriteKey); }} aria-label={row.symbol + " " + row.marketType + " 분석 보기"}>
-                              <strong>{row.symbol}</strong><span>{row.baseAsset} / {row.quoteAsset}</span>
+                              <strong>{row.symbol}</strong><span>{row.baseAsset} / {row.quoteAsset}{row.assetClass === "preipo" ? " · Pre-IPO" : row.assetClass === "tradefi" ? " · TradFi" : ""}</span>
                             </button>
                           </TableCell>
                           <TableCell className="text-center">

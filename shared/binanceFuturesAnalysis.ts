@@ -6,6 +6,8 @@ export type BinanceFuturesSymbol = {
   contractType: string;
   status?: string;
   contractStatus?: string;
+  underlyingType?: string;
+  underlyingSubType?: string[];
 };
 
 export type BinanceFuturesTicker = {
@@ -37,7 +39,14 @@ export type FuturesCandle = {
 };
 
 export type FuturesBias = "bullish" | "neutral" | "bearish";
-export type FuturesAssetClass = "crypto" | "tradefi";
+export type FuturesAssetClass = "crypto" | "tradefi" | "preipo";
+export const DEFAULT_FUTURES_ASSET_FILTER = "all";
+
+export function matchesFuturesAssetFilter(row: Pick<FuturesMarketRow, "assetClass">, filter: string) {
+  if (filter === "all") return true;
+  if (filter === "tradefi") return row.assetClass === "tradefi" || row.assetClass === "preipo";
+  return row.assetClass === filter;
+}
 export type FuturesMarketType = "USD-M" | "COIN-M";
 export type FuturesWatchCategory =
   | "momentum_liquidity"
@@ -313,7 +322,11 @@ const tradeFiBaseAssets = new Set([
 ]);
 
 function classifyAsset(symbolInfo: BinanceFuturesSymbol): FuturesAssetClass {
+  const subtypes = (symbolInfo.underlyingSubType ?? []).map(value => value.replace(/[-_\s]/g, "").toUpperCase());
+  if (symbolInfo.underlyingType === "PREMARKET" || subtypes.includes("PREIPO")) return "preipo";
+  if (subtypes.includes("TRADFI") || subtypes.includes("TRADIFI")) return "tradefi";
   if (symbolInfo.contractType.includes("TRADIFI")) return "tradefi";
+  if (["EQUITY", "KR_EQUITY", "HK_EQUITY", "CN_EQUITY", "COMMODITY", "FX"].includes(symbolInfo.underlyingType ?? "")) return "tradefi";
   return tradeFiBaseAssets.has(symbolInfo.baseAsset.toUpperCase()) ? "tradefi" : "crypto";
 }
 

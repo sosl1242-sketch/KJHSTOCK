@@ -50,6 +50,10 @@ fixed at the leading edge. Name width 184px desktop / 156px mobile.
 Breakpoints 640, 768, 1024, 1280px; existing charts may retain 1536px layout.
 
 ## 5. Components
+The initial asset filter and reset both show all contracts, including crypto,
+TradFi and Pre-IPO. The asset menu shows all four options with live counts.
+TradFi includes its Pre-IPO subset. The name cell's existing 12px secondary line
+identifies TradFi or Pre-IPO without adding columns or changing row geometry.
 Market freshness: show the successful contract-list check time separately from
 stream price time, using existing 12px muted metadata. Use a wrapped, unframed
 coverage line with market counts. Partial-market errors use warning text and
